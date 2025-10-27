@@ -1,0 +1,8 @@
+Flask
+Flask-JWT-Extended
+Flask-SQLAlchemy
+Flask-Session
+flask-cors
+flask_bcrypt
+mysql-connector-python
+apscheduler

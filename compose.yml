@@ -1,7 +1,7 @@
 services:
   app:
     build: app
-    container_name: app
+    container_name: qb-app
     ports:
       - "5000:5000"
     expose:
@@ -12,57 +12,44 @@ services:
       - MYSQL_HOST=db
       - MYSQL_USER=root
       - MYSQL_PASSWORD=password
-      - MYSQL_DATABASE=mydatabase
+      - MYSQL_DATABASE=play-qb
       - MYSQL_PORT=3306
 
-      - DATABASE_URL=mysql+mysqlconnector://myuser:mypassword@db:3306/mydatabase
+      - DATABASE_URL=mysql+mysqlconnector://myuser:mypassword@db:3306/play-qb
     depends_on:
       - db
     volumes:
       - .:/app
     networks:
-      - my_network
-
-  db:
-    image: mysql:8.0
-    container_name: db
-    environment:
-      - MYSQL_ROOT_PASSWORD=password
-      - MYSQL_DATABASE=mydatabase
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - my_network
-
-  web:
-    build:
-      context: ./web
-    container_name: web
-    ports:
-      - "80:80"
-    networks:
-      - my_network
-    volumes:
-    - ./web/build:/usr/share/nginx/html:ro
-    - ./web/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - qb_network
 
   nginx:
     image: nginx:latest
-    container_name: nginx_proxy
+    container_name: qb-nginx_proxy
     ports:
       # - "80:80"
       - "443:443"
     depends_on:
       - app
-      - web
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/react-native-app/dist:/usr/share/nginx/html:ro
+      - ./nginx/web/dist:/usr/share/nginx/html:ro
       - ./nginx/certs:/etc/ssl/certs
     networks:
-      - my_network
+      - qb_network
+
+  db:
+    image: mysql:8.0
+    container_name: qb-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=play-qb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - qb_network
 
 volumes:
   mysql_data:  # Named volume for MySQL
@@ -73,5 +60,5 @@ volumes:
     driver: local
 
 networks:
-  my_network:
+  qb_network:
     driver: bridge
