@@ -1,16 +1,9 @@
-from sqlalchemy import Column, ForeignKey, Table, Decimal, Integer, String, DateTime, Date, Boolean
-from sqlalcheym.types import JSON, Set
+from sqlalchemy import Column, ForeignKey, Table, Integer, String, DateTime, Date, Boolean
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
-from .lobby import lobby_games
-
-game_players = Table(
-    'game_players', Base.metadata,
-    Column('game_id', Integer, ForeignKey('Games.id'), primary_key=True),
-    Column('player_id', Integer, ForeignKey('Players.id'), primary_key=True)
-)
 
 class Games(Base, CreatedAtColumn):
     __tablename__ = 'games'
@@ -18,8 +11,9 @@ class Games(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    lobby_id = Column(Integer, ForeignKey("Lobbies.id"), nullable=False)
+    lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
     player_ids = Column(JSON, default=[])
+    active = Column(Boolean, default=True)
     question_number = Column(Integer, default=0)
     game_mode = Column(Integer, default=1)
     rounds = Column(JSON, default=[])

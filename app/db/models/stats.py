@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Decimal, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, ForeignKey, Numeric, Integer, String, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
@@ -11,7 +11,7 @@ class Stats(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    player_id = Column(Integer, ForeignKey("Players.id"),  nullable=False)
+    player_id = Column(Integer, ForeignKey("players.id"),  nullable=False)
     points = Column(Integer, default=0)
     corrects = Column(Integer, default=0)
     power = Column(Integer, default=0)
@@ -20,7 +20,7 @@ class Stats(Base, CreatedAtColumn):
     rounds = Column(Integer, default=0)
     buzzes = Column(Integer, default=0)
     games = Column(Integer, default=0)
-    average_time_to_buzz = Column(Decimal, default=1.0)
+    average_time_to_buzz = Column(Numeric(5, 5), default=1.0)
 
     player = relationship("Players", back_populates="stats")
 

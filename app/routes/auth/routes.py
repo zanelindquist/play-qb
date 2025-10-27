@@ -9,9 +9,16 @@ from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 
-from ...db.utils import create_user, validate_email, validate_password, get_user_by_email, get_permissions_by_email_and_org
+from ...db.utils import create_user, validate_email, validate_password, get_user_by_email
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+@bp.route("/test", methods=["POST"])
+def test():
+    package = request.json.get("package")
+
+    return {"package": package}, 200
+
 
 @bp.route("/login", methods=["POST"])
 def login():
@@ -79,19 +86,3 @@ def email():
         return jsonify({"email": email}), 200
     except ValueError as e:
         return jsonify({"error": f"{e}"}), 400
-
-@bp.route("/permissions", methods=["POST"])
-@jwt_required()
-def permissions():
-    data = request.get_json()
-    org = data.get("org")
-
-    if not org:
-        return jsonify({"error": "Organization hash is not specified"}), 404
-    
-    permissions = get_permissions_by_email_and_org(get_jwt_identity(), org)
-
-    if not permissions:
-        return jsonify({"error": "Permissions not found"}), 404
-    
-    return jsonify({"current_employee_permissions": permissions})
