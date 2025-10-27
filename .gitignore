@@ -1,0 +1,10 @@
+certs
+
+dist
+
+/nginx/web/dist/
+/nginx/web/.expo/
+/nginx/web/assets/fonts/
+/nginx/web/assets/images/
+/nginx/web/expo-env.d.ts
+/nginx/web/node_modules/
