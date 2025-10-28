@@ -8,3 +8,5 @@ dist
 /nginx/web/assets/images/
 /nginx/web/expo-env.d.ts
 /nginx/web/node_modules/
+
+/webscraper/packets
