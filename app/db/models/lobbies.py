@@ -14,8 +14,7 @@ class Lobbies(Base, CreatedAtColumn):
     name = Column(String(16), default="Play Quiz Bowl")
     total_games = Column(Integer, default=0)
 
-
-    games = relationship("Games", back_populates="games")
+    games = relationship("Games", back_populates="lobby")
     players = relationship("Players", back_populates="lobby")
 
     def __repr__(self):

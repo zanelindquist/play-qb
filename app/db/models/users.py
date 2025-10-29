@@ -19,7 +19,6 @@ class Users(Base, CreatedAtColumn):
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
 
-    stats = relationship("Stats", back_populates="user")
     player_instances = relationship("Players", back_populates="user")
 
     def __repr__(self):

@@ -11,7 +11,6 @@ class Stats(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    player_id = Column(Integer, ForeignKey("players.id"),  nullable=False)
     points = Column(Integer, default=0)
     corrects = Column(Integer, default=0)
     power = Column(Integer, default=0)

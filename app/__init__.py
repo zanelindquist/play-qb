@@ -54,10 +54,10 @@ def create_app(test_config=None):
     jwt.init_app(app)
 
     # Register blueprints
-    # from .routes.api import routes as api_routes
+    from .routes.api import routes as api_routes
     from .routes.auth import routes as auth_routes
 
-    # app.register_blueprint(api_routes.bp)
+    app.register_blueprint(api_routes.bp)
     app.register_blueprint(auth_routes.bp)
 
     from .db.db import init_db

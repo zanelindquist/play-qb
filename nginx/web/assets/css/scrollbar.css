@@ -1,0 +1,18 @@
+#org-scrollbar::-webkit-scrollbar {
+    height: 6px;
+}
+  
+#org-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+  
+#org-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 10px;
+}
+  
+/* For Firefox */
+#org-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #555 transparent;
+}

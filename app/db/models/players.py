@@ -11,16 +11,19 @@ class Players(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    stats_id = Column(Integer, ForeignKey("stats.id"), nullable=False)
-    lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
-    current_game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
     name = Column(String(16), default="Player")
 
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("Users", back_populates="player_instances")
+    
+    stats_id = Column(Integer, ForeignKey("stats.id"), nullable=False)
     stats = relationship("Stats", back_populates="player")
+    
+    lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
     lobby = relationship("Lobbies", back_populates="players")
+    
+    current_game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
     current_game = relationship("Games", back_populates="players")
-
+    
     def __repr__(self):
         return f"<Players(id={self.id}, user_id={self.user_id})>"
