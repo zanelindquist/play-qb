@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import theme from "../assets/themes/theme";
 
 import { Platform } from 'react-native';
+import { Slot } from 'expo-router';
 
 if (Platform.OS === 'web') {
     require('../assets/css/scrollbar.css');
@@ -24,12 +25,17 @@ export default function RootLayout() {
     };
 
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-          <PaperProvider theme={customTheme}>
-              <AlertProvider>
-
-              </AlertProvider>
-          </PaperProvider>
-      </GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+        <PaperProvider theme={customTheme}>
+            <AlertProvider>
+            <NavigationContainer theme={customTheme}>
+                <Stack.Navigator initialRouteName="Home">
+                    <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen name="Details" component={DetailsScreen} />
+                </Stack.Navigator>
+            </NavigationContainer>
+            </AlertProvider>
+        </PaperProvider>
+    </GestureHandlerRootView>
     );
 }

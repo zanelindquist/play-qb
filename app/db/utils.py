@@ -1,13 +1,15 @@
 # Import all of our models
-from .models import Users, Players, Games, Lobbies, Stats
+from .models import *
 
 import html
 from datetime import datetime, timezone, timedelta
 import re
-
+import math
+import random
 from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.inspection import inspect
+from .data_structures import *
 
 from app.db.db import engine
 
@@ -203,6 +205,23 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     finally:
         session.remove()
 
+def get_random_question(level=2, difficulty=0, subject=0):
+    session = get_session()
+    try:
+        count = math.floor(session.query(func.count(Questions.id)).scalar() * random.random())
+        random_question_number = random.randint(0 , count - 1)
+        print(random_question_number)
+        question = session.execute(
+            select(Questions)
+            .where(Questions.id == random_question_number)
+        ).scalars().first()
+
+        print(question)
+
+        return to_dict_safe(question, depth=0)
+
+    except Exception as e:
+        return {"code": 400, "error": str(e)}
 
 # =====SANITATION AND VALIDATION=====
 

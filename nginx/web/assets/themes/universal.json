@@ -1,0 +1,44 @@
+{
+    "light": {
+        "colors": {
+            "empty": {
+                "background": "#F8D7DA",
+                "icon": "#C18F8F"
+            },
+            "partial": {
+                "background": "#FFF3CD",
+                "icon": "#C9A93E"
+            },
+            "full": {
+                "background": "#D4EDDA",
+                "icon": "#8ECF8E"
+            },
+            "overfull": {
+                "background": "#a9deb5",
+                "icon": "#6ABF6A"
+            },
+            "gridElapsed": "#fafff5"
+        }
+    },
+    "dark": {
+        "colors": {
+            "empty": {
+                "background": "#3C1F21",
+                "icon": "#B17575"
+            },
+            "partial": {
+                "background": "#3E351A",  
+                "icon": "#D4B95A"
+            },
+            "full": {
+                "background": "#1E3B2A", 
+                "icon": "#88D788"
+            },
+            "overfull": {
+                "background": "#224531",
+                "icon": "#6ACE6A"
+            },
+            "gridElapsed": "#1B1F1C"
+        }
+    }
+}

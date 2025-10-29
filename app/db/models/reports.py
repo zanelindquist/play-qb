@@ -11,11 +11,11 @@ class Reports(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
     reason_code = Column(Integer, default=0)
     flagged_category = Column(String(20))
     description = Column(String(150), default="No description.")
 
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
     question = relationship("Questions", back_populates="reports")
 
     def __repr__(self):
