@@ -85,6 +85,6 @@ def packet_information(file):
 # print(packet_information("./packets/2002 Michigan MLK.json"))
 
 dict = get_json("./packets/2002 Michigan MLK.json")
-dict_to_sql(dict)    
+dict_to_sql(dict, "./logs/tosql.txt") 
 
 # scrape_questions()

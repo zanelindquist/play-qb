@@ -15,6 +15,7 @@ class Questions(Base, CreatedAtColumn):
     type = Column(Integer, default=0)
     year = Column(String(9))
     level = Column(Integer, default=2)
+    difficulty = Column(Integer, default=0)
     category = Column(String(20), default="Unknown")
     question = Column(Text, nullable=False)
     answers = Column(Text, nullable=False)
