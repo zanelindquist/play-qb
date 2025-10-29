@@ -15,6 +15,17 @@ from odf.text import P
 from io import BytesIO
 import tempfile
 import json
+import mysql.connector
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Connect to database
+DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/play-qb"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+session = SessionLocal()
+
 
 def scrape_tournament_page(link, diagnostics=False, level="College"):
     # Text fetching and metadata
@@ -217,4 +228,26 @@ def save_tpacket_to_json(tpacket, file):
         json.dump(tpacket, f, ensure_ascii=False, indent=4)
 
     print(f"SAVED tpackt to {file}")
+
+def get_json(file):
+    with open(file, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def dict_to_sql(dict):
+    meta = dict["tournament_metadata"]
+
+    tournament = meta["name"]
+    level = meta["level"]
+    difficulty = meta["difficulty"]
+    subjects = meta["subjects"]
+    season = meta["season"]
+    packet_length = meta["packet_length"]
+
+    for packet in dict.get("packets"):
+        # Save tossups to DB
+        print(packet["name"])
+        # Save bonuess to DB
+    
+
+    return {"status": 200, "message": "Success!"}
 

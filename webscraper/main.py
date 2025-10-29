@@ -29,9 +29,7 @@ def scrape_questions():
 
     soup = BeautifulSoup(html, "html.parser")
 
-    table_rows = soup.find_all('tr')
     links = soup.find_all("a")
-
     valid_links = []
 
     for link in links:
@@ -41,7 +39,7 @@ def scrape_questions():
             valid_links.append(href)
 
     for link in valid_links:
-        scrape_tournament_page(link[1:])
+        tpacket = scrape_tournament_page(link[1:])
         break
         
 
@@ -55,19 +53,38 @@ def scrape_questions():
         
     #     print(row_data)
 
-# scrape_questions()
-print("BEGINNING webscrape")
-tournment_packet = scrape_tournament_page("/3209/", diagnostics="logs/scrape.txt", level="College")
+def scrape_individual_page():
+    print("BEGINNING webscrape")
+    tournment_packet = scrape_tournament_page("/3209/", diagnostics="logs/scrape.txt", level="College")
 
-if not tournment_packet:
-    print("There was an error scraping that packet. Check the logs")
-else:
-    tournment_name = tournment_packet.get("tournament_metadata").get("name")
-
-    # TODO: Save these questions to a mysql database or figure out how we want to save them
-
-    if tournment_name:
-        save_tpacket_to_json(tournment_packet, "./packets/" + tournment_name + ".json")
+    if not tournment_packet:
+        print("There was an error scraping that packet. Check the logs")
     else:
-        save_tpacket_to_json(tournment_packet, "./packets/1.json")
-        print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
+        tournment_name = tournment_packet.get("tournament_metadata").get("name")
+
+        # TODO: Save these questions to a mysql database or figure out how we want to save them
+
+        if tournment_name:
+            save_tpacket_to_json(tournment_packet, "./packets/" + tournment_name + ".json")
+        else:
+            save_tpacket_to_json(tournment_packet, "./packets/1.json")
+            print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
+
+def packet_information(file):
+    tournament = {}
+    with open(file, "r", encoding="utf-8") as f:
+        tournament = json.load(f)
+    tossups = 0
+    bonuses = 0
+    for packet in tournament.get("packets"):
+        tossups += len(packet.get("tossups"))
+        bonuses += len(packet.get("bonuses"))
+
+    return {"tossups": tossups, "bonuses": bonuses}
+
+# print(packet_information("./packets/2002 Michigan MLK.json"))
+
+dict = get_json("./packets/2002 Michigan MLK.json")
+dict_to_sql(dict)    
+
+# scrape_questions()
