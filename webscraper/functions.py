@@ -6,7 +6,7 @@ from config import *
 from PyPDF2 import PdfReader
 import io
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from striprtf.striprtf import rtf_to_text
 from docx import Document
 # import textract
@@ -18,6 +18,16 @@ import json
 import mysql.connector
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import random
+import string
+
+connection = mysql.connector.connect(
+    host="127.0.0.1",
+    port=3306,
+    user="root",
+    password="password",
+    database="play-qb"
+)
 
 # Connect to database
 DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/play-qb"
@@ -190,7 +200,7 @@ def parse_packet(text):
     except Exception as error:
         return {"error": f"{error}"}
 
-def write_data(rows):
+def write_csv(rows):
     with open(destination, "wb", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerows(rows)
@@ -233,7 +243,7 @@ def get_json(file):
     with open(file, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def dict_to_sql(dict):
+def dict_to_sql(dict, diagnostics=False):
     meta = dict["tournament_metadata"]
 
     tournament = meta["name"]
@@ -243,11 +253,69 @@ def dict_to_sql(dict):
     season = meta["season"]
     packet_length = meta["packet_length"]
 
+    if level == "Middle School":
+        level = 0;
+    elif level == "High School":
+        level = 1;
+    elif level == "College":
+        level = 2;
+    else:
+        level = 3;
+
+    questions_written = 0;
+    total_questions = 0;
+
+    cursor = connection.cursor()
+
     for packet in dict.get("packets"):
         # Save tossups to DB
-        print(packet["name"])
+        for question in packet.get("tossups"):
+            total_questions += 1
+            if len(question) < 2:
+                continue
+            try:
+                # Define query
+                query = """
+                INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """
+
+                # Define values
+                values = (
+                    generate_unique_hash(),
+                    tournament,
+                    0,        # type
+                    season,
+                    level,
+                    subjects,
+                    question[0],
+                    question[1],
+                    datetime.now(timezone.utc)
+                )
+
+                # Execute and commit
+                cursor.execute(query, values)
+                connection.commit()
+
+                questions_written += 1;
+            except Exception as e:
+                #TODO: Have error checking and logging for malformed data
+                if diagnostics:
+                    append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
+                connection.rollback()
         # Save bonuess to DB
+
+    cursor.close()
+    connection.close()
+
+    if diagnostics:
+        append_to_diagnostics_file(diagnostics, f"COMPLETED translating questions from json to sql: STATS: (created_questions: {questions_written} | success_rate: {questions_written/total_questions})")
     
+    print(f"Completed writing {questions_written} new questions to MySQL database")
 
     return {"status": 200, "message": "Success!"}
+
+def generate_unique_hash(length=16):
+    """Generate a unique hash consisting of uppercase and lowercase letters."""
+    return ''.join(random.choices(string.ascii_letters, k=length))
 

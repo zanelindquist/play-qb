@@ -11,3 +11,4 @@ dist
 
 /webscraper/packets
 /webscraper/pdf_packets
+/webscraper/__pycache__
