@@ -10,3 +10,4 @@ dist
 /nginx/web/node_modules/
 
 /webscraper/packets
+/webscraper/pdf_packets

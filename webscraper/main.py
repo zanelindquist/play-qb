@@ -41,7 +41,7 @@ def scrape_questions():
             valid_links.append(href)
 
     for link in valid_links:
-        scrape_link(link)
+        scrape_tournament_page(link[1:])
         break
         
 
@@ -56,6 +56,18 @@ def scrape_questions():
     #     print(row_data)
 
 # scrape_questions()
+print("BEGINNING webscrape")
+tournment_packet = scrape_tournament_page("/3209/", diagnostics="logs/scrape.txt", level="College")
 
-text = load_text_from_file("packets/Claremont.txt")
-questions = parse_text(text)
+if not tournment_packet:
+    print("There was an error scraping that packet. Check the logs")
+else:
+    tournment_name = tournment_packet.get("tournament_metadata").get("name")
+
+    # TODO: Save these questions to a mysql database or figure out how we want to save them
+
+    if tournment_name:
+        save_tpacket_to_json(tournment_packet, "./packets/" + tournment_name + ".json")
+    else:
+        save_tpacket_to_json(tournment_packet, "./packets/1.json")
+        print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
