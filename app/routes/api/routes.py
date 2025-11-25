@@ -9,7 +9,7 @@ bcrypt = Bcrypt()
 
 from ...db.utils import *
 
-bp = Blueprint('api', __name__, url_prefix='/api')
+bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
 
 @bp.route("/random_question", methods=["GET"])

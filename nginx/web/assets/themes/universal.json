@@ -1,23 +1,8 @@
 {
     "light": {
         "colors": {
-            "empty": {
-                "background": "#F8D7DA",
-                "icon": "#C18F8F"
-            },
-            "partial": {
-                "background": "#FFF3CD",
-                "icon": "#C9A93E"
-            },
-            "full": {
-                "background": "#D4EDDA",
-                "icon": "#8ECF8E"
-            },
-            "overfull": {
-                "background": "#a9deb5",
-                "icon": "#6ABF6A"
-            },
-            "gridElapsed": "#fafff5"
+            "lightblue": "#5BA8E1",
+            "red": "#ff474c"
         }
     },
     "dark": {
