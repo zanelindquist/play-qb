@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -12,10 +14,11 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import { Button, TextInput, HelperText, Text, useTheme, Divider, Icon, Card, Menu } from 'react-native-paper';
 
+import theme from "../_layout.jsx"
 import { getAccessToken, saveAccessToken } from "../../utils/encryption.js"
 import { signIn, getProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
 
-import { useAlert } from "../../utils/alerts.js"
+import { useAlert } from '../../utils/alerts.jsx';
 
 
 const { width, height } = Dimensions.get("window")
@@ -99,7 +102,7 @@ export default function SignInScreen() {
                 // If we are on mobile, we dont want the left hand display
                 !isMobile &&
                 <Image
-                    source={require("../../assets/images/logo.png")}
+                    source={require("../../assets/images/steig-black.png")}
                     style={{display: "inline", width: "50%", height: "50%", position: "relative", left: "25%"}}
                     resizeMode='contain'>
                     
@@ -116,7 +119,7 @@ export default function SignInScreen() {
                     {
                         isMobile &&
                         <Image
-                            source={require("../../assets/images/logo.png")}
+                            source={require("../../assets/images/steig-black.png")}
                             style={{display: "inline", maxWidth: "100px", maxHeight: "100px", margin: "20px", alignSelf: "center"}}
                             resizeMode='contain'>
                         </Image>

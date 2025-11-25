@@ -111,6 +111,36 @@ def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
 
     return result
 
+# Recurisive function to sanitize every crany of any data
+def sanitize_data(data):
+    if isinstance(data, dict):
+        return {key: sanitize_data(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_data(item) for item in data]
+    elif isinstance(data, str):
+        # Sanitize against HTML XSS attacks. We don't want the user to input html that could then be passed back to the browser and interpreted as HTML in an XSS attack. I think...
+        return html.escape(data)
+    else:
+        return data
+    
+def validate_data(data, key=False, check_email=True):
+    global validation_list
+
+    if isinstance(data, dict):
+        return {key: validate_data(value, key=key) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [validate_data(item) for item in data]
+    # If the value is a string, and has a key value set, that is on our validation list
+    elif isinstance(data, str) and key in validation_list.keys():
+        if key == "email" and not check_email:
+            return data
+        return validation_list[key](data)
+    elif isinstance(data, (int, float)):
+        return validation_list[key](data)
+    else:
+        return data
+
+
 
 
 # CREATING RESOURCES
