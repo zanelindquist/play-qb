@@ -1,4 +1,4 @@
-import themeData from "./royal.json"
+import themeData from "./rise.json"
 import universalThemeDate from "./universal.json"
 
 const themeMode = "light"
