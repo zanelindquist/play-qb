@@ -45,6 +45,9 @@ const SidebarLayout = ({ children, style }) => {
     const { showAlert } = useAlert();
     const segments = useSegments();
 
+
+    console.log(theme)
+
     // Page variables
     const currentScreen = segments[0] || "Home";
     const title = currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
@@ -187,8 +190,7 @@ const styles = StyleSheet.create({
         opacity: 0.35,
 
         // more depth for glass
-        backgroundImage:
-            "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",
+        backgroundImage: theme.gradients.background,
     },
 
     navCenter: {

@@ -2,19 +2,31 @@ import React from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
 import { Text } from "react-native-paper";
+import theme from "../../assets/themes/theme";
 
 export default function GlassyButton({
     children,
     style,
     onPress,
+    mode,
+    textStyle
 }) {
-    const combined = [styles.glass, style];
+    let combined = [
+        mode == "filled" ? styles.filled : {},
+        styles.glass,
+        style
+    ];
+
+    let combinedText = [
+        styles.text,
+        mode == "filled" ? styles.textFilled : {},
+    ]
 
     // native blur
     if (Platform.OS !== "web") {
         return (
         <BlurView intensity={intensity} tint={tint} style={combined}>
-            <Text style={styles.text}>{children}</Text>
+            <Text style={combinedText}>{children}</Text>
         </BlurView>
         );
     }
@@ -23,7 +35,7 @@ export default function GlassyButton({
     return (
         <Pressable onPress={onPress}>
             <View style={[combined, styles.webFallback]}>
-                <Text style={styles.text}>{children}</Text>
+                <Text style={combinedText}>{children}</Text>
             </View>
         </Pressable>
     );
@@ -59,5 +71,11 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 15,
+    },
+    filled: {
+        backgroundImage: theme.gradients.button,
+    },
+    textFilled: {
+        color: theme.onPrimary
     }
 });

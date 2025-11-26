@@ -3,6 +3,10 @@
         "colors": {
             "lightblue": "#5BA8E1",
             "red": "#ff474c"
+        },
+        "gradients": {
+            "button": "linear-gradient(135deg, rgba(136, 65, 181, 0.73), rgba(67, 87, 186, 0.93))",
+            "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))"
         }
     },
     "dark": {

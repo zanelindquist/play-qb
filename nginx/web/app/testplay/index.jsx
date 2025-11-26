@@ -72,31 +72,31 @@ const TestPlay = () => {
 
     return (
         <SidebarLayout style={styles.sidebar}>
-        <View style={styles.container}>
-            <View style={styles.questionContainer}>
-                {
-                    currentQuestion ?
-                    <Question question={currentQuestion} style={styles.liveQuestion} minimize={false}/>
-                    :
-                    <HelperText>Hit next to begin</HelperText>
-                }
-                <View style={styles.previousQuestions}>
-                {
-                    pastQuestions.slice(1).map((q, i) => 
-                        <Question question={q} key={i} minimize={true} style={styles.questions}/>
-                    )
-                }
+            <View style={styles.container}>
+                <View style={styles.questionContainer}>
+                    {
+                        currentQuestion ?
+                        <Question question={currentQuestion} style={styles.liveQuestion} minimize={false}/>
+                        :
+                        <HelperText>Hit next to begin</HelperText>
+                    }
+                    <View style={styles.previousQuestions}>
+                    {
+                        pastQuestions.slice(1).map((q, i) => 
+                            <Question question={q} key={i} minimize={true} style={styles.questions}/>
+                        )
+                    }
+                    </View>
                 </View>
-            </View>
-            <View style={styles.optionsContainer}>
-                <View style={styles.scorebox}>
+                <View style={styles.optionsContainer}>
+                    <View style={styles.scorebox}>
 
+                    </View>
+                    <GlassyButton mode="filled" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
+                    <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>
-                <GlassyButton mode="contained" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
-                <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
-            </View>
 
-        </View>
+            </View>
 
         </SidebarLayout>
     )
