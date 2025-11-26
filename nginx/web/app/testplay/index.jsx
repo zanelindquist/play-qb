@@ -14,36 +14,48 @@ import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, A
 import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAlert } from "../../utils/alerts.jsx";
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
-import LiveQuestion from "../../components/game/LiveQuestion.jsx";
+import Question from "../../components/game/Question.jsx";
+import GlassyButton from "../../components/custom/GlassyButton.jsx"
 
 const { width } = Dimensions.get('window');
 
 const TestPlay = () => {
-    const [data, setData] = useState(null);
     const [currentQuestion, setCurrentQuestion] = useState(null);
-    const [questionList, setQuestionList] = useState([]);
+    const [pastQuestions, setPastQuestions] = useState([]);
+    const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
 
-    useEffect(() => {
-        getProtectedRoute("/testplay")
+    let questions = []
+
+    function loadQuestion() {
+        getProtectedRoute("/random_question")
         .then((response)=> {
-            setData(response.data)
+            const cq = response.data;
+            setPastQuestions((qs) => {
+                // Avoid duplicates
+                if (qs[0]?.id === cq.id) return qs;
+                return [cq, ...qs];
+            });
+            setCurrentQuestion(cq)
         })
         .catch((error)=> {
-            // showAlert("There was an error: ", error)
+            showAlert("There was an error: ", error)
         })
+    }
 
+    useEffect(() => {
+        loadQuestion()
 
         // Handle key presses
         function handleKeyDown(e) {
-            console.log(e.code)
             switch(e.code) {
                 case "Space":
-                    
+                    // Buzz logic
+
                     e.preventDefault()
                 break;
                 case "KeyJ":
-                    nextQuestion();
+                    nextQuestion(currentQuestion);
                 break;
             }
         }
@@ -52,16 +64,9 @@ const TestPlay = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [])
 
-    function nextQuestion() {
-        setQuestionList((questions) => [...questions, currentQuestion])
-
-        getProtectedRoute("/random_question")
-        .then((response)=> {
-            setCurrentQuestion(response.data)
-        })
-        .catch((error)=> {
-            showAlert("There was an error: ", error)
-        })
+    async function nextQuestion(cq) {
+        // Push the old question into history exactly once
+        loadQuestion()
     }
 
     return (
@@ -70,17 +75,23 @@ const TestPlay = () => {
             <View style={styles.questionContainer}>
                 {
                     currentQuestion ?
-                    <LiveQuestion question={currentQuestion}/>
+                    <Question question={currentQuestion} style={styles.liveQuestion} minimize={false}/>
                     :
                     <HelperText>Hit next to begin</HelperText>
                 }
-                {/* <PastQuestions></PastQuestions> */}
+                <View style={styles.previousQuestions}>
+                {
+                    pastQuestions.slice(1).map((q, i) => 
+                        <Question question={q} key={i} minimize={true} style={styles.questions}/>
+                    )
+                }
+                </View>
             </View>
             <View style={styles.optionsContainer}>
                 <View style={styles.scorebox}>
 
                 </View>
-                <Button mode="contained" onPress={nextQuestion}>Next</Button>
+                <GlassyButton mode="contained" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
                 
             </View>
 
@@ -107,12 +118,27 @@ const styles = StyleSheet.create({
     },
     questionContainer: {
         flexGrow: 1,
-        width: "80%"
+        width: "80%",
+        flexDirection: "column"
+    },
+    liveQuestion: {
+        height: 300
+    },
+    previousQuestions: {
+        marginTop: 10,
+        flexDirection: "column",
+        gap: 10
+    },
+    questions: {
+        width: "100%"
     },
     optionsContainer: {
         flexShrink: 1,
         position: "relative",
         right: 0
+    },
+    scorebox: {
+        width: 200
     }
 })
 
