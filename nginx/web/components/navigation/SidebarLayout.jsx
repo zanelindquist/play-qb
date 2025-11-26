@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     View,
     Dimensions,
@@ -14,7 +14,7 @@ import {
     IconButton,
     Title,
     Button,
-    HelperText,
+    HelperText
 } from "react-native-paper";
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
@@ -40,22 +40,20 @@ let isWide = width >= 768; // Adjust breakpoint as needed
 const contentPadding = 16;
 
 const SidebarLayout = ({ children, style }) => {
+    // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
-
     const segments = useSegments();
 
-    // Get the current route name (last segment)
+    // Page variables
     const currentScreen = segments[0] || "Home";
+    const title = currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
 
-    // Capitalize the first letter of the route name
-    const title =
-        currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
-
+    // States
     const [isDrawerOpen, setDrawerOpen] = useState(isWide);
     const [drawerAnim] = useState(new Animated.Value(0)); // Initial position: hidden
-
     const [renderFooter, setRenderFooter] = useState(false);
+    const [navBarHeight, setNavBarHeight] = useState(0);
 
     useEffect(() => {
         setTimeout(() => {
@@ -120,7 +118,12 @@ const SidebarLayout = ({ children, style }) => {
             <View style={styles.bg} />
 
             {/* Top Navigation Bar */}
-            <View style={styles.navCenter}>
+            <View
+                style={styles.navCenter}
+                onLayout={(e) => {
+                    setNavBarHeight(e.nativeEvent.layout.height)
+                }}
+            >
                 <GlassyView style={styles.topNav}>
                     <View style={styles.leftNav}>
                         <Logo text={true}/>
@@ -134,20 +137,34 @@ const SidebarLayout = ({ children, style }) => {
                             iconColor={iconColor}
                         />
                         <TopNavItem
-                            label="Friends"
+                            label="Invite"
                             onPress={() => {}}
                             icon="account-group"
                             iconColor={iconColor}
                         />
                     </View>
 
-                    <View style={styles.rightNav} />
+                    <View style={styles.rightNav} >
+                        <TopNavItem
+                            label="Settings"
+                            onPress={() => {}}
+                            icon="cog"
+                            iconColor={iconColor}
+                        />
+                        <TopNavItem
+                            label="Account"
+                            onPress={() => {}}
+                            icon="account"
+                            iconColor={iconColor}
+                        />
+                    </View>
                 </GlassyView>
             </View>
 
+
             {/* Scroll area */}
             <ScrollView
-                style={styles.scroll}
+                style={[styles.scroll, {paddingTop: navBarHeight}]}
                 contentContainerStyle={styles.scrollContent}
             >
                 <View style={styles.childrenWrapper}>{children}</View>
@@ -171,19 +188,24 @@ const styles = StyleSheet.create({
 
         // more depth for glass
         backgroundImage:
-            "linear-gradient(135deg, rgba(167, 45, 45, 0.8), rgba(46, 51, 138, 0.5))",
+            "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",
     },
 
     navCenter: {
+        width: "100%",
         flexDirection: "row",
         justifyContent: "center",
-        alignItems: "center"
+        alignItems: "center",
+        backgroundColor: "transparent",
+        padding: 10,
+        position: "absolute",
+        top: 10,
+        zIndex: 10
     },
 
     topNav: {
         maxWidth: 1200,
         width: "90%",
-        margin: 10,
         flexDirection: "row",
         justifyContent: "space-between",
         gap: 10,
@@ -212,81 +234,11 @@ const styles = StyleSheet.create({
     middleNav: {
         flexDirection: "row",
     },
+    rightNav: {
+        flexDirection: "row"
+    }
 
 
-});
-
-const ddd = StyleSheet.create({
-    topbar: {
-        backgroundColor: theme.primary,
-        color: theme.onPrimary,
-    },
-    title: {
-        color: theme.onPrimary,
-    },
-    container: {
-        flex: 1,
-        backgroundColor: theme.background,
-    },
-    body: {
-        flex: 1,
-        flexDirection: "row",
-    },
-    center: {
-        flexDirection: "row",
-        justifyContent: "center",
-        height: "85%",
-    },
-    scrollView: {
-        flexGrow: 1,
-        justifyContent: "space-between",
-    },
-    drawer: {
-        width: drawerWidth,
-        backgroundColor: theme.onPrimary,
-        elevation: 4,
-        shadowColor: "#000", // Shadow color for iOS
-        shadowOffset: { width: 1, height: 0 }, // Shadow offset for iOS
-        shadowOpacity: 0.3, // Shadow opacity for iOS
-        shadowRadius: 5, // Shadow blur for iOS
-    },
-    drawerLabelStyle: {
-        color: theme.background,
-    },
-    drawerOverlay: {
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        left: 0,
-        width: drawerWidth,
-        backgroundColor: theme.onPrimary,
-        zIndex: 10,
-        shadowColor: "#000", // Shadow color for iOS
-        shadowOffset: { width: 4, height: 4 }, // Shadow offset for iOS
-        shadowOpacity: 0.4, // Shadow opacity for iOS
-        shadowRadius: 10, // Shadow blur for iOS
-    },
-    content: {
-        flex: 1,
-        padding: contentPadding,
-        maxWidth: 1250,
-    },
-    closeButton: {
-        alignSelf: "flex-end",
-    },
-    confirmButtonContainer: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "center",
-        gap: 10,
-        margin: 10,
-    },
-    confirmTitle: {
-        alignSelf: "center",
-    },
-    confirmButton: {
-        width: "30%",
-    },
 });
 
 export default SidebarLayout;
