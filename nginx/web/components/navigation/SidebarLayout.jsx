@@ -204,6 +204,7 @@ const styles = StyleSheet.create({
     },
     childrenWrapper: {
         margin: 10,
+        padding: 10,
         maxWidth: 1500,
         width: "100%"
     },

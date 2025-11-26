@@ -16,6 +16,7 @@ import { useAlert } from "../../utils/alerts.jsx";
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import Question from "../../components/game/Question.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx"
+import PlayerScores from "../../components/game/PlayerScores.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -92,7 +93,7 @@ const TestPlay = () => {
 
                 </View>
                 <GlassyButton mode="contained" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
-                
+                <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
             </View>
 
         </View>
@@ -135,7 +136,9 @@ const styles = StyleSheet.create({
     optionsContainer: {
         flexShrink: 1,
         position: "relative",
-        right: 0
+        right: 0,
+        flexDirection: "column",
+        gap: 10
     },
     scorebox: {
         width: 200
