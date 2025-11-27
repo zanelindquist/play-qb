@@ -1,0 +1,64 @@
+services:
+  app:
+    build: app
+    container_name: qb-app
+    ports:
+      - "5000:5000"
+    expose:
+      - "5000"  # Internal port exposed to other containers
+    environment:
+      - FLASK_APP=app
+      - FLASK_RUN_HOST=0.0.0.0
+      - MYSQL_HOST=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=play-qb
+      - MYSQL_PORT=3306
+
+      - DATABASE_URL=mysql+mysqlconnector://myuser:mypassword@db:3306/play-qb
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    networks:
+      - qb_network
+
+  nginx:
+    image: nginx:latest
+    container_name: qb-nginx_proxy
+    ports:
+      # - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/web/dist:/usr/share/nginx/html:ro
+      - ./nginx/certs:/etc/ssl/certs
+    networks:
+      - qb_network
+
+  db:
+    image: mysql:8.0
+    container_name: qb-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=play-qb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - qb_network
+
+volumes:
+  mysql_data:  # Named volume for MySQL
+
+  web_build:
+    driver: local
+  app_build:
+    driver: local
+
+networks:
+  qb_network:
+    driver: bridge
