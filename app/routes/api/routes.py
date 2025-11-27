@@ -11,7 +11,7 @@ from ...db.utils import *
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
-
+# TEST ENDPOINT
 @bp.route("/random_question", methods=["GET"])
 def random_question():
     question = get_random_question()
@@ -19,3 +19,13 @@ def random_question():
         return question
     
     return question, 200
+
+
+# AUTHORIZED ROUTES
+
+@bp.route("/connection")
+@jwt_required()
+def connection():
+    email = get_jwt_identity()
+    print(email)
+    return 200

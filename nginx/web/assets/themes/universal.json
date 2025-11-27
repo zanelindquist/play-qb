@@ -6,28 +6,55 @@
         },
         "gradients": {
             "button": "linear-gradient(135deg, rgba(136, 65, 181, 0.73), rgba(67, 87, 186, 0.93))",
-            "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))"
+            "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",
+            "textArray": [
+                "rgba(114, 45, 167, 0.86)",
+                "rgba(46, 118, 138, 0.62)"
+            ],
+            "solosArray": [
+                "rgba(123, 47, 247, 0.28)",
+                "rgba(95, 55, 255, 0.18)",
+                "rgba(50, 20, 120, 0.14)"
+            ],
+            "duosArray": [
+                "rgba(77, 107, 255, 0.30)",
+                "rgba(40, 70, 210, 0.20)",
+                "rgba(20, 40, 120, 0.14)"
+            ],
+            "fivesArray": [
+                "rgba(0, 168, 232, 0.26)",
+                "rgba(95, 55, 255, 0.18)",
+                "rgba(154, 44, 255, 0.16)"
+            ]
         }
     },
     "dark": {
         "colors": {
-            "empty": {
-                "background": "#3C1F21",
-                "icon": "#B17575"
-            },
-            "partial": {
-                "background": "#3E351A",  
-                "icon": "#D4B95A"
-            },
-            "full": {
-                "background": "#1E3B2A", 
-                "icon": "#88D788"
-            },
-            "overfull": {
-                "background": "#224531",
-                "icon": "#6ACE6A"
-            },
-            "gridElapsed": "#1B1F1C"
+            "lightblue": "#5BA8E1",
+            "red": "#ff474c"
+        },
+        "gradients": {
+            "button": "linear-gradient(135deg, rgba(136, 65, 181, 0.73), rgba(67, 87, 186, 0.93))",
+            "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",
+            "textArray": [
+                "rgba(114, 45, 167, 0.86)",
+                "rgba(46, 118, 138, 0.62)"
+            ],
+            "solosArray": [
+                "rgba(123, 47, 247, 0.28)",
+                "rgba(95, 55, 255, 0.18)",
+                "rgba(50, 20, 120, 0.14)"
+            ],
+            "duosArray": [
+                "rgba(77, 107, 255, 0.30)",
+                "rgba(40, 70, 210, 0.20)",
+                "rgba(20, 40, 120, 0.14)"
+            ],
+            "fivesArray": [
+                "rgba(0, 168, 232, 0.26)",
+                "rgba(95, 55, 255, 0.18)",
+                "rgba(154, 44, 255, 0.16)"
+            ]
         }
     }
 }

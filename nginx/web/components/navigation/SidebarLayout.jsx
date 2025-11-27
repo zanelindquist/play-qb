@@ -183,16 +183,14 @@ const styles = StyleSheet.create({
         flex: 1,
         position: "relative",
     },
-
     bg: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: "#dfe3ee", // light neutral
-        opacity: 0.35,
+        backgroundColor: theme.background, // light neutral
+        opacity: 0.5,
 
         // more depth for glass
         backgroundImage: theme.gradients.background,
     },
-
     navCenter: {
         width: "100%",
         flexDirection: "row",
@@ -204,7 +202,6 @@ const styles = StyleSheet.create({
         top: 10,
         zIndex: 10
     },
-
     topNav: {
         maxWidth: 1200,
         width: "90%",
@@ -216,21 +213,18 @@ const styles = StyleSheet.create({
 
     scroll: {
         flex: 1,
-        backgroundColor: "transparent", // ← REQUIRED
+        flexDirection: "column"
     },
-
     scrollContent: {
         paddingBottom: 40,
-        backgroundColor: "transparent", // ← REQUIRED
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center"
+        alignSelf: "center"
     },
     childrenWrapper: {
         margin: 10,
         padding: 10,
         maxWidth: 1500,
-        width: "100%"
+        width: "100%",
+
     },
 
     middleNav: {
