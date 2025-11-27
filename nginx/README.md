@@ -1,0 +1,1 @@
+This nginx folder controls the nginx server that is deployed via Docker. It serves the build from the /web folder.
