@@ -1,0 +1,45 @@
+SERIALIZATION_CONFIG = {
+    "Users": {
+        "fields": [
+            "id", "hash", "firstname", "lastname", "is_male", 
+            "account_disabled", "email_verified"
+        ],
+        "relationships": {
+            "player_instances": "Players"    
+        },
+    },
+    "Stats": {
+        "fields": ["id", "hash", "points", "corrects", "power", "negs", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz"],
+        "relationships": {
+            "player": "Players",
+        },
+    },
+    "Reports": {
+        "fields": ["id", "hash", "reason_code", "flagged_category", "description", "question_id"],
+        "relationships": {
+            "question": "Questions"
+        },
+    },
+    "Questions": {
+        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "categoy", "question", "answers", "prompts"],
+        "relationships": {
+            "reports": "Reports"
+        },
+    },
+    "Players": {
+        "fields": ["id", "hash", "name", "user_id", "stats_id", "lobby_id", "current_game_id"],
+        "relationships": {
+            "user": "Users",
+            "stats": "Stats",
+            "lobby": "Lobbies",
+            "current_game": "Games"
+        },
+    },
+    "Games": {
+        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "level", "category", "speed", "lobby_id"],
+        "relationships": {
+            "lobby": "Lobbies",
+            "players": "Players"
+        }
+    }
+}
