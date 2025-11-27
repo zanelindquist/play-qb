@@ -1,30 +1,80 @@
 import React from "react";
-import { Platform, View, StyleSheet } from "react-native";
+import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function GlassyView({
   children,
   style,
   intensity = 60,
   tint = "light",
+  gradient = null, // { colors: [...], start: {x,y}, end: {x,y} }
+  onPress
 }) {
   const combined = [styles.glass, style];
+  let component = null;
 
-  // native blur
+  // Native (iOS / Android)
   if (Platform.OS !== "web") {
-    return (
-      <BlurView intensity={intensity} tint={tint} style={combined}>
+    component =
+      <>
+        {gradient && (
+          <LinearGradient
+            colors={gradient.colors}
+            start={gradient.start}
+            end={gradient.end}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+
+        <BlurView intensity={intensity} tint={tint} style={StyleSheet.absoluteFill}>
+          {children}
+        </BlurView>
+      </>
+  } else {
+    // Web fallback
+    component = 
+      <>
+        {gradient && (
+          <LinearGradient
+            colors={gradient.colors}
+            start={gradient.start}
+            end={gradient.end}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         {children}
-      </BlurView>
-    );
+      </>
   }
 
-  // web fallback
-  return (
-    <View style={[combined, styles.webFallback]}>
-      {children}
-    </View>
-  );
+  if(onPress) {
+    return (
+      <Pressable
+        style={
+          Platform.OS == "web" ?
+          [combined, styles.webFallback] :
+          combined
+        }
+        onPress={onPress}
+      >
+      {component}
+      </Pressable>
+    )
+  }
+  else {
+    return (
+      <View
+        style={
+          Platform.OS == "web" ?
+          [combined, styles.webFallback] :
+          combined
+        }
+      >
+      {component}
+      </View>
+    )
+  }
+
 }
 
 const styles = StyleSheet.create({
@@ -32,18 +82,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
 
-    // 100% transparent — lets blur show real content behind it
     backgroundColor: "rgba(255,255,255,0.05)",
-
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
 
-    // FLOATING EFFECT
     shadowColor: "#000",
     shadowOpacity: 0.25,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 10, // Android floating
+    elevation: 10,
+
     padding: 12,
   },
 
