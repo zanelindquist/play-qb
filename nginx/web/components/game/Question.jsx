@@ -15,7 +15,7 @@ import GlassyView from '../custom/GlassyView';
 
 const collapsedHeight = 40;
 
-const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed = 1400, minimize }) => {
+const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed = 500, minimize }) => {
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
     const [isFinished, setIsFinished] = useState(false)

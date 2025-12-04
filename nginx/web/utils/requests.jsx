@@ -7,6 +7,10 @@ const auth = axios.create({baseURL: "https://app.localhost/auth"})
 
 // ===== MISC =====
 function handleNoAccessToken() {
+    if (!showAlert || !router) throw new Error("handleExpiredAccessToken(): function showAlert or router is not defined")
+    showAlert("Access token not found. Please sign in.")
+    router.push("/signin")
+
     // If we are on development, this is normal since we can't make API calls
     if(process.env.NODE_ENV === 'development') return
     // But if we aren't then we want to redirect them to login
@@ -44,6 +48,7 @@ async function getProtectedRoute(route) {
     }
 
     try {
+        console.log("hi")
         return await api.get(route, {headers: headers})
     }catch (error) {
         throw handleGeneralRequestError(error)
