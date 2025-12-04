@@ -222,9 +222,8 @@ const styles = StyleSheet.create({
     childrenWrapper: {
         margin: 10,
         padding: 10,
-        maxWidth: 1500,
+        maxWidth: 1100,
         width: "100%",
-
     },
 
     middleNav: {

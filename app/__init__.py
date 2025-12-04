@@ -15,7 +15,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     # Remove this later-- its just so we can use a different localhost port in development
-    CORS(app, resources={r"/*": {"origins": "https://localhost"}})
+    CORS(app, resources={r"/*": {"origins": "https://localhost"}}, origins=["https://app.localhost"])
 
     app.config.from_mapping(
         SECRET_KEY='dev',

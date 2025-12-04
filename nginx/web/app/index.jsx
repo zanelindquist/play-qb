@@ -26,11 +26,31 @@ export default function HomeScreen() {
         <SidebarLayout>
             <View style={styles.container}>
                 <GlassyView style={[styles.topBoxes, styles.bentoRow]}>
-                    <GlassyView style={[styles.topLeftBox, styles.bentoBox]}>
-
+                    <GlassyView
+                        style={[styles.topLeftBox, styles.bentoBox]}
+                        onPress={() => router.push("/lobby?mode=customs")}
+                        gradient={{
+                            colors: theme.gradients.customsArray,
+                            start: { x: 0, y: 0 },
+                            end: { x: 1, y: 1 },
+                        }}
+                    >
+                        <Icon source={"atom"} size={80} color={theme.primary}/>
+                        <GradientText size={50}>Customs</GradientText>
+                        <HelperText style={styles.subtitle}>Create a custom game and play with your friends.</HelperText>
                     </GlassyView>
-                    <GlassyView style={[styles.topRightBox, styles.bentoBox]}>
-
+                    <GlassyView
+                        style={[styles.topRightBox, styles.bentoBox]}
+                        onPress={() => router.push("/lobby?mode=mystery")}
+                        gradient={{
+                            colors: theme.gradients.mysteryArray,
+                            start: { x: 0, y: 0 },
+                            end: { x: 1, y: 1 },
+                        }}
+                    >
+                        <Icon source={"head-question"} size={80} color={theme.primary}/>
+                        <GradientText size={50}>Mystery Mode</GradientText>
+                        <HelperText style={styles.subtitle}>Play Quiz Bowl in a featured gamemode.</HelperText>
                     </GlassyView>
                 </GlassyView>
                 <GlassyView style={[styles.bottomBoxes, styles.bentoRow]}>
@@ -104,5 +124,9 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 40,
         fontWeight: 700
+    },
+    subtitle: {
+        color: theme.secondary,
+        textAlign: "center"
     }
 })

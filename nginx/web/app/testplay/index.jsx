@@ -31,6 +31,7 @@ const TestPlay = () => {
     function loadQuestion() {
         getProtectedRoute("/random_question")
         .then((response)=> {
+            console.log(response.data)
             const cq = response.data;
             setPastQuestions((qs) => {
                 // Avoid duplicates
@@ -40,7 +41,8 @@ const TestPlay = () => {
             setCurrentQuestion(cq)
         })
         .catch((error)=> {
-            showAlert("There was an error: ", error)
+            console.error(error)
+            showAlert("There was an error: " + error)
         })
     }
 
@@ -103,10 +105,6 @@ const TestPlay = () => {
 }
 
 const styles = StyleSheet.create({
-    sidebar: {
-        display: "flex",
-        alignItems: "baseline"
-    },
     container: {
         display: "flex",
         flexDirection: "row",
