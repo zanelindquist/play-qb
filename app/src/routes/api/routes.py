@@ -7,7 +7,7 @@ from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 
-from ...db.utils import *
+from src.db.utils import*
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 

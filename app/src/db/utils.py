@@ -11,7 +11,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mappe
 from sqlalchemy.inspection import inspect
 from .data_structures import *
 
-from app.db.db import engine
+from .db import engine
 
 Session = scoped_session(sessionmaker(bind=engine))
 

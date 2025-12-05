@@ -18,5 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV FLASK_APP=app
+ENV PYTHONPATH=/app
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Old, pre socket
+# CMD ["flask", "run", "--host=0.0.0.0"]
+
+CMD ["python", "server.py"]
