@@ -46,8 +46,6 @@ const SidebarLayout = ({ children, style }) => {
     const segments = useSegments();
 
 
-    console.log(theme)
-
     // Page variables
     const currentScreen = segments[0] || "Home";
     const title = currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);

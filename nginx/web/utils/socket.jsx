@@ -1,23 +1,42 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-function useSocket() {
-  useEffect(() => {
-    const socket = io("https://localhost", {
-      path: "/socket.io",
-      transports: ["websocket"],
-    });
+export function useSocket() {
+    const socketRef = useRef(null);
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+    useEffect(() => {
+        const socket = io("https://app.localhost", {
+            path: "/socket.io",
+            transports: ["websocket"],
+        });
 
-    socket.on("server_message", (msg) => {
-      console.log("Server:", msg);
-    });
+        socketRef.current = socket;
 
-    return () => socket.disconnect();
-  }, []);
+        socket.on("connect", () => {
+            console.log("Connected to socket:", socket.id);
+        });
+
+        socket.on("server_message", (data) => {
+            console.log("Server message:", data);
+        });
+
+        socket.on("chat_message", (msg) => {
+            console.log("Chat message:", msg);
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+    const send = (event, data) => {
+        if (socketRef.current) {
+            socketRef.current.emit(event, data);
+        }
+    };
+
+    return {
+        socket: socketRef.current,
+        send,
+    };
 }
-
-export {useSocket}
