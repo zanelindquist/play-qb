@@ -32,6 +32,7 @@ const Play = () => {
     let questions = []
 
     const sendMessage = () => {
+        console.log("message sent")
         send("chat_message", { msg: "Hello from RN!" });
     };
 
@@ -86,8 +87,7 @@ const Play = () => {
                     {
                         currentQuestion ?
                         <Question question={currentQuestion} style={styles.liveQuestion} minimize={false}/>
-                        :
-                        <HelperText>Hit next to begin</HelperText>
+                        :<HelperText>Hit next to begin</HelperText>
                     }
                     <View style={styles.previousQuestions}>
                     {
@@ -102,6 +102,7 @@ const Play = () => {
 
                     </View>
                     <GlassyButton mode="filled" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
+                    <GlassyButton mode="filled" onPress={sendMessage}>Send message</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>
 
@@ -115,12 +116,11 @@ const styles = StyleSheet.create({
     container: {
         display: "flex",
         flexDirection: "row",
-        alignItems: "space-between",
-        justifyContent: "space-between",
+        gap: 10,
         flexGrow: 1,
-        position: "relative",
-        width: "100%",
-        gap: 10
+        // position: "relative",
+        // width: 1100,
+        width: "100%"
     },
     questionContainer: {
         flexGrow: 1,

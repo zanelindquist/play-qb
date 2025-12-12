@@ -48,7 +48,6 @@ async function getProtectedRoute(route) {
     }
 
     try {
-        console.log("hi")
         return await api.get(route, {headers: headers})
     }catch (error) {
         throw handleGeneralRequestError(error)

@@ -14,6 +14,8 @@ export function useSocket() {
 
         socket.on("connect", () => {
             console.log("Connected to socket:", socket.id);
+            // Send a test message
+            socket.emit("chat_message", { text: "Hello from React Native!" });
         });
 
         socket.on("server_message", (data) => {

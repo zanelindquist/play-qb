@@ -168,7 +168,7 @@ const SidebarLayout = ({ children, style }) => {
                 style={[styles.scroll, {paddingTop: navBarHeight}]}
                 contentContainerStyle={styles.scrollContent}
             >
-                <View style={styles.childrenWrapper}>{children}</View>
+                {children}
             </ScrollView>
         </View>
     );
@@ -208,30 +208,23 @@ const styles = StyleSheet.create({
         gap: 10,
         padding: 10,
     },
-
-    scroll: {
-        flex: 1,
-        flexDirection: "column"
-    },
-    scrollContent: {
-        paddingBottom: 40,
-        alignSelf: "center"
-    },
-    childrenWrapper: {
-        margin: 10,
-        padding: 10,
-        maxWidth: 1100,
-        width: "100%",
-    },
-
     middleNav: {
         flexDirection: "row",
     },
     rightNav: {
         flexDirection: "row"
-    }
+    },
 
+    scroll: {
 
+    },
+    scrollContent: {
+        margin: 10,
+        padding: 10,
+        maxWidth: 1100,
+        width: "100vw",
+        alignSelf: "center",
+    },
 });
 
 export default SidebarLayout;
