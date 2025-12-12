@@ -14,7 +14,6 @@ bp = Blueprint('api', __name__, url_prefix='/api/v1')
 # TEST ENDPOINT
 @bp.route("/random_question", methods=["GET"])
 def random_question():
-    print("ROUTE")
     question = get_random_question()
     if question.get("error"):
         return question

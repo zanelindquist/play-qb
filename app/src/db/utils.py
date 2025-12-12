@@ -240,7 +240,6 @@ def get_random_question(level=2, difficulty=0, subject=0):
     try:
         count = math.floor(session.query(func.count(Questions.id)).scalar() * random.random())
         random_question_number = random.randint(0 , count - 1)
-        print(random_question_number)
         question = session.execute(
             select(Questions)
             .where(Questions.id == random_question_number)
