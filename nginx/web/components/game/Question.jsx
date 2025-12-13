@@ -170,7 +170,9 @@ const styles = StyleSheet.create({
     },
     questionText: {
         fontSize: 16,
-        flexGrow: 1
+        flexGrow: 1,
+        // TODO: Add an outline or something so that you can see the text over the background image better
+        color: theme.onbackground
     },
     progressBarContainer: {
         width: "100%"

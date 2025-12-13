@@ -28,32 +28,9 @@ const Play = () => {
     const [pastQuestions, setPastQuestions] = useState([]);
     const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
-    const {send} = useSocket();
+    const {send, addEventListener} = useSocket();
 
     let questions = []
-
-    const sendMessage = () => {
-        console.log("message sent")
-        send("chat_message", { msg: "Hello from RN!" });
-    };
-
-    function loadQuestion() {
-        getProtectedRoute("/random_question")
-        .then((response)=> {
-            console.log(response.data)
-            const cq = response.data;
-            setPastQuestions((qs) => {
-                // Avoid duplicates
-                if (qs[0]?.id === cq.id) return qs;
-                return [cq, ...qs];
-            });
-            setCurrentQuestion(cq)
-        })
-        .catch((error)=> {
-            console.error(error)
-            showAlert("There was an error: " + error)
-        })
-    }
 
     useEffect(() => {
         loadQuestion()
@@ -76,10 +53,34 @@ const Play = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [])
 
+    const testSocket = () => {
+        console.log("testing socket")
+        send("test", { message: "Hello from RN!" });
+    };
+
+    function loadQuestion() {
+        getProtectedRoute("/random_question")
+        .then((response)=> {
+            console.log(response.data)
+            const cq = response.data;
+            setPastQuestions((qs) => {
+                // Avoid duplicates
+                if (qs[0]?.id === cq.id) return qs;
+                return [cq, ...qs];
+            });
+            setCurrentQuestion(cq)
+        })
+        .catch((error)=> {
+            console.error(error)
+            showAlert("There was an error: " + error)
+        })
+    }
+
     async function nextQuestion(cq) {
         // Push the old question into history exactly once
         loadQuestion()
     }
+
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -97,20 +98,13 @@ const Play = () => {
                         )
                     }
                     </View>
-                    <Video
-                        source={{uri: ".../assets/videos/Earth.mp4"}}
-                        style={StyleSheet.absoluteFill}
-                        muted
-                        repeat
-                        resizeMode="cover"
-                    />
                 </View>
                 <View style={styles.optionsContainer}>
                     <View style={styles.scorebox}>
 
                     </View>
                     <GlassyButton mode="filled" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
-                    <GlassyButton mode="filled" onPress={sendMessage}>Send message</GlassyButton>
+                    <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>
 

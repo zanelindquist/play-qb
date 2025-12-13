@@ -32,7 +32,7 @@ def connection():
 
 # GAME ROUTES
 
-@bp.route("/check_lobby_status/<hash>", methods=["GET"])
+@bp.route("/check_lobby_status/<hash>", methods=[])
 @jwt_required()
 def check_lobby_status(hash):
     # Query database for the lobby with this hash
