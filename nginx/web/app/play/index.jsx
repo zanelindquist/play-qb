@@ -30,8 +30,11 @@ const Play = () => {
     const {showAlert} = useAlert();
     const {send, addEventListener} = useSocket();
 
-    let questions = []
+    const [interrupter, setInterupter] = useState({})
+    const [input, setInput] = useState("")
+    const [typingEmitInterval, setTypingEmitInterval] = useState(null)
 
+    // Register keybinds
     useEffect(() => {
         loadQuestion()
 
@@ -53,8 +56,65 @@ const Play = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [])
 
+    // Register socket event listners
+    useEffect(() => {
+        addEventListener("player_joined", ({Player, GameState}) => {
+            
+        })
+
+        addEventListener("question_interrupted", ({Player, AnswerContent}) => {
+            // If the player is me
+            if(Player.id) {
+                // Show the typing box
+
+                // Show the buzz countdown in green
+
+                // Emit typing events
+                setTypingEmitInterval(setInteral(() => {
+                    onTyping(input)
+                }, 100))
+            } else {
+                // Show the typing box, but it is disabled
+            }
+        })
+
+        addEventListener("player_typing", ({Player, AnswerContent}) => {
+            // If the player is me
+            if(Player.id) {
+                // Do nothing
+            } else {
+                // Update the typing box with the AnswerContent
+            }
+            
+        })
+
+        addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect}) => {
+            
+        })
+
+        addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question}) => {
+            
+        })
+
+        addEventListener("reward_points", ({Scores}) => {
+            
+        })
+
+        addEventListener("game_paused", ({Player}) => {
+            
+        })
+
+        addEventListener("game_resumed", ({Player}) => {
+            
+        })
+
+        // Mostly test listner
+        addEventListener("chat_message", (data) => {
+            console.log(data.message)
+        })
+    }, [])
+
     const testSocket = () => {
-        console.log("testing socket")
         send("test", { message: "Hello from RN!" });
     };
 
@@ -81,6 +141,31 @@ const Play = () => {
         loadQuestion()
     }
 
+    // Functions
+    function onBuzz() {
+        send("buzz", {BuzzTimestamp: Date.now()})
+    }
+
+    function onTyping() {
+
+    }
+
+    function onSubmit() {
+        clearInterval(typingEmitInterval)
+    }
+
+    // I don't think I actually need this
+    function onQuestionResume() {
+        
+    }
+
+    function onGamePause() {
+
+    }
+
+    function onGameResume() {
+        
+    }
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -88,7 +173,11 @@ const Play = () => {
                 <View style={styles.questionContainer}>
                     {
                         currentQuestion ?
-                        <Question question={currentQuestion} style={styles.liveQuestion} minimize={false}/>
+                        <Question
+                            question={currentQuestion}
+                            style={styles.liveQuestion}
+                            minimize={false}
+                        />
                         :<HelperText>Hit next to begin</HelperText>
                     }
                     <View style={styles.previousQuestions}>
@@ -103,6 +192,7 @@ const Play = () => {
                     <View style={styles.scorebox}>
 
                     </View>
+                    <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
                     <GlassyButton mode="filled" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
