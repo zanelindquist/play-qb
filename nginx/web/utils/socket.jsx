@@ -21,10 +21,6 @@ export function useSocket() {
             console.log("Server message:", data);
         });
 
-        socket.on("chat_message", (msg) => {
-            console.log("Chat message:", msg);
-        });
-
         socket.on("test", (data) => {
             console.log(data)
         })
@@ -52,6 +48,12 @@ export function useSocket() {
     };
 
     const addEventListener = (event, callback) => {
+        // Don't register duplicate listners
+        if(eventListners.find(e => e.event === event)) {
+            // Fail silently because this happends often with rerenders
+            return 1;
+            //console.error("useSocket(): you may not register more than one event handler on the same event.")
+        }
         setEventListners((current) => [...current, {event, callback}])
     }
 

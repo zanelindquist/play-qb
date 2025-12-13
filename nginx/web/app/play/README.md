@@ -16,8 +16,8 @@
 
 # FUNCTIONS:
     1. Client-side
-        -> checkLobbyStatus()
-        -> joinLobby()
+        -> checkLobbyStatus() NOT IN /play
+        -> joinLobby() NOT IN /play
         <- playerJoined()
         <- calculateQuestionCharsFromTimestamp()
         -> questionInterrupt()
@@ -92,6 +92,8 @@
         OR
         - nextQuestion
             * Player, FinalAnswer, Scores, IsCorrect, Question
+        - rewardPoints
+            * Scores
 
         - gameResume
             * Player
