@@ -19,6 +19,7 @@ def get_session():
     return Session
 
 #========HELPER FUNCTIONS=======
+
 def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
     # If depth is 0 we only lo the static properties of object
     # If depth is 1 we load the static properties of obj's relationships
@@ -142,7 +143,6 @@ def validate_data(data, key=False, check_email=True):
 
 
 
-
 # CREATING RESOURCES
 
 def create_user(client_data, rel_depths=None, depth=1):
@@ -180,31 +180,8 @@ def create_user(client_data, rel_depths=None, depth=1):
 
 # RETRIEVING RESOURCES
 
-def get_permissions_by_email_and_org(email, org_hash):
-    try:
-        session = get_session()
-        user = get_user_by_email(email)
-
-        employee = (
-            session.query(Employees)
-            .join(Orgs, Employees.org_id == Orgs.id)  # Properly join Employees to Orgs
-            .filter(Employees.user_id == user.get("id"), Orgs.hash == org_hash)
-            .options(joinedload(Employees.org))
-            .first()
-        )
-
-        if employee is None or employee.kicked:
-            return None
-        
-        permission_integer = employee.position.permission_level
-
-        return get_permission_true_or_falses(permission_integer)
-    except Exception as e:
-        print(e)
-    finally:
-        session.remove()
-
 # All of thse functions must return dicts, not SQL Alchemy objects
+
 def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
     try:
         session = get_session()
@@ -251,6 +228,10 @@ def get_random_question(level=2, difficulty=0, subject=0):
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
+
+
+# =====GAME FUNCTIONS=====
+
 
 # =====SANITATION AND VALIDATION=====
 

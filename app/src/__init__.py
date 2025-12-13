@@ -60,7 +60,7 @@ def create_app(test_config=None):
     from .db.db import init_db
 
     # Register socket
-    # from socket_events import events
+    from src.socket_events import events
     socketio.init_app(app)
 
     init_db()
