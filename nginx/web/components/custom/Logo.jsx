@@ -3,7 +3,7 @@ import { Text } from "react-native-paper";
 import Svg, { Defs, LinearGradient, Stop, Rect, Path } from "react-native-svg";
 import theme from "@/assets/themes/theme";
 
-export default function Logo({ width, height, text = false }) {
+export default function Logo({ width, height, text = false, image = true }) {
     const start = theme.primary;
     const end = theme.secondary;
 
@@ -39,12 +39,13 @@ export default function Logo({ width, height, text = false }) {
                     fill="url(#brandGradient)"
                 />
             </Svg> */}
-
+            
+            {image &&
             <Image
                 source={require("../../assets/images/logo.png")}
                 style={{ width: 75, height: 75 }}
                 resizeMode="contain"
-            />
+            />}
             {text && <Text style={styles.text}>PlayQB</Text>}
         </View>
     );
@@ -55,9 +56,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
+        height: "100%"
     },
     text: {
         fontSize: 30,
         fontWeight: 600,
+        textAlignVertical: "center"
     },
 });

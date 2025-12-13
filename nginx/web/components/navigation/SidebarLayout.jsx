@@ -136,7 +136,7 @@ const SidebarLayout = ({ children, style }) => {
             >
                 <GlassyView style={styles.topNav}>
                     <View style={styles.leftNav}>
-                        <Logo text={true}/>
+                        <Logo text={true} image={false}/>
                     </View>
 
                     <View style={styles.middleNav}>
