@@ -10,6 +10,7 @@ import {
     ScrollView,
     Image
 } from 'react-native';
+import Video from "react-native-video";
 import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
 import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAlert } from "../../utils/alerts.jsx";
@@ -96,6 +97,13 @@ const Play = () => {
                         )
                     }
                     </View>
+                    <Video
+                        source={{uri: ".../assets/videos/Earth.mp4"}}
+                        style={StyleSheet.absoluteFill}
+                        muted
+                        repeat
+                        resizeMode="cover"
+                    />
                 </View>
                 <View style={styles.optionsContainer}>
                     <View style={styles.scorebox}>

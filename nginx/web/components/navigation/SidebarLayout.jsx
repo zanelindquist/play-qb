@@ -16,6 +16,7 @@ import {
     Button,
     HelperText
 } from "react-native-paper";
+import Video from 'react-native-video';
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
 import { useAlert } from "../../utils/alerts";
@@ -116,7 +117,15 @@ const SidebarLayout = ({ children, style }) => {
     return (
         <View style={styles.root}>
             {/* Background Layer */}
-            <View style={styles.bg} />
+            <View style={styles.bg} >                
+            <Video
+                    source={{uri: "/videos/Earth.mp4"}}
+                    style={[StyleSheet.absoluteFill, { borderWidth: 3, borderColor: "red" }]}
+                    muted
+                    repeat
+                    resizeMode="cover"
+                />
+            </View>
 
             {/* Top Navigation Bar */}
             <View
@@ -183,11 +192,13 @@ const styles = StyleSheet.create({
     },
     bg: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: theme.background, // light neutral
-        opacity: 0.5,
+        height: "100vh",
+        width: "100vw",
+        backgroundColor: "black", // light neutral
+        // opacity: 0.5,
 
         // more depth for glass
-        backgroundImage: theme.gradients.background,
+        // backgroundImage: theme.gradients.background,
     },
     navCenter: {
         width: "100%",
