@@ -15,13 +15,14 @@ import GlassyView from '../custom/GlassyView';
 
 const collapsedHeight = 40;
 
-const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed = 500, minimize }) => {
+const Question = ({ question, style, interrupter, onFinish, onDeath, deadMS = 6000, speed = 500, answerTime=5000, minimize }) => {
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
     const [isFinished, setIsFinished] = useState(false)
     const [isDead, setIsDead] = useState(false)
     const [isMinimized, setIsMinimized] = useState(false)
     const [untilDead, setUntilDead] = useState(deadMS)
+    const [msSinceBuzz, setMsSinceBuzz] = useState(0)
 
     const animatedHeight = useRef(new Animated.Value(200)).current;
 
@@ -30,6 +31,7 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
     const charsPerMinute = speed * 6;
     const delay = 60000 / charsPerMinute; // ms per char
 
+    // When the question starts, we need to reset everything
     useEffect(() => {
         if (!fullText) return;
 
@@ -37,28 +39,41 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
         setIsFinished(false)
         setIsDead(false)
         setUntilDead(deadMS)
-        let currentIndex = 0;
+        setMsSinceBuzz(0)
+    }, [question, speed]);
 
-        const interval = setInterval(() => {
-            if (interrupter?.current) {
-                clearInterval(interval);
-                return;
-            }
+    // When there is a buzz
+    useEffect(() => {
+        if(interrupter) {
+            const buzzTime = setInterval(() => {
+                setMsSinceBuzz((prev) => prev + 10)
+            }, 10)
 
-            currentIndex += 1;
-            setCharIndex(currentIndex);
+            // Clear interval after enough time has passed
+            setTimeout(() => {
+                clearInterval(buzzTime)
+                setMsSinceBuzz(0)
+            }, answerTime)
+        } else {
+            let currentIndex = charIndex ;
+            const interval = setInterval(() => {
+                if (!interrupter) {
+                    currentIndex += 1;
+                    setCharIndex(currentIndex);
 
-            if (currentIndex >= fullText.length) {
-                setIsFinished(true)
-                if (onFinish) onFinish();
-                setUntilDead(deadMS);
-                clearInterval(interval);
-            }
-        }, delay);
+                    if (currentIndex >= fullText.length) {
+                        setIsFinished(true)
+                        if (onFinish) onFinish();
+                        setUntilDead(deadMS);
+                        clearInterval(interval);
+                    }
+                }
+            }, delay);
+            return () => clearInterval(interval);
+        }
+    }, [interrupter])
 
-        return () => clearInterval(interval);
-    }, [question, speed, interrupter]);
-
+    // When the question is finished reading
     useEffect(() => {
         if (!isFinished) return;   // do not start until finished
 
@@ -66,7 +81,8 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
 
         const id = setInterval(() => {
             setUntilDead((prev) => {
-                if (prev <= 0 || interrupter?.current) {
+                if (prev <= 0) {
+                    if(onDeath) onDeath()
                     setIsDead(true);
                     clearInterval(id);
                     return 0;
@@ -78,6 +94,8 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
         return () => clearInterval(id);
     }, [isFinished]);
 
+    // Folding animation
+    // TODO: make this work
     useEffect(() => {
         if(minimize) {
             setIsMinimized(true)
@@ -102,7 +120,7 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
 
     return (
         <GlassyView>
-                    <Animated.View style={[styles.container, { height: animatedHeight }, style]}>
+            <Animated.View style={[styles.container, { height: animatedHeight }, style]}>
             
             {/* Show full question ONLY while not collapsed */}
             {!isMinimized && (
@@ -114,7 +132,11 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
                             isFinished && {
                                 width: (untilDead / deadMS) * 100 + "%",
                                 backgroundColor: theme.static.red
-                            }
+                            },
+                            interrupter && {
+                                width: (answerTime - msSinceBuzz) / answerTime * 100 + "%",
+                                backgroundColor: theme.primary
+                            },
                         ]} />
                     </View>
 
@@ -126,12 +148,18 @@ const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed
                         {fullText.slice(0, charIndex)}
                     </HelperText>
                     <HelperText>
-                        {isFinished
-                            ? (untilDead / 1000).toFixed(1)
-                            : ((1 - charIndex / fullText.length) *
-                                fullText.length * charsPerMinute / 60000).toFixed(1)
+                        {
+                            isFinished ?
+                            (untilDead / 1000).toFixed(1)
+                            : 
+                            interrupter ? 
+                            ((answerTime - msSinceBuzz) / 1000).toFixed(1)
+                            : ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60000).toFixed(1)
                         }s
                     </HelperText>
+                    {
+                        interrupter && <HelperText>INT</HelperText>
+                    }
                 </>
             )}
 
