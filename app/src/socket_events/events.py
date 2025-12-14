@@ -40,7 +40,7 @@ def on_buzz(data): # Timestamp, AnswerContent
     AnswerContent = False;
     Player = False;
     # Broadcast that a player has buzzed
-    emit("question_interrupt", {Player, AnswerContent}, broadcast=True)
+    emit("question_interrupt", {"Player": Player, "AnswerContent": AnswerContent}, broadcast=True)
 
 # When a player is buzzing (every 100 ms or so when typing)
 @socketio.on("typing")

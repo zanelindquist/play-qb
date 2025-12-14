@@ -20,17 +20,23 @@ import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import Question from "../../components/game/Question.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx"
 import PlayerScores from "../../components/game/PlayerScores.jsx";
+import AnswerInput from "../../components/game/AnswerInput.jsx";
 
 const { width } = Dimensions.get('window');
+
+// TEMPORARY
+const MY_ID = 1;
+const ANSWER_MS = 5000;
 
 const Play = () => {
     const [currentQuestion, setCurrentQuestion] = useState(null);
     const [pastQuestions, setPastQuestions] = useState([]);
+    const [currentQuestionDead, setCurrentQuestionDead] = useState(false)
     const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
     const {send, addEventListener} = useSocket();
 
-    const [interrupter, setInterupter] = useState({})
+    const [interrupter, setInterupter] = useState(false)
     const [input, setInput] = useState("")
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
 
@@ -40,10 +46,12 @@ const Play = () => {
 
         // Handle key presses
         function handleKeyDown(e) {
+            if(interrupter) return;
+
             switch(e.code) {
                 case "Space":
                     // Buzz logic
-
+                    onBuzz()
                     e.preventDefault()
                 break;
                 case "KeyJ":
@@ -62,17 +70,28 @@ const Play = () => {
             
         })
 
-        addEventListener("question_interrupted", ({Player, AnswerContent}) => {
+        addEventListener("question_interrupt", ({Player, AnswerContent}) => {
+            console.log("interupt event!")
+            setInterupter({current: {id: 1}})
             // If the player is me
-            if(Player.id) {
+            if(1 == MY_ID) {
                 // Show the typing box
-
+                
                 // Show the buzz countdown in green
 
+                
                 // Emit typing events
-                setTypingEmitInterval(setInteral(() => {
+                setTypingEmitInterval(setInterval(() => {
                     onTyping(input)
                 }, 100))
+
+                setTimeout(() => {
+                    if(typingEmitInterval){
+                        clearInterval(typingEmitInterval)    
+                    }
+                    
+                    setInterupter(null)
+                }, ANSWER_MS)
             } else {
                 // Show the typing box, but it is disabled
             }
@@ -80,7 +99,7 @@ const Play = () => {
 
         addEventListener("player_typing", ({Player, AnswerContent}) => {
             // If the player is me
-            if(Player.id) {
+            if(Player.id == MY_ID) {
                 // Do nothing
             } else {
                 // Update the typing box with the AnswerContent
@@ -89,11 +108,11 @@ const Play = () => {
         })
 
         addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect}) => {
-            
+            setInterupter(null)
         })
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question}) => {
-            
+            setInterupter(null)
         })
 
         addEventListener("reward_points", ({Scores}) => {
@@ -110,7 +129,7 @@ const Play = () => {
 
         // Mostly test listner
         addEventListener("chat_message", (data) => {
-            console.log(data.message)
+            console.log("message!")
         })
     }, [])
 
@@ -121,13 +140,13 @@ const Play = () => {
     function loadQuestion() {
         getProtectedRoute("/random_question")
         .then((response)=> {
-            console.log(response.data)
             const cq = response.data;
             setPastQuestions((qs) => {
                 // Avoid duplicates
                 if (qs[0]?.id === cq.id) return qs;
                 return [cq, ...qs];
             });
+            setCurrentQuestionDead(false)
             setCurrentQuestion(cq)
         })
         .catch((error)=> {
@@ -143,6 +162,9 @@ const Play = () => {
 
     // Functions
     function onBuzz() {
+        // Can't buzz when there is already an interruption
+        console.log(interrupter)
+        if(interrupter || currentQuestionDead) return;
         send("buzz", {BuzzTimestamp: Date.now()})
     }
 
@@ -167,6 +189,11 @@ const Play = () => {
         
     }
 
+    function handleQuestionDeath() {
+        setInterupter(null)
+        setCurrentQuestionDead(true)
+    }
+
     return (
         <SidebarLayout style={styles.sidebar}>
             <View style={styles.container}>
@@ -177,9 +204,16 @@ const Play = () => {
                             question={currentQuestion}
                             style={styles.liveQuestion}
                             minimize={false}
+                            interrupter={interrupter}
+                            onDeath={handleQuestionDeath}
                         />
                         :<HelperText>Hit next to begin</HelperText>
                     }
+                    <AnswerInput
+                        onChange={(text) => setInput(text)}
+                        onSubmit={onSubmit}
+                        disabled={!(interrupter && interrupter?.current?.id == MY_ID)}
+                    ></AnswerInput>
                     <View style={styles.previousQuestions}>
                     {
                         pastQuestions.slice(1).map((q, i) => 
