@@ -196,9 +196,7 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
                 select(Users)
                 .where(Users.email == email)
                 .options(
-                    joinedload(Users.employee_instances),
-                    joinedload(Users.invites),
-                    joinedload(Users.owned_orgs),
+                    joinedload(Users.player_instances),
                 )
             ).scalars().first()
 
@@ -229,6 +227,8 @@ def get_random_question(level=2, difficulty=0, subject=0):
     except Exception as e:
         return {"code": 400, "error": str(e)}
 
+def get_player_by_email(email):
+    print("ni")
 
 # =====GAME FUNCTIONS=====
 

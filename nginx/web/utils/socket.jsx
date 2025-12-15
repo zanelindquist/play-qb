@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { getAccessToken } from "./encryption";
 import { RedirectToSignIn } from "./redirects"
+import { router } from "expo-router";
+import { useAlert } from "./alerts";
 
-export function useSocket() {
+export function useSocket(lobbyAlias) {
     const socketRef = useRef(null);
     const [eventListners, setEventListners] = useState([])
     const [accessToken, setAccessToken] = useState("")
+    const {showAlert} = useAlert()
 
     useEffect(() => {
         getAccessToken()
@@ -19,7 +22,7 @@ export function useSocket() {
     })
 
     useEffect(() => {
-        if(!accessToken) return;
+        if(!accessToken || !lobbyAlias) return;
 
         const socket = io("https://app.localhost", {
             path: "/socket.io",
@@ -32,8 +35,17 @@ export function useSocket() {
         socketRef.current = socket;
 
         socket.on("connect", () => {
+            socket.emit("join_lobby", {lobbyAlias})
             console.log("Connected to socket: " + socket.id + " on " + socket._opts.hostname + socket._opts.path);
         });
+
+        socket.on("failed_connection", (data) => {
+            console.log("Failed socket connection: ", data.message)
+            if(data.message == "Invalid token") {
+                router.replace("/signin")
+                showAlert("Your session has expired. Please log in again.")
+            }
+        })
 
         socket.on("server_message", (data) => {
             console.log("Server message:", data);
@@ -46,7 +58,7 @@ export function useSocket() {
         return () => {
             socket.disconnect();
         };
-    }, [accessToken]);
+    }, [accessToken, lobbyAlias]);
 
     // Register event listners
     useEffect(() => {
