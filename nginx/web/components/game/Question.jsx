@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     TouchableOpacity,
@@ -6,138 +6,200 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
-    Image
-} from 'react-native';
-import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
-import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
-import theme from '../../assets/themes/theme';
-import GlassyView from '../custom/GlassyView';
+    Image,
+} from "react-native";
+import {
+    Button,
+    HelperText,
+    Menu,
+    Title,
+    IconButton,
+    Icon,
+    ActivityIndicator,
+    Avatar,
+    Card,
+} from "react-native-paper";
+import {
+    useRouter,
+    useGlobalSearchParams,
+    useLocalSearchParams,
+    usePathname,
+} from "expo-router";
+import theme from "../../assets/themes/theme";
+import GlassyView from "../custom/GlassyView";
 
 const collapsedHeight = 40;
 
-const Question = ({ question, style, interrupter, onFinish, onDeath, deadMS = 6000, speed = 500, answerTime=5000, minimize }) => {
+const Question = ({
+    question,
+    state="dead",
+    setState,
+    onInterruptOver,
+    onFinish,
+    onDeath,
+    style,
+    minimized = false,
+    MS_UNTIL_DEAD = 6000,
+    // Speed in WPM
+    SPEED = 400,
+    MS_FOR_ANSWER = 5000,
+}) => {
+    // Text variables
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
-    const [isFinished, setIsFinished] = useState(false)
-    const [isDead, setIsDead] = useState(false)
-    const [isMinimized, setIsMinimized] = useState(false)
-    const [untilDead, setUntilDead] = useState(deadMS)
-    const [msSinceBuzz, setMsSinceBuzz] = useState(0)
 
-    const animatedHeight = useRef(new Animated.Value(200)).current;
+    // Aestetic variables
+    const [isMinimized, setIsMinimized] = useState(minimized);
 
-    // Approximate characters per minute from WPM:
-    // Average English word ≈ 5 characters
-    const charsPerMinute = speed * 6;
-    const delay = 60000 / charsPerMinute; // ms per char
+    // Gamestate and buzz variables
+    const [isFinished, setIsFinished] = useState(false);
+    const [isDead, setIsDead] = useState(false);
+    const [msLeft, setMsLeft] = useState(0)
+    const [msLeftInWaiting, setMsLeftInWaiting] = useState(MS_UNTIL_DEAD)
 
-    // When the question starts, we need to reset everything
+    // Reading constants
+    const charsPerMinute = SPEED * 6;
+    const msPerChar = 60_000 / charsPerMinute; // ms per char
+
+    // Status bar
+    const [reRenderStatusBar, setReRenderStatusBar] = useState(0);
+
+    const animatedHeight = useRef(new Animated.Value(400)).current;
+
+
+    // When the state changes
     useEffect(() => {
-        if (!fullText) return;
+        if (state == "interrupted") {
+            setMsLeft(MS_FOR_ANSWER)
+            const interval = setInterval(() => {
+                setMsLeft((prev) => {
+                    if (prev <= 0) {
+                        // If there is still more to read
+                        if (onInterruptOver) onInterruptOver(charIndex < fullText.length)
+                        clearInterval(interval);
+                        return 0;
+                    }
 
-        setCharIndex(0); // reset on new question
-        setIsFinished(false)
-        setIsDead(false)
-        setUntilDead(deadMS)
-        setMsSinceBuzz(0)
-    }, [question, speed]);
-
-    // When there is a buzz
-    useEffect(() => {
-        if(interrupter) {
-            const buzzTime = setInterval(() => {
-                setMsSinceBuzz((prev) => prev + 10)
-            }, 10)
+                    return prev - 10;
+                })
+            }, 10);
 
             // Clear interval after enough time has passed
-            setTimeout(() => {
-                clearInterval(buzzTime)
-                setMsSinceBuzz(0)
-            }, answerTime)
-        } else {
-            let currentIndex = charIndex ;
+            return () => clearInterval(interval);
+
+        } 
+        else if (state == "running") {
+            let currentIndex = charIndex;
             const interval = setInterval(() => {
-                if (!interrupter) {
+                if (state == "running") {
                     currentIndex += 1;
                     setCharIndex(currentIndex);
 
                     if (currentIndex >= fullText.length) {
-                        setIsFinished(true)
+                        setIsFinished(true);
                         if (onFinish) onFinish();
-                        setUntilDead(deadMS);
                         clearInterval(interval);
                     }
                 }
-            }, delay);
+            }, msPerChar);
             return () => clearInterval(interval);
         }
-    }, [interrupter])
+        else if (state == "waiting") {
+            setMsLeft(msLeftInWaiting)
 
-    // When the question is finished reading
+            const interval = setInterval(() => {
+                setMsLeftInWaiting((prev) => {
+                    if (prev <= 0) {
+                        if (onDeath) onDeath();
+                        setIsDead(true);
+                        clearInterval(interval);
+                        return 0;
+                    }
+
+                    setMsLeft(prev - 10)
+
+                    return prev - 10;
+                });
+            }, 10);
+
+            return () => clearInterval(interval);
+        }
+        else if (state == "dead") {
+            setCharIndex(fullText.length)
+        }
+        else if (state == "resume") {
+            if(!setState) return;
+            if(charIndex < fullText.length) setState("running")
+            else if (msLeftInWaiting > 0) setState("waiting") 
+            else setState("dead")
+        }
+        else {
+            throw Error("<Question>: unknown state passed")
+        }
+    }, [state]);
+
+    // Rerender the status bar
     useEffect(() => {
-        if (!isFinished) return;   // do not start until finished
+        setReRenderStatusBar((prev) => prev + 1)
+    }, [msLeft, charIndex])
 
-        const delay = 10;
-
-        const id = setInterval(() => {
-            setUntilDead((prev) => {
-                if (prev <= 0) {
-                    if(onDeath) onDeath()
-                    setIsDead(true);
-                    clearInterval(id);
-                    return 0;
-                }
-                return prev - delay;
-            });
-        }, delay);
-
-        return () => clearInterval(id);
-    }, [isFinished]);
 
     // Folding animation
     // TODO: make this work
     useEffect(() => {
-        if(minimize) {
-            setIsMinimized(true)
-            setIsDead(true)
-            setIsFinished(true)
+        if (minimized) {
+            setIsMinimized(true);
             Animated.timing(animatedHeight, {
                 toValue: collapsedHeight,
                 duration: 300,
                 useNativeDriver: false, // cannot animate height with native driver
             }).start();
         }
-    }, [minimize]);
+    }, [minimized]);
 
-    if(isMinimized) {
+
+    if (isMinimized) {
         return (
             <GlassyView style={styles.collapsedBar}>
                 <HelperText numberOfLines={1}>{question.tournament}</HelperText>
-                <HelperText style={styles.answer} numberOfLines={1}>{question.answers}</HelperText>
+                <HelperText style={styles.answer} numberOfLines={1}>
+                    {question.answers}
+                </HelperText>
             </GlassyView>
-        )
+        );
     }
 
     return (
-        <GlassyView>
-            <Animated.View style={[styles.container, { height: animatedHeight }, style]}>
-            
-            {/* Show full question ONLY while not collapsed */}
-            {!isMinimized && (
-                <>
+        <GlassyView style={styles.container}>
+            <Animated.View
+                style={[styles.animatedContainer ,{ height: animatedHeight }]}
+            >               
+                <View style={styles.top}>
                     <View style={styles.progressBarContainer}>
-                        <View style={[
-                            styles.progressBar,
-                            { width: (1 - charIndex / fullText.length) * 100 + "%" },
-                            isFinished && {
-                                width: (untilDead / deadMS) * 100 + "%",
-                                backgroundColor: theme.static.red
-                            },
-                            interrupter && {
-                                width: (answerTime - msSinceBuzz) / answerTime * 100 + "%",
-                                backgroundColor: theme.primary
-                            },
-                        ]} />
+                        <View
+                            style={[
+                                styles.progressBar,
+                                state === "running"
+                                ? {
+                                    width: `${(1 - charIndex / fullText.length) * 100}%`,
+                                    backgroundColor: theme.static.lightblue,
+                                }
+                                : state === "waiting"
+                                ? {
+                                    width: `${(msLeft / MS_UNTIL_DEAD) * 100}%`,
+                                    backgroundColor: theme.static.red,
+                                }
+                                : state === "interrupted"
+                                ? {
+                                    width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
+                                    backgroundColor: theme.primary,
+                                }
+                                : {
+                                    width: 0,
+                                    backgroundColor: "black",
+                                }
+                            ]}
+                        />
                     </View>
 
                     <View style={styles.questionTopline}>
@@ -147,72 +209,72 @@ const Question = ({ question, style, interrupter, onFinish, onDeath, deadMS = 60
                     <HelperText style={styles.questionText}>
                         {fullText.slice(0, charIndex)}
                     </HelperText>
+                </View>
+
+                <View style={styles.bottom}>
                     <HelperText>
                         {
-                            isFinished ?
-                            (untilDead / 1000).toFixed(1)
-                            : 
-                            interrupter ? 
-                            ((answerTime - msSinceBuzz) / 1000).toFixed(1)
-                            : ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60000).toFixed(1)
-                        }s
+                            state == "running" ?
+                            ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60_000).toFixed(1)                                
+                            : (msLeft / 1000).toFixed(1)
+                        }
+                        s
                     </HelperText>
+                    <HelperText>{state}</HelperText>
+                    
                     {
-                        interrupter && <HelperText>INT</HelperText>
-                    }
-                </>
-            )}
+                        state == "dead" &&
+                        (
+                            <HelperText style={styles.answer}>
+                                {question.answers}
+                            </HelperText>
+                        )
+                    } 
+                </View>
 
-            {
-                !isMinimized && isDead &&
-                <HelperText style={styles.answer}>{question.answers}</HelperText>
-            }
-        </Animated.View>
+            </Animated.View>
         </GlassyView>
-
     );
-
 };
 
 const styles = StyleSheet.create({
     container: {
         borderRadius: 10,
-        // overflow: "hidden"
+    },
+    animatedContainer: {
+        flexDirection: "column",
+        justifyContent: "space-between",
     },
     collapsedBar: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
     },
-    questionTopline: {
-        flexDirection: "row",
-        alignContent: "space-between"
-
-    },
     tournament: {
 
     },
     answer: {
         fontSize: 17,
-        fontWeight: "bold"
+        fontWeight: "bold",
     },
     questionText: {
-        fontSize: 16,
+        fontSize: 17,
         flexGrow: 1,
         // TODO: Add an outline or something so that you can see the text over the background image better
-        color: theme.onbackground
+        color: theme.onbackground,
+
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     progressBarContainer: {
-        width: "100%"
+        width: "100%",
     },
     progressBar: {
         backgroundColor: theme.static.lightblue,
-        width: 500,
         height: 10,
-        borderRadius: 999
+        borderRadius: 999,
     },
-
-})
-
+});
 
 export default Question;

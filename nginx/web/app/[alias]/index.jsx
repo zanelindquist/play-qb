@@ -30,12 +30,16 @@ const MY_ID = 1;
 const ANSWER_MS = 5000;
 
 const Play = () => {
+    // Get the lobby alias
+    const query = useGlobalSearchParams();
+    const alias = query.alias || "";
+
     const [currentQuestion, setCurrentQuestion] = useState(null);
     const [pastQuestions, setPastQuestions] = useState([]);
     const [currentQuestionDead, setCurrentQuestionDead] = useState(false)
     const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
-    const {send, addEventListener} = useSocket();
+    const {socket, send, addEventListener} = useSocket(alias);
 
     const [interrupter, setInterupter] = useState(false)
     const [input, setInput] = useState("")
@@ -73,6 +77,8 @@ const Play = () => {
 
     // Register socket event listners
     useEffect(() => {
+        if(!socket) return;
+
         addEventListener("player_joined", ({Player, GameState}) => {
             
         })
@@ -129,7 +135,7 @@ const Play = () => {
         })
 
         return () => clearInterval(typingEmitInterval)
-    }, [])
+    }, [socket])
 
     const testSocket = () => {
         send("test", { message: "Hello from RN!" });
