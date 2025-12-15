@@ -1,14 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { getAccessToken } from "./encryption";
+import { RedirectToSignIn } from "./redirects"
 
 export function useSocket() {
     const socketRef = useRef(null);
     const [eventListners, setEventListners] = useState([])
+    const [accessToken, setAccessToken] = useState("")
 
     useEffect(() => {
+        getAccessToken()
+        .then((token) => {
+            setAccessToken(token)
+        })
+        .catch((error) => {
+            RedirectToSignIn()
+        })
+    })
+
+    useEffect(() => {
+        if(!accessToken) return;
+
         const socket = io("https://app.localhost", {
             path: "/socket.io",
             transports: ["websocket"],
+            auth: {
+                token: accessToken
+            }
         });
 
         socketRef.current = socket;
@@ -28,7 +46,7 @@ export function useSocket() {
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [accessToken]);
 
     // Register event listners
     useEffect(() => {
