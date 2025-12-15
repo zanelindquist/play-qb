@@ -78,7 +78,6 @@ const Play = () => {
         })
 
         addEventListener("question_interrupt", ({Player, AnswerContent}) => {
-            console.log("interupt event!")
             setBuzzer({current: {id: 1}})
             setQuestionState("interrupted")
             // If the player is me
@@ -152,7 +151,7 @@ const Play = () => {
             const currentQuestion = response.data;
             setAllQuestions((prev) => {
                 if(prev[0]?.id === currentQuestion.id) return prev;
-                return [currentQuestion, prev]
+                return [currentQuestion, ...prev]
             })
             setQuestionState("running")
             // const cq = response.data;
@@ -178,8 +177,9 @@ const Play = () => {
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        console.log(buzzer)
+        console.log("Buzzer:", buzzer, questionState)
         if(buzzer || questionState == "dead") return;
+        console.log("Sending buzz")
         send("buzz", {BuzzTimestamp: Date.now()})
     }
 
@@ -189,6 +189,9 @@ const Play = () => {
 
     function onSubmit() {
         clearInterval(typingEmitInterval)
+        setQuestionState("resume")
+        setBuzzer(null)
+        setInput("")
     }
 
     // I don't think I actually need this
@@ -205,7 +208,7 @@ const Play = () => {
     }
 
     function handleInterruptOver(questionNotFinished) {
-        console.log("int callback")
+        setBuzzer(null)
         if(questionNotFinished) {
             // TODO: keep track of waiting time
             setQuestionState("running")
@@ -243,10 +246,10 @@ const Play = () => {
                     <AnswerInput
                         onChange={(text) => setInput(text)}
                         onSubmit={onSubmit}
-                        disabled={!(interrupter && interrupter?.current?.id == MY_ID)}
+                        disabled={!(buzzer && buzzer?.current?.id == MY_ID)}
                     ></AnswerInput>
 
-                    <View style={styles.questions}>
+                    <ScrollView contentContainerStyle={styles.questions}>
                     {
                         allQuestions.map((q, i) => 
                             <Question1
@@ -255,13 +258,14 @@ const Play = () => {
                                 onFinish={i == 0 ? handleQuestionFinish : null}
                                 onDeath={i == 0 ? handleQuestionDeath : null}
                                 state={i == 0 ? questionState : "dead" }
+                                setState={setQuestionState}
                                 minimized={i !== 0}
                                 style={styles.question}
-                                key={i}
+                                key={q.id}
                             />
                         )
                     }
-                    </View>
+                    </ScrollView>
 
 
                     {/* <View style={styles.previousQuestions}>
@@ -294,11 +298,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 10,
         flexGrow: 1,
-        // position: "relative",
-        // width: 1100,
+
         width: "100%"
     },
     gameContent: {
+        margin: 10,
         flexGrow: 1,
         width: "80%",
         flexDirection: "column"
@@ -308,11 +312,9 @@ const styles = StyleSheet.create({
     },
     questions: {
         marginTop: 10,
-        flexDirection: "column",
         gap: 10,
     },
     previousQuestions: {
-        marginTop: 10,
         flexDirection: "column",
         gap: 10
     },
