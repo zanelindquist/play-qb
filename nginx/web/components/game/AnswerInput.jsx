@@ -16,7 +16,6 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
     
     const handleChange = (e) => {
         onChange(e.nativeEvent.text)
-        console.log(e.nativeEvent.text)
         setValue(e.nativeEvent.text)
     }
 

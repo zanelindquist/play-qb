@@ -22,6 +22,7 @@ import GlassyButton from "../../components/custom/GlassyButton.jsx"
 import PlayerScores from "../../components/game/PlayerScores.jsx";
 import AnswerInput from "../../components/game/AnswerInput.jsx";
 import Question1 from "../../components/game/Question1.jsx";
+import Interrupt from "../../components/game/Interrupt.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -42,7 +43,7 @@ const Play = () => {
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
 
     // New question stuff
-    const [allQuestions, setAllQuestions] = useState([]);
+    const [allEvents, setAllEvents] = useState([]);
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
 
@@ -78,49 +79,37 @@ const Play = () => {
         })
 
         addEventListener("question_interrupt", ({Player, AnswerContent}) => {
-            setBuzzer({current: {id: 1}})
+            Player = {id: 1, name: "Zane Lindquist"}
+            setBuzzer({current: Player})
             setQuestionState("interrupted")
-            // If the player is me
-            if(1 == MY_ID) {
-                // Show the typing box
-                
-                // Show the buzz countdown in green
-
-                
-                // Emit typing events
-                setTypingEmitInterval(setInterval(() => {
-                    onTyping(input)
-                }, 100))
-
-                setTimeout(() => {
-                    if(typingEmitInterval){
-                        clearInterval(typingEmitInterval)    
-                    }
-                    
-                    setBuzzer(null)
-                    if(questionState == "interrupted") setQuestionState("running")
-                }, ANSWER_MS)
-            } else {
-                // Show the typing box, but it is disabled
-            }
+            // For non-question events, put them second in the list
+            addEvent({
+                eventType: "interrupt",
+                player: Player,
+                content: AnswerContent
+            })
         })
 
-        addEventListener("player_typing", ({Player, AnswerContent}) => {
-            // If the player is me
-            if(Player.id == MY_ID) {
-                // Do nothing
-            } else {
-                // Update the typing box with the AnswerContent
-            }
+        addEventListener("player_typing", (data) => {
+            console.log(data)
+            const AnswerContent = data.AnswerContent
+            // Update the typing box with the AnswerContent
+            // Set the content of the second in list interrupt event
+            console.log("Player typing: ", AnswerContent)
+            setAllEvents((prev) => {
+                // prev[1].player = Player;
+                prev[1].content = AnswerContent;
+                return prev
+            })
             
         })
 
         addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect}) => {
-            setInterupter(null)
+            setBuzzer(null)
         })
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question}) => {
-            setInterupter(null)
+            setBuzzer(null)
         })
 
         addEventListener("reward_points", ({Scores}) => {
@@ -139,6 +128,8 @@ const Play = () => {
         addEventListener("chat_message", (data) => {
             console.log("message!")
         })
+
+        return () => clearInterval(typingEmitInterval)
     }, [])
 
     const testSocket = () => {
@@ -149,19 +140,8 @@ const Play = () => {
         getProtectedRoute("/random_question")
         .then((response)=> {
             const currentQuestion = response.data;
-            setAllQuestions((prev) => {
-                if(prev[0]?.id === currentQuestion.id) return prev;
-                return [currentQuestion, ...prev]
-            })
+            addEvent(currentQuestion, true)
             setQuestionState("running")
-            // const cq = response.data;
-            // setPastQuestions((qs) => {
-            //     // Avoid duplicates
-            //     if (qs[0]?.id === cq.id) return qs;
-            //     return [cq, ...qs];
-            // });
-            // setCurrentQuestionDead(false)
-            // setCurrentQuestion(cq)
         })
         .catch((error)=> {
             console.error(error)
@@ -183,8 +163,8 @@ const Play = () => {
         send("buzz", {BuzzTimestamp: Date.now()})
     }
 
-    function onTyping() {
-
+    function onTyping(text) {
+        send("typing", {content: text})
     }
 
     function onSubmit() {
@@ -207,6 +187,11 @@ const Play = () => {
         
     }
 
+    function handleInputChange(text) {
+        setInput(text)
+        onTyping(text)
+    }
+
     function handleInterruptOver(questionNotFinished) {
         setBuzzer(null)
         if(questionNotFinished) {
@@ -226,44 +211,65 @@ const Play = () => {
         setQuestionState("dead")
     }
 
+    function addEvent(event, isQuestion) {
+        console.log("Event of type: "+ event.eventType)
+        // If it is a question, is is the active question so we put it on the top of the stack
+        if(isQuestion) {
+            setAllEvents((prev) => {
+                if(prev[0]?.id === event.id) return prev;
+                event.eventType = "question";
+                return [event, ...prev]
+            })
+        }
+        // If it not a question, we want to put it second in the stack
+        else {
+            setAllEvents((prev) => [
+                prev[0],
+                event,
+                ...prev.slice(1)
+            ])
+        }
+    }
+
+    function setTypingEventTyping() {
+
+    }
+
     return (
         <SidebarLayout style={styles.sidebar}>
             <View style={styles.container}>
                 <View style={styles.gameContent}>
-                    {
-                        /*
-                        currentQuestion ?
-                        <Question
-                            question={currentQuestion}
-                            style={styles.liveQuestion}
-                            minimize={false}
-                            interrupter={interrupter}
-                            onDeath={handleQuestionDeath}
-                        />
-                        :<HelperText>Hit next to begin</HelperText>
-                        */
-                    }
                     <AnswerInput
-                        onChange={(text) => setInput(text)}
+                        onChange={handleInputChange}
                         onSubmit={onSubmit}
                         disabled={!(buzzer && buzzer?.current?.id == MY_ID)}
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
-                        allQuestions.map((q, i) => 
-                            <Question1
-                                question={q}
-                                onInterruptOver={i == 0 ? handleInterruptOver : null}
-                                onFinish={i == 0 ? handleQuestionFinish : null}
-                                onDeath={i == 0 ? handleQuestionDeath : null}
-                                state={i == 0 ? questionState : "dead" }
-                                setState={setQuestionState}
-                                minimized={i !== 0}
-                                style={styles.question}
-                                key={q.id}
-                            />
-                        )
+                        allEvents.map((e, i) => {
+                            switch(e.eventType) {
+                                case "question":
+                                    return (
+                                        <Question1
+                                            question={e}
+                                            onInterruptOver={i == 0 ? handleInterruptOver : null}
+                                            onFinish={i == 0 ? handleQuestionFinish : null}
+                                            onDeath={i == 0 ? handleQuestionDeath : null}
+                                            state={i == 0 ? questionState : "dead" }
+                                            setState={setQuestionState}
+                                            minimized={i !== 0}
+                                            style={styles.question}
+                                            key={e.id}
+                                        />
+                                    )
+                                case "interrupt":
+                                    return (
+                                        <Interrupt event={e}/>
+                                    )
+                            }
+
+                        })
                     }
                     </ScrollView>
 

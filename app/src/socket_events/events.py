@@ -45,11 +45,11 @@ def on_buzz(data): # Timestamp, AnswerContent
 # When a player is buzzing (every 100 ms or so when typing)
 @socketio.on("typing")
 def on_typing(data): # AnswerContent
-    AnswerContent = False;
+    AnswerContent = data.get("content");
     Player = False;
 
     # Broadcast that a player is typing
-    emit("player_typing", {Player, AnswerContent}, broadcast=True)
+    emit("player_typing", {"Player": Player, "AnswerContent": AnswerContent}, broadcast=True)
 
 # When the player has submitted their final answer
 @socketio.on("submit")

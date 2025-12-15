@@ -41,7 +41,7 @@ const Question1 = ({
     minimized = false,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    SPEED = 5000,
+    SPEED = 500,
     MS_FOR_ANSWER = 5000,
 }) => {
     // Text variables
