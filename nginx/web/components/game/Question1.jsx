@@ -33,6 +33,7 @@ const collapsedHeight = 40;
 const Question1 = ({
     question,
     state="dead",
+    setState,
     onInterruptOver,
     onFinish,
     onDeath,
@@ -40,7 +41,7 @@ const Question1 = ({
     minimized = false,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    SPEED = 500,
+    SPEED = 5000,
     MS_FOR_ANSWER = 5000,
 }) => {
     // Text variables
@@ -54,6 +55,7 @@ const Question1 = ({
     const [isFinished, setIsFinished] = useState(false);
     const [isDead, setIsDead] = useState(false);
     const [msLeft, setMsLeft] = useState(0)
+    const [msLeftInWaiting, setMsLeftInWaiting] = useState(MS_UNTIL_DEAD)
 
     // Reading constants
     const charsPerMinute = SPEED * 6;
@@ -73,7 +75,6 @@ const Question1 = ({
                 setMsLeft((prev) => {
                     if (prev <= 0) {
                         // If there is still more to read
-                        console.log("int in question")
                         if (onInterruptOver) onInterruptOver(charIndex < fullText.length)
                         clearInterval(interval);
                         return 0;
@@ -104,16 +105,18 @@ const Question1 = ({
             return () => clearInterval(interval);
         }
         else if (state == "waiting") {
-            setMsLeft(MS_FOR_ANSWER)
+            setMsLeft(msLeftInWaiting)
 
             const interval = setInterval(() => {
-                setMsLeft((prev) => {
+                setMsLeftInWaiting((prev) => {
                     if (prev <= 0) {
                         if (onDeath) onDeath();
                         setIsDead(true);
                         clearInterval(interval);
                         return 0;
                     }
+
+                    setMsLeft(prev - 10)
 
                     return prev - 10;
                 });
@@ -122,7 +125,13 @@ const Question1 = ({
             return () => clearInterval(interval);
         }
         else if (state == "dead") {
-
+            setCharIndex(fullText.length)
+        }
+        else if (state == "resume") {
+            if(!setState) return;
+            if(charIndex < fullText.length) setState("running")
+            else if (msLeftInWaiting > 0) setState("waiting") 
+            else setState("dead")
         }
         else {
             throw Error("<Question>: unknown state passed")
@@ -163,7 +172,7 @@ const Question1 = ({
     return (
         <GlassyView style={styles.container}>
             <Animated.View
-                style={[{ height: animatedHeight }]}
+                style={[styles.animatedContainer ,{ height: animatedHeight }]}
             >               
                 <View style={styles.top}>
                     <View style={styles.progressBarContainer}>
@@ -231,28 +240,32 @@ const Question1 = ({
 const styles = StyleSheet.create({
     container: {
         borderRadius: 10,
-        height: 300
-        // overflow: "hidden"
+    },
+    animatedContainer: {
+        flexDirection: "column",
+        justifyContent: "space-between",
     },
     collapsedBar: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
     },
-    questionTopline: {
-        flexDirection: "row",
-        alignContent: "space-between",
+    tournament: {
+
     },
-    tournament: {},
     answer: {
         fontSize: 17,
         fontWeight: "bold",
     },
     questionText: {
-        fontSize: 16,
+        fontSize: 17,
         flexGrow: 1,
         // TODO: Add an outline or something so that you can see the text over the background image better
         color: theme.onbackground,
+
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     progressBarContainer: {
         width: "100%",
