@@ -48,6 +48,6 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: "transparent",
-        outlineWidth: 0
+        outlineWidth: 0,
     }
 })

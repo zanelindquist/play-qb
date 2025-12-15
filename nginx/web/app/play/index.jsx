@@ -21,6 +21,7 @@ import Question from "../../components/game/Question.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx"
 import PlayerScores from "../../components/game/PlayerScores.jsx";
 import AnswerInput from "../../components/game/AnswerInput.jsx";
+import Question1 from "../../components/game/Question1.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,12 @@ const Play = () => {
     const [interrupter, setInterupter] = useState(false)
     const [input, setInput] = useState("")
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
+
+    // New question stuff
+    const [allQuestions, setAllQuestions] = useState([]);
+    const [buzzer, setBuzzer] = useState(null);
+    const [questionState, setQuestionState] = useState("running");
+
 
     // Register keybinds
     useEffect(() => {
@@ -72,7 +79,8 @@ const Play = () => {
 
         addEventListener("question_interrupt", ({Player, AnswerContent}) => {
             console.log("interupt event!")
-            setInterupter({current: {id: 1}})
+            setBuzzer({current: {id: 1}})
+            setQuestionState("interrupted")
             // If the player is me
             if(1 == MY_ID) {
                 // Show the typing box
@@ -90,7 +98,8 @@ const Play = () => {
                         clearInterval(typingEmitInterval)    
                     }
                     
-                    setInterupter(null)
+                    setBuzzer(null)
+                    if(questionState == "interrupted") setQuestionState("running")
                 }, ANSWER_MS)
             } else {
                 // Show the typing box, but it is disabled
@@ -140,14 +149,20 @@ const Play = () => {
     function loadQuestion() {
         getProtectedRoute("/random_question")
         .then((response)=> {
-            const cq = response.data;
-            setPastQuestions((qs) => {
-                // Avoid duplicates
-                if (qs[0]?.id === cq.id) return qs;
-                return [cq, ...qs];
-            });
-            setCurrentQuestionDead(false)
-            setCurrentQuestion(cq)
+            const currentQuestion = response.data;
+            setAllQuestions((prev) => {
+                if(prev[0]?.id === currentQuestion.id) return prev;
+                return [currentQuestion, prev]
+            })
+            setQuestionState("running")
+            // const cq = response.data;
+            // setPastQuestions((qs) => {
+            //     // Avoid duplicates
+            //     if (qs[0]?.id === cq.id) return qs;
+            //     return [cq, ...qs];
+            // });
+            // setCurrentQuestionDead(false)
+            // setCurrentQuestion(cq)
         })
         .catch((error)=> {
             console.error(error)
@@ -163,8 +178,8 @@ const Play = () => {
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        console.log(interrupter)
-        if(interrupter || currentQuestionDead) return;
+        console.log(buzzer)
+        if(buzzer || questionState == "dead") return;
         send("buzz", {BuzzTimestamp: Date.now()})
     }
 
@@ -189,16 +204,31 @@ const Play = () => {
         
     }
 
+    function handleInterruptOver(questionNotFinished) {
+        console.log("int callback")
+        if(questionNotFinished) {
+            // TODO: keep track of waiting time
+            setQuestionState("running")
+        } else {
+            setQuestionState("waiting")
+        }
+    }
+
+    function handleQuestionFinish(){
+        setQuestionState("waiting")
+    }
+
     function handleQuestionDeath() {
-        setInterupter(null)
-        setCurrentQuestionDead(true)
+        setBuzzer(null)
+        setQuestionState("dead")
     }
 
     return (
         <SidebarLayout style={styles.sidebar}>
             <View style={styles.container}>
-                <View style={styles.questionContainer}>
+                <View style={styles.gameContent}>
                     {
+                        /*
                         currentQuestion ?
                         <Question
                             question={currentQuestion}
@@ -208,19 +238,39 @@ const Play = () => {
                             onDeath={handleQuestionDeath}
                         />
                         :<HelperText>Hit next to begin</HelperText>
+                        */
                     }
                     <AnswerInput
                         onChange={(text) => setInput(text)}
                         onSubmit={onSubmit}
                         disabled={!(interrupter && interrupter?.current?.id == MY_ID)}
                     ></AnswerInput>
-                    <View style={styles.previousQuestions}>
+
+                    <View style={styles.questions}>
+                    {
+                        allQuestions.map((q, i) => 
+                            <Question1
+                                question={q}
+                                onInterruptOver={i == 0 ? handleInterruptOver : null}
+                                onFinish={i == 0 ? handleQuestionFinish : null}
+                                onDeath={i == 0 ? handleQuestionDeath : null}
+                                state={i == 0 ? questionState : "dead" }
+                                minimized={i !== 0}
+                                style={styles.question}
+                                key={i}
+                            />
+                        )
+                    }
+                    </View>
+
+
+                    {/* <View style={styles.previousQuestions}>
                     {
                         pastQuestions.slice(1).map((q, i) => 
                             <Question question={q} key={i} minimize={true} style={styles.questions}/>
                         )
                     }
-                    </View>
+                    </View> */}
                 </View>
                 <View style={styles.optionsContainer}>
                     <View style={styles.scorebox}>
@@ -248,7 +298,7 @@ const styles = StyleSheet.create({
         // width: 1100,
         width: "100%"
     },
-    questionContainer: {
+    gameContent: {
         flexGrow: 1,
         width: "80%",
         flexDirection: "column"
@@ -256,12 +306,17 @@ const styles = StyleSheet.create({
     liveQuestion: {
         height: 300
     },
+    questions: {
+        marginTop: 10,
+        flexDirection: "column",
+        gap: 10,
+    },
     previousQuestions: {
         marginTop: 10,
         flexDirection: "column",
         gap: 10
     },
-    questions: {
+    question: {
         width: "100%"
     },
     optionsContainer: {
