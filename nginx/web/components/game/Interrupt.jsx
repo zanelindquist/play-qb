@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useState, useRef, use} from "react";
 import { Platform, View, StyleSheet, Pressable, TextInput } from "react-native";
 import { BlurView } from "expo-blur";
 import { Text, Icon, HelperText } from "react-native-paper";
@@ -13,30 +13,41 @@ export default function Interrupt ({ style, event }) {
 
     return (
         <View style={[styles.container, style]}>
-            <Icon
-                source={"bell"}
-                color={theme.primary}
-                size={20}
-            />
+            <View style={[styles.iconContainer, {backgroundColor: theme.static[event.status]}]}>
+                <Icon
+                    source={"bell"}
+                    size={20}
+                />
+            </View>
             <HelperText style={styles.name}>{event.player.name}</HelperText>
             <HelperText style={styles.text}>{event.content}</HelperText>
+            {
+                (event.answerStatus !== undefined) &&
+                <HelperText style={[styles.answerStatus, {backgroundColor: theme.static[event.answerStatus.toLowerCase()]}]}>{event.answerStatus}</HelperText>
+            }
         </View>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 10,
         paddingLeft: 20,
-        paddingVertical: 10,
         flexDirection: "row",
         alignItems: "center",
         gap: 10
+    },
+    iconContainer: {
+        padding: 5,
+        borderRadius: "50%"
     },
     name: {
         fontSize: "1rem",
     },
     text: {
-        
+        fontSize: "1rem"
+    },
+    answerStatus: {
+        padding: 5,
+        borderRadius: 3,
     }
 })

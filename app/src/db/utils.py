@@ -311,7 +311,7 @@ def get_random_question(level=2, difficulty=0, subject=0):
     except Exception as e:
         return {"code": 400, "error": str(e)}
 
-def get_player_by_email_and_lobby(email, lobbyAlias):
+def get_player_by_email_and_lobby(email, lobbyAlias, rel_depths=REL_DEP["db:player"]):
     try:
         session = get_session()
 
@@ -332,7 +332,7 @@ def get_player_by_email_and_lobby(email, lobbyAlias):
             )
         ).scalars().first()
 
-        return to_dict_safe(player, rel_depths=REL_DEP["db:player"])
+        return to_dict_safe(player, rel_depths=rel_depths)
     except Exception as e:
         print(e)
         return None

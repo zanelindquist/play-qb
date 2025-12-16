@@ -32,6 +32,7 @@ def connect(auth):
         return
     
     session["user_id"] = identity;
+
     print(f"Socket connected: user={identity}")
 
 # When a player joins the lobby
@@ -65,6 +66,9 @@ def on_join_lobby(data):
     # Send PlayerInformation about the new player to existing players
     
     Player = get_player_by_email_and_lobby(user_id, lobby)
+
+    # Give the player just information about themselves
+    emit("you_joined", {"Player": Player})
     
     emit("player_joined", {"Player": Player}, room=f"lobby:{lobby}")
 
@@ -74,13 +78,12 @@ def on_buzz(data): # Timestamp, AnswerContent
     lobby = session["lobby"]
     user_id = session["user_id"]
 
-    print(user_id)
-    print(lobby)
+    Player = get_player_by_email_and_lobby(user_id, lobby)
 
     # Broadcast that a player has buzzed
     emit(
         "question_interrupt",
-        {"Player": user_id, "AnswerContent": "", "Timestamp": get_timestamp()},
+        {"Player": Player, "AnswerContent": "", "Timestamp": get_timestamp()},
         room=f"lobby:{lobby}"
     )
 
@@ -91,7 +94,7 @@ def on_typing(data): # AnswerContent
     user_id = session["user_id"]
 
     AnswerContent = data.get("content");
-    Player = get_player_by_email_and_lobby(user_id, lobby);
+    Player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
 
     # Broadcast that a player is typing
     emit(
