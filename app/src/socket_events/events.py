@@ -28,11 +28,11 @@ def connect(auth):
     
     session["user_id"] = identity;
     print(f"Socket connected: user={identity}")
-    
 
 # When a player joins the lobby
 @socketio.on("join_lobby")
 def on_join_lobby(data):
+    user_id = session["user_id"]
     lobby = data.get("lobbyAlias")
     session["lobby"] = lobby
     join_room(f"lobby:{lobby}")
@@ -41,8 +41,15 @@ def on_join_lobby(data):
         emit("lobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
+    # Create lobby (if its not there)
+    create_lobby(lobby)
+
+    # Create a player for this lobby (if there isnt one)
+    create_player(user_id, lobby)
+
     # Add player to lobby in database
-    
+    player_join_lobby(user_id, lobby)
+
     # Send GameState to the joining player (if possible)
 
     # do we echo the requested event type back to the user
@@ -50,12 +57,11 @@ def on_join_lobby(data):
     # the data type of the returning information?
     GameState = {}
 
-    emit("you_joined", {})
     # Send PlayerInformation about the new player to existing players
     
-    Player = {}
+    Player = get_player_by_email_and_lobby(user_id, lobby)
     
-    emit("player_joined", {}, room=f"lobby:{lobby}")
+    emit("player_joined", {"Player": Player}, room=f"lobby:{lobby}")
 
 # When a player buzzes
 @socketio.on("buzz")
@@ -80,7 +86,7 @@ def on_typing(data): # AnswerContent
     user_id = session["user_id"]
 
     AnswerContent = data.get("content");
-    Player = False;
+    Player = get_player_by_email_and_lobby(user_id, lobby);
 
     # Broadcast that a player is typing
     emit(
@@ -106,6 +112,18 @@ def on_submit(data): # FinalAnswer
     emit("next_question", {Player, FinalAnswer, Scores, IsCorrect, Question}, room=f"lobby:{lobby}")
 
 # PAUSING AND PLAYING THE GAME
+
+@socketio.on("next_question")
+def on_next_question(data):
+    lobby = session["lobby"]
+    user_id = session["user_id"]
+
+    # See if player has authority to skip question
+
+    # Get question ACCORDING TO LOBBY SETTINGS
+    Question = get_random_question()
+
+    emit("next_question", {"Question": Question}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume")
