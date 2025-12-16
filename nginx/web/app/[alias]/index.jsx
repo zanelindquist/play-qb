@@ -22,6 +22,7 @@ import PlayerScores from "../../components/game/PlayerScores.jsx";
 import AnswerInput from "../../components/game/AnswerInput.jsx";
 import Question from "../../components/game/Question.jsx";
 import Interrupt from "../../components/game/Interrupt.jsx";
+import PlayerJoined from "../../components/game/PlayerJoined.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +40,7 @@ const Play = () => {
     const [currentQuestionDead, setCurrentQuestionDead] = useState(false)
     const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
-    const {socket, send, addEventListener} = useSocket(alias);
+    const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
 
     const [interrupter, setInterupter] = useState(false)
     const [input, setInput] = useState("")
@@ -53,8 +54,6 @@ const Play = () => {
 
     // Register keybinds
     useEffect(() => {
-        loadQuestion()
-
         // Handle key presses
         function handleKeyDown(e) {
             if(interrupter) return;
@@ -66,7 +65,7 @@ const Play = () => {
                     e.preventDefault()
                 break;
                 case "KeyJ":
-                    nextQuestion(currentQuestion);
+                    onNextQuestion();
                 break;
             }
         }
@@ -77,10 +76,13 @@ const Play = () => {
 
     // Register socket event listners
     useEffect(() => {
-        if(!socket) return;
+        onReady(() => {
+
 
         addEventListener("player_joined", ({Player, GameState}) => {
-            
+            Player.eventType = "player_joined"
+            console.log("player", Player)
+            addEvent(Player)
         })
 
         addEventListener("question_interrupt", ({Player, AnswerContent}) => {
@@ -114,7 +116,10 @@ const Play = () => {
         })
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question}) => {
-            setBuzzer(null)
+            console.log("NEXT QUESTION")
+            addEvent(Question, true)
+            setQuestionState("running")
+
         })
 
         addEventListener("reward_points", ({Scores}) => {
@@ -134,25 +139,17 @@ const Play = () => {
             console.log("message!")
         })
 
+        // Now that the listners are registered, we are ready to join the lobby
+        send("join_lobby", { lobbyAlias: alias });
+        
+        })
+
         return () => clearInterval(typingEmitInterval)
-    }, [socket])
+    }, [])
 
     const testSocket = () => {
         send("test", { message: "Hello from RN!" });
     };
-
-    function loadQuestion() {
-        getProtectedRoute("/random_question")
-        .then((response)=> {
-            const currentQuestion = response.data;
-            addEvent(currentQuestion, true)
-            setQuestionState("running")
-        })
-        .catch((error)=> {
-            console.error(error)
-            showAlert("There was an error: " + error)
-        })
-    }
 
     async function nextQuestion(cq) {
         // Push the old question into history exactly once
@@ -177,6 +174,10 @@ const Play = () => {
         setQuestionState("resume")
         setBuzzer(null)
         setInput("")
+    }
+
+    function onNextQuestion() {
+        send("next_question")
     }
 
     // I don't think I actually need this
@@ -217,7 +218,6 @@ const Play = () => {
     }
 
     function addEvent(event, isQuestion) {
-        console.log("Event of type: "+ event.eventType)
         // If it is a question, is is the active question so we put it on the top of the stack
         if(isQuestion) {
             setAllEvents((prev) => {
@@ -236,9 +236,7 @@ const Play = () => {
         }
     }
 
-    function setTypingEventTyping() {
 
-    }
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -253,7 +251,7 @@ const Play = () => {
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
                         allEvents.map((e, i) => {
-                            switch(e.eventType) {
+                            switch(e?.eventType) {
                                 case "question":
                                     return (
                                         <Question
@@ -270,8 +268,14 @@ const Play = () => {
                                     )
                                 case "interrupt":
                                     return (
-                                        <Interrupt event={e}/>
+                                        <Interrupt event={e} key={i}/>
                                     )
+                                case "player_joined":
+                                    return (
+                                        <PlayerJoined event={e} key={i}/>
+                                    )
+                                default:
+
                             }
 
                         })
@@ -292,7 +296,7 @@ const Play = () => {
 
                     </View>
                     <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
-                    <GlassyButton mode="filled" onPress={() => nextQuestion(currentQuestion)}>Next</GlassyButton>
+                    <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>

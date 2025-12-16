@@ -1,95 +1,87 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { getAccessToken } from "./encryption";
-import { RedirectToSignIn } from "./redirects"
+import { RedirectToSignIn } from "./redirects";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
 
 export function useSocket(lobbyAlias) {
     const socketRef = useRef(null);
-    const [eventListners, setEventListners] = useState([])
-    const [accessToken, setAccessToken] = useState("")
-    const {showAlert} = useAlert()
+    const listenersRef = useRef(new Map());
+    const readyCallbacks = useRef([]);
+    const { showAlert } = useAlert();
 
     useEffect(() => {
+        let isMounted = true;
+
         getAccessToken()
-        .then((token) => {
-            setAccessToken(token)
-        })
-        .catch((error) => {
-            RedirectToSignIn()
-        })
-    })
+            .then((token) => {
+                if (!isMounted || socketRef.current) return;
 
-    useEffect(() => {
-        if(!accessToken || !lobbyAlias) return;
+                const socket = io("https://app.localhost", {
+                    path: "/socket.io",
+                    transports: ["websocket"],
+                    auth: { token },
+                });
 
-        const socket = io("https://app.localhost", {
-            path: "/socket.io",
-            transports: ["websocket"],
-            auth: {
-                token: accessToken
-            }
-        });
+                socketRef.current = socket;
 
-        socketRef.current = socket;
+                socket.on("connect", () => {
+                    console.log("Socket connected:", socket.id);
+                    readyCallbacks.current.forEach(callback => callback(socket))
+                    readyCallbacks.current = [];
+                });
 
-        socket.on("connect", () => {
-            socket.emit("join_lobby", {lobbyAlias})
-            console.log("Connected to socket: " + socket.id + " on " + socket._opts.hostname + socket._opts.path);
-        });
-
-        socket.on("failed_connection", (data) => {
-            console.log("Failed socket connection: ", data.message)
-            if(data.message == "Invalid token") {
-                router.replace("/signin")
-                showAlert("Your session has expired. Please log in again.")
-            }
-        })
-
-        socket.on("server_message", (data) => {
-            console.log("Server message:", data);
-        });
-
-        socket.on("test", (data) => {
-            console.log(data)
-        })
+                socket.on("failed_connection", (data) => {
+                    if (data.message === "Invalid token") {
+                        showAlert("Your session has expired. Please log in again.");
+                        router.replace("/signin");
+                    }
+                });
+            })
+            .catch(() => {
+                RedirectToSignIn();
+            });
 
         return () => {
-            socket.disconnect();
+            isMounted = false;
         };
-    }, [accessToken, lobbyAlias]);
+    }, [lobbyAlias]);
 
-    // Register event listners
-    useEffect(() => {
-        for(let listner of eventListners) {
-            if(socketRef.current) {
-                socketRef.current.on(listner.event, listner.callback)
-            } else {
-                console.error(`useSocket(): unable to register event listner "${listner.event}": socket not found`)
-            }
+    const onReady = (callback) => {
+        if(socketRef.current?.connected) {
+            callback(socketRef.current);
+        } else {
+            readyCallbacks.current.push(callback)
         }
-    }, [eventListners])
+    }
 
     const send = (event, data) => {
-        if (socketRef.current) {
-            socketRef.current.emit(event, data);
-        }
+        socketRef.current?.emit(event, data);
     };
 
     const addEventListener = (event, callback) => {
-        // Don't register duplicate listners
-        if(eventListners.find(e => e.event === event)) {
-            // Fail silently because this happends often with rerenders
-            return 1;
-            //console.error("useSocket(): you may not register more than one event handler on the same event.")
+        if (!socketRef.current) return;
+
+        if (listenersRef.current.has(event)) return;
+
+        socketRef.current.on(event, callback);
+        listenersRef.current.set(event, callback);
+    };
+
+    const removeEventListener = (event) => {
+        const cb = listenersRef.current.get(event);
+        if (cb && socketRef.current) {
+            socketRef.current.off(event, cb);
+            listenersRef.current.delete(event);
         }
-        setEventListners((current) => [...current, {event, callback}])
-    }
+    };
 
     return {
         socket: socketRef.current,
         send,
-        addEventListener
+        addEventListener,
+        removeEventListener,
+        onReady
     };
 }

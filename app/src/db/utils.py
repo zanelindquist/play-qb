@@ -2,14 +2,16 @@
 from .models import *
 
 import html
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 import re
 import math
 import random
+from decimal import Decimal
+
 from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.inspection import inspect
-from .data_structures import *
+from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
 from .db import engine
 
@@ -19,6 +21,14 @@ def get_session():
     return Session
 
 #========HELPER FUNCTIONS=======
+
+def json_safe(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return value
+
 
 def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
     # If depth is 0 we only lo the static properties of object
@@ -51,7 +61,11 @@ def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
     # gentle=False will get all fields, not just the ones in fields
     result = None
     if gentle:
-        result = {field: getattr(obj, field) for field in fields if hasattr(obj, field)}
+        result = {
+            field: json_safe(getattr(obj, field))
+            for field in fields
+            if hasattr(obj, field)
+        }
     else:
         result = {
             c.key: getattr(obj, c.key)
@@ -177,6 +191,78 @@ def create_user(client_data, rel_depths=None, depth=1):
     finally:
         session.remove()
 
+def create_lobby(lobbyAlias):
+    session = get_session()
+    try:
+        lobby = get_lobby_by_alias(lobbyAlias)
+
+        if lobby:
+            return {'message': 'create_lobby(): lobby already exists', "code": 400}
+
+        lobby = Lobbies(
+            name=lobbyAlias
+        )
+        session.add(lobby)
+        session.flush()
+
+        # Make sure each lobby has a game
+        game = Games(
+            lobby_id=lobby.id
+        )
+        session.add(game)
+        
+        session.commit()
+
+        return {'message': 'create_lobby(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def create_player(email, lobbyAlias):
+    session = get_session()
+    try:
+        player = get_player_by_email_and_lobby(email, lobbyAlias)
+        user = get_user_by_email(email)
+        lobby = get_lobby_by_alias(lobbyAlias)
+
+        if player is not None:
+            return {'message': 'Player already exists', "code": 409}
+
+        if not user or not lobby:
+            return {'message': 'User or lobby not found', "code": 404}
+        # Create stats for the player
+
+        # For the current game, we want to set it as the lobby's last game
+        game_id = 0;
+        for game in lobby["games"]:
+            if game["id"] > game_id:
+                game_id = game["id"]
+
+        player = Players(
+            name=user["firstname"] + " " + user["lastname"],
+            user_id=user["id"],
+            lobby_id=lobby["id"],
+            current_game_id=game_id
+        )
+
+        session.add(player)
+        session.flush()
+
+        stats = Stats(
+            player_id=player.id
+        )
+
+        session.add(stats)
+        session.commit()
+
+        return {'message': 'create_player(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_player(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 # RETRIEVING RESOURCES
 
@@ -220,17 +306,95 @@ def get_random_question(level=2, difficulty=0, subject=0):
             .where(Questions.id == random_question_number)
         ).scalars().first()
 
-        print(question)
-
         return to_dict_safe(question, depth=0)
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
 
-def get_player_by_email(email):
-    print("ni")
+def get_player_by_email_and_lobby(email, lobbyAlias):
+    try:
+        session = get_session()
+
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        player = session.execute(
+            select(Players)
+            .join(Users)
+            .where(
+                Users.email == email,
+                Players.lobby_id == lobby.id
+            )
+            .options(
+                joinedload(Players.user),
+            )
+        ).scalars().first()
+
+        return to_dict_safe(player, rel_depths=REL_DEP["db:player"])
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
+def get_lobby_by_alias(lobbyAlias):
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        if not lobby:
+            return False;
+
+        return to_dict_safe(lobby, rel_depths=REL_DEP["db:lobby"], depth=0)
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 # =====GAME FUNCTIONS=====
+
+
+def player_join_lobby(email, lobbyAlias):
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        player = session.execute(
+            select(Players)
+            .join(Users)
+            .where(
+                Users.email == email,
+                Players.lobby_id == lobby.id
+            )
+            .options(
+                joinedload(Players.user),
+            )
+        ).scalars().first()
+
+        if not player:
+            return {'message': 'player_join_lobby(): failure', 'error': f'User not found', "code": 400}
+
+        setattr(player, "lobby_id", lobby.get("id"))
+
+        session.commit()
+
+        return {'message': 'player_join_lobby(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'player_join_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 
 
 # =====SANITATION AND VALIDATION=====

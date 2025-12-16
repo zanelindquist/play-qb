@@ -1,25 +1,20 @@
 import axios from "axios"
 import { getAccessToken } from "./encryption.js"
 import { RedirectToSignIn } from "./redirects.jsx"
+import { router } from "expo-router"
 
 const api = axios.create({baseURL: "https://app.localhost/api/v1"})
 const auth = axios.create({baseURL: "https://app.localhost/auth"})
 
 // ===== MISC =====
 function handleNoAccessToken() {
-    if (!showAlert || !router) throw new Error("handleExpiredAccessToken(): function showAlert or router is not defined")
-    showAlert("Access token not found. Please sign in.")
+    if (!router) throw new Error("handleExpiredAccessToken(): function showAlert or router is not defined")
+    // showAlert("Access token not found. Please sign in.")
     router.push("/signin")
-
-    // If we are on development, this is normal since we can't make API calls
-    if(process.env.NODE_ENV === 'development') return
-    // But if we aren't then we want to redirect them to login
-    return <RedirectToSignIn></RedirectToSignIn>
 }
 
 function handleExpiredAccessToken(showAlert, router) {
-    if (!showAlert || !router) throw new Error("handleExpiredAccessToken(): function showAlert or router is not defined")
-    showAlert("Session expired. Please sign in again.")
+    if (!router) throw new Error("handleExpiredAccessToken(): function showAlert or router is not defined")
     router.push("/signin")
 }
 
