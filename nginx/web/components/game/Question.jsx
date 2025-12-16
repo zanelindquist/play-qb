@@ -7,6 +7,7 @@ import {
     Dimensions,
     ScrollView,
     Image,
+    Text
 } from "react-native";
 import {
     Button,
@@ -30,6 +31,7 @@ import GlassyView from "../custom/GlassyView";
 
 const collapsedHeight = 40;
 
+
 const Question = ({
     question,
     timestamp,
@@ -48,6 +50,7 @@ const Question = ({
     // Text variables
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
+    const [interruptIndexes, setInterruptIndexes] = useState([]);
 
     // Aestetic variables
     const [isMinimized, setIsMinimized] = useState(minimized);
@@ -71,6 +74,11 @@ const Question = ({
     // When the state changes
     useEffect(() => {
         if (state == "interrupted") {
+            setInterruptIndexes((prev) => {
+                // Make sure there are no duplicates
+                if(charIndex === prev[prev.length - 1]) return prev;
+                return [...prev, charIndex]
+            })
             setMsLeft(MS_FOR_ANSWER)
             const interval = setInterval(() => {
                 setMsLeft((prev) => {
@@ -213,10 +221,26 @@ const Question = ({
                     <View style={styles.questionTopline}>
                         <HelperText>{question.tournament}</HelperText>
                     </View>
+                    <View>
+                        <HelperText style={styles.questionText}>
+                            {interruptIndexes.map((char, i) => {
+                            const start = interruptIndexes[i - 1] || 0;
+                            const end = char;
 
-                    <HelperText style={styles.questionText}>
-                        {fullText.slice(0, charIndex)}
-                    </HelperText>
+                            return (
+                                <Text key={i}>
+                                {fullText.slice(start, end)}
+                                <InterrupIcon />
+                                </Text>
+                            );
+                            })}
+
+                            {fullText.slice(
+                            interruptIndexes[interruptIndexes.length - 1] || 0,
+                            charIndex
+                            )}
+                        </HelperText>
+                    </View>
                 </View>
 
                 <View style={styles.bottom}>
@@ -245,6 +269,27 @@ const Question = ({
     );
 };
 
+const InterrupIcon = ({}) => {
+
+    return (
+        <View style={iiStyles.container}>
+            <Icon
+                source={"bell"}
+                size={"0.8rem"}
+            />
+        </View>
+    )
+}
+
+const iiStyles = StyleSheet.create({
+    container: {
+        padding: 2,
+        marginHorizontal: 5,
+        backgroundColor: theme.static.early,
+        borderRadius: 3,
+    }
+})
+
 const styles = StyleSheet.create({
     container: {
         borderRadius: 10,
@@ -264,6 +309,10 @@ const styles = StyleSheet.create({
     answer: {
         fontSize: 17,
         fontWeight: "bold",
+    },
+    questionContainer: {
+        flexDirection: "column",
+        display: "inline"
     },
     questionText: {
         fontSize: 17,
