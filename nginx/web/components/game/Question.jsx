@@ -32,6 +32,7 @@ const collapsedHeight = 40;
 
 const Question = ({
     question,
+    timestamp,
     state="dead",
     setState,
     onInterruptOver,
@@ -90,6 +91,10 @@ const Question = ({
         } 
         else if (state == "running") {
             let currentIndex = charIndex;
+
+            // Calculate how many chars we need since the timestamp on the quesiton
+            const diff = Date.now() - timestamp
+            currentIndex += Math.ceil(diff / msPerChar)
             const interval = setInterval(() => {
                 if (state == "running") {
                     currentIndex += 1;
