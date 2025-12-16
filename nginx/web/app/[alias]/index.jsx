@@ -35,10 +35,6 @@ const Play = () => {
     const query = useGlobalSearchParams();
     const alias = query.alias || "";
 
-    const [currentQuestion, setCurrentQuestion] = useState(null);
-    const [pastQuestions, setPastQuestions] = useState([]);
-    const [currentQuestionDead, setCurrentQuestionDead] = useState(false)
-    const [teardownCQ, setTeardownCQ] = useState(false)
     const {showAlert} = useAlert();
     const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
 
@@ -50,7 +46,7 @@ const Play = () => {
     const [allEvents, setAllEvents] = useState([]);
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
-
+    const [syncTimestamp, setSyncTimestamp] = useState(0)
 
     // Register keybinds
     useEffect(() => {
@@ -78,14 +74,13 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-
         addEventListener("player_joined", ({Player, GameState}) => {
             Player.eventType = "player_joined"
-            console.log("player", Player)
             addEvent(Player)
         })
 
-        addEventListener("question_interrupt", ({Player, AnswerContent}) => {
+        addEventListener("question_interrupt", ({Player, AnswerContent, Timestamp}) => {
+            setSyncTimestamp(Timestamp)
             Player = {id: 1, name: "Zane Lindquist"}
             setBuzzer({current: Player})
             setQuestionState("interrupted")
@@ -98,11 +93,8 @@ const Play = () => {
         })
 
         addEventListener("player_typing", (data) => {
-            console.log(data)
             const AnswerContent = data.AnswerContent
-            // Update the typing box with the AnswerContent
-            // Set the content of the second in list interrupt event
-            console.log("Player typing: ", AnswerContent)
+            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
             setAllEvents((prev) => {
                 // prev[1].player = Player;
                 prev[1].content = AnswerContent;
@@ -111,15 +103,16 @@ const Play = () => {
             
         })
 
-        addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect}) => {
+        addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
             setBuzzer(null)
+            setQuestionState("running")
+            setSyncTimestamp(Timestamp)
         })
 
-        addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question}) => {
-            console.log("NEXT QUESTION")
+        addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
+            setSyncTimestamp(Timestamp)
             addEvent(Question, true)
             setQuestionState("running")
-
         })
 
         addEventListener("reward_points", ({Scores}) => {
@@ -130,8 +123,8 @@ const Play = () => {
             
         })
 
-        addEventListener("game_resumed", ({Player}) => {
-            
+        addEventListener("game_resumed", ({Player, Timestamp}) => {
+            setSyncTimestamp(Timestamp)
         })
 
         // Mostly test listner
@@ -171,8 +164,7 @@ const Play = () => {
 
     function onSubmit() {
         clearInterval(typingEmitInterval)
-        setQuestionState("resume")
-        setBuzzer(null)
+        send("submit", {FinalAnser: input})
         setInput("")
     }
 
@@ -256,6 +248,7 @@ const Play = () => {
                                     return (
                                         <Question
                                             question={e}
+                                            timestamp={syncTimestamp}
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}

@@ -2,8 +2,13 @@ from flask_socketio import emit, disconnect, join_room, leave_room
 from flask import request, session
 from flask_jwt_extended import decode_token
 
+import time
+
 from src.db.utils import *
 from .constructor import socketio
+
+def get_timestamp():
+    return int(time.time() * 1000)
 
 # ===== INCOMMING EVENT HANDLERS =====
 
@@ -75,7 +80,7 @@ def on_buzz(data): # Timestamp, AnswerContent
     # Broadcast that a player has buzzed
     emit(
         "question_interrupt",
-        {"Player": user_id, "AnswerContent": ""},
+        {"Player": user_id, "AnswerContent": "", "Timestamp": get_timestamp()},
         room=f"lobby:{lobby}"
     )
 
@@ -102,14 +107,22 @@ def on_submit(data): # FinalAnswer
     user_id = session["user_id"]
 
     # Logic for determining if an answer is acceptable or not
-    Player, FinalAnswer, Scores, IsCorrect, Question= False
 
+    IsCorrect = False
+    FinalAnswer = data.get("FinalAnswer")
+    Scores = False
+    Player = get_player_by_email_and_lobby(user_id, lobby)
 
-    # If the answer is false
-    emit("question_resume", {Player, FinalAnswer, Scores, IsCorrect}, room=f"lobby:{lobby}")
+    data = {"Player": Player, "FinalAnswer": FinalAnswer, "Scores": Scores, "IsCorrect": IsCorrect, "Timestamp": get_timestamp()}
 
-    # If the answer is true
-    emit("next_question", {Player, FinalAnswer, Scores, IsCorrect, Question}, room=f"lobby:{lobby}")
+    if IsCorrect:
+        # If the answer is true
+        # Get question according to game settings
+        data["Question"] = get_random_question()
+        emit("next_question", data, room=f"lobby:{lobby}")
+    else:
+        # If the answer is false
+        emit("question_resume", data, room=f"lobby:{lobby}")
 
 # PAUSING AND PLAYING THE GAME
 
@@ -122,22 +135,21 @@ def on_next_question(data):
 
     # Get question ACCORDING TO LOBBY SETTINGS
     Question = get_random_question()
-
-    emit("next_question", {"Question": Question}, room=f"lobby:{lobby}")
+    emit("next_question", {"Question": Question, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume")
-def on_question_resume(): # Empty
+def on_game_resume(): # Empty
     lobby = session["lobby"]
     user_id = session["user_id"]
 
-    Player = False;
+    Player = get_player_by_email_and_lobby(user_id, lobby)
 
-    emit("game_resume", {Player}, room=f"lobby:{lobby}")
+    emit("game_resumed", {"Player": Player, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("game_pause")
-def on_question_resume(): # Empty
+def on_game_pause(): # Empty
     lobby = session["lobby"]
     user_id = session["user_id"]
 
