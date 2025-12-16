@@ -2,7 +2,11 @@
     "light": {
         "colors": {
             "lightblue": "#5BA8E1",
-            "red": "#ff474c"
+            "red": "#ff474c",
+            "incorrect": "#c30010",
+            "correct": "#46923C",
+            "early": "blue",
+            "late": "orange"
         },
         "gradients": {
             "button": "linear-gradient(135deg, rgba(76, 102, 43, 0.7), rgba(88, 98, 73, 0.7))",
@@ -42,7 +46,11 @@
     "dark": {
         "colors": {
             "lightblue": "#5BA8E1",
-            "red": "#ff474c"
+            "red": "#ff474c",
+            "correct": "#46923C",
+            "wrong": "#c30010",
+            "early": "#c30010",
+            "late": "#46923C"
         },
         "gradients": {
             "button": "linear-gradient(135deg, rgba(76, 102, 43, 0.8), rgba(88, 98, 73, 0.8))",

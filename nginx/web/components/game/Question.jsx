@@ -135,7 +135,10 @@ const Question = ({
         else if (state == "resume") {
             if(!setState) return;
             if(charIndex < fullText.length) setState("running")
-            else if (msLeftInWaiting > 0) setState("waiting") 
+            else if (msLeftInWaiting > 0) {
+                console.log("QUESTION SETTING TO WAITING")
+                setState("waiting")
+            }
             else setState("dead")
         }
         else {

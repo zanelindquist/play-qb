@@ -1,6 +1,6 @@
 import { getProtectedRoute, postProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View,
     TouchableOpacity,
@@ -27,7 +27,6 @@ import PlayerJoined from "../../components/game/PlayerJoined.jsx";
 const { width } = Dimensions.get('window');
 
 // TEMPORARY
-const MY_ID = 1;
 const ANSWER_MS = 5000;
 
 const Play = () => {
@@ -38,27 +37,29 @@ const Play = () => {
     const {showAlert} = useAlert();
     const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
 
-    const [interrupter, setInterupter] = useState(false)
     const [input, setInput] = useState("")
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
+    const [myId, setMyId] = useState(null);
 
     // New question stuff
     const [allEvents, setAllEvents] = useState([]);
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
+    const questionStateRef = useRef(questionState)
     const [syncTimestamp, setSyncTimestamp] = useState(0)
 
     // Register keybinds
     useEffect(() => {
         // Handle key presses
         function handleKeyDown(e) {
-            if(interrupter) return;
+            if(e.code === "Space") e.preventDefault()
+            if(questionState == "interrupted") return;
 
             switch(e.code) {
                 case "Space":
+                    if(buzzer || questionState == "dead") return; 
                     // Buzz logic
                     onBuzz()
-                    e.preventDefault()
                 break;
                 case "KeyJ":
                     onNextQuestion();
@@ -68,11 +69,15 @@ const Play = () => {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [])
+    }, [buzzer, questionState])
 
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
+
+        addEventListener("you_joined", ({Player}) => {
+            setMyId(Player.id)
+        })
 
         addEventListener("player_joined", ({Player, GameState}) => {
             Player.eventType = "player_joined"
@@ -81,35 +86,36 @@ const Play = () => {
 
         addEventListener("question_interrupt", ({Player, AnswerContent, Timestamp}) => {
             setSyncTimestamp(Timestamp)
-            Player = {id: 1, name: "Zane Lindquist"}
             setBuzzer({current: Player})
             setQuestionState("interrupted")
             // For non-question events, put them second in the list
             addEvent({
                 eventType: "interrupt",
+                // Set the interrupt status for the buzzer color
+                status: questionStateRef.current == "waiting" ? "late" : "early",
                 player: Player,
                 content: AnswerContent
             })
         })
 
-        addEventListener("player_typing", (data) => {
-            const AnswerContent = data.AnswerContent
+        addEventListener("player_typing", ({AnswerContent}) => {
             // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setAllEvents((prev) => {
-                // prev[1].player = Player;
-                prev[1].content = AnswerContent;
-                return prev
-            })
-            
+            setInterruptData("content", AnswerContent)
         })
 
         addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
+            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+            
             setBuzzer(null)
             setQuestionState("running")
             setSyncTimestamp(Timestamp)
         })
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
+            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
+            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+
+            setBuzzer(null)
             setSyncTimestamp(Timestamp)
             addEvent(Question, true)
             setQuestionState("running")
@@ -140,22 +146,20 @@ const Play = () => {
         return () => clearInterval(typingEmitInterval)
     }, [])
 
+    // Update the ref for it to be used in the listeners
+    useEffect(() => {
+        questionStateRef.current = questionState
+    }, [questionState])
+
     const testSocket = () => {
         send("test", { message: "Hello from RN!" });
     };
 
-    async function nextQuestion(cq) {
-        // Push the old question into history exactly once
-        loadQuestion()
-    }
-
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        console.log("Buzzer:", buzzer, questionState)
         if(buzzer || questionState == "dead") return;
-        console.log("Sending buzz")
-        send("buzz", {BuzzTimestamp: Date.now()})
+        send("buzz", {Timestamp: Date.now()})
     }
 
     function onTyping(text) {
@@ -213,7 +217,8 @@ const Play = () => {
         // If it is a question, is is the active question so we put it on the top of the stack
         if(isQuestion) {
             setAllEvents((prev) => {
-                if(prev[0]?.id === event.id) return prev;
+                // Prevent duplicates
+                if(prev[0]?.id === event?.id) return prev;
                 event.eventType = "question";
                 return [event, ...prev]
             })
@@ -228,6 +233,19 @@ const Play = () => {
         }
     }
 
+    function setInterruptData(field, value) {
+        // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
+        setAllEvents(prev => {
+            return prev.map((event, index) => {
+                if (event?.eventType === "interrupt" && index === 1) {
+                    let data = {...event}
+                    data[field] = value;
+                    return data;
+                }
+                return event;
+            });
+        });
+    }
 
 
     return (
@@ -237,7 +255,7 @@ const Play = () => {
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == MY_ID)}
+                        disabled={!(buzzer && buzzer?.current?.id == myId)}
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
@@ -256,16 +274,16 @@ const Play = () => {
                                             setState={setQuestionState}
                                             minimized={i !== 0}
                                             style={styles.question}
-                                            key={e.id}
+                                            key={`q:${e.id}`}
                                         />
                                     )
                                 case "interrupt":
                                     return (
-                                        <Interrupt event={e} key={i}/>
+                                        <Interrupt event={e} key={`i:${i}`}/>
                                     )
                                 case "player_joined":
                                     return (
-                                        <PlayerJoined event={e} key={i}/>
+                                        <PlayerJoined event={e} key={`pj:${i}`}/>
                                     )
                                 default:
 
@@ -274,15 +292,6 @@ const Play = () => {
                         })
                     }
                     </ScrollView>
-
-
-                    {/* <View style={styles.previousQuestions}>
-                    {
-                        pastQuestions.slice(1).map((q, i) => 
-                            <Question question={q} key={i} minimize={true} style={styles.questions}/>
-                        )
-                    }
-                    </View> */}
                 </View>
                 <View style={styles.optionsContainer}>
                     <View style={styles.scorebox}>
