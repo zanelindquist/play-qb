@@ -28,8 +28,10 @@ import {
 } from "expo-router";
 import theme from "../../assets/themes/theme";
 import GlassyView from "../custom/GlassyView";
+import ExpandableView from "../custom/ExpandableView";
 
 const collapsedHeight = 40;
+const expandedHeight = 400;
 
 
 const Question = ({
@@ -52,8 +54,9 @@ const Question = ({
     const [charIndex, setCharIndex] = useState(0);
     const [interruptIndexes, setInterruptIndexes] = useState([]);
 
-    // Aestetic variables
-    const [isMinimized, setIsMinimized] = useState(minimized);
+    // Animation
+    const [firstRenderForAnimation, setFirstRenderForAnimation] = useState(true)
+    const [renderMinimized, setRenderMinimized] = useState(false)
 
     // Gamestate and buzz variables
     const [isFinished, setIsFinished] = useState(false);
@@ -67,9 +70,6 @@ const Question = ({
 
     // Status bar
     const [reRenderStatusBar, setReRenderStatusBar] = useState(0);
-
-    const animatedHeight = useRef(new Animated.Value(400)).current;
-
 
     // When the state changes
     useEffect(() => {
@@ -159,113 +159,116 @@ const Question = ({
         setReRenderStatusBar((prev) => prev + 1)
     }, [msLeft, charIndex])
 
-
-    // Folding animation
-    // TODO: make this work
     useEffect(() => {
-        if (minimized) {
-            setIsMinimized(true);
-            Animated.timing(animatedHeight, {
-                toValue: collapsedHeight,
-                duration: 300,
-                useNativeDriver: false, // cannot animate height with native driver
-            }).start();
-        }
-    }, [minimized]);
+        setFirstRenderForAnimation(false)
+    }, [])
 
 
-    if (isMinimized) {
-        return (
-            <GlassyView style={styles.collapsedBar}>
-                <HelperText numberOfLines={1}>{question.tournament}</HelperText>
-                <HelperText style={styles.answer} numberOfLines={1}>
-                    {question.answers}
-                </HelperText>
-            </GlassyView>
-        );
+    function handleAnimationFinish(expanded) {
+        if(!expanded) setRenderMinimized(true)
+    }
+
+    function handleDeadPressed() {
+        if(state !== "dead") return;
+        setRenderMinimized(!renderMinimized)
     }
 
     return (
-        <GlassyView style={styles.container}>
-            <Animated.View
-                style={[styles.animatedContainer ,{ height: animatedHeight }]}
-            >               
-                <View style={styles.top}>
-                    <View style={styles.progressBarContainer}>
-                        <View
-                            style={[
-                                styles.progressBar,
-                                state === "running"
-                                ? {
-                                    width: `${(1 - charIndex / fullText.length) * 100}%`,
-                                    backgroundColor: theme.static.lightblue,
-                                }
-                                : state === "waiting"
-                                ? {
-                                    width: `${(msLeft / MS_UNTIL_DEAD) * 100}%`,
-                                    backgroundColor: theme.static.red,
-                                }
-                                : state === "interrupted"
-                                ? {
-                                    width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
-                                    backgroundColor: theme.primary,
-                                }
-                                : {
-                                    width: 0,
-                                    backgroundColor: "black",
-                                }
-                            ]}
-                        />
-                    </View>
-
-                    <View style={styles.questionTopline}>
-                        <HelperText>{question.tournament}</HelperText>
-                    </View>
-                    <View>
-                        <HelperText style={styles.questionText}>
-                            {interruptIndexes.map((char, i) => {
-                            const start = interruptIndexes[i - 1] || 0;
-                            const end = char;
-
-                            return (
-                                <Text key={i}>
-                                {fullText.slice(start, end)}
-                                <InterrupIcon />
-                                </Text>
-                            );
-                            })}
-
-                            {fullText.slice(
-                            interruptIndexes[interruptIndexes.length - 1] || 0,
-                            charIndex
-                            )}
-                        </HelperText>
-                    </View>
+        <ExpandableView
+            expanded={ question.expanded || (state == "dead" && !renderMinimized) }
+            style={styles.expandable}
+            maxHeight={expandedHeight}
+            onAnimationFinish={handleAnimationFinish}
+        >
+        {
+        !renderMinimized ?
+        <GlassyView
+            style={styles.container}
+            onPress={handleDeadPressed}
+        >
+            <View style={styles.top}>
+                <View style={styles.progressBarContainer}>
+                    <View
+                        style={[
+                            styles.progressBar,
+                            state === "running"
+                            ? {
+                                width: `${(1 - charIndex / fullText.length) * 100}%`,
+                                backgroundColor: theme.static.lightblue,
+                            }
+                            : state === "waiting"
+                            ? {
+                                width: `${(msLeft / MS_UNTIL_DEAD) * 100}%`,
+                                backgroundColor: theme.static.red,
+                            }
+                            : state === "interrupted"
+                            ? {
+                                width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
+                                backgroundColor: theme.primary,
+                            }
+                            : {
+                                width: 0,
+                                backgroundColor: "black",
+                            }
+                        ]}
+                    />
                 </View>
 
-                <View style={styles.bottom}>
-                    <HelperText>
-                        {
-                            state == "running" ?
-                            ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60_000).toFixed(1)                                
-                            : (msLeft / 1000).toFixed(1)
-                        }
-                        s
+                <View style={styles.questionTopline}>
+                    <HelperText>{question.tournament}</HelperText>
+                </View>
+                <View>
+                    <HelperText style={styles.questionText}>
+                        {interruptIndexes.map((char, i) => {
+                        const start = interruptIndexes[i - 1] || 0;
+                        const end = char;
+
+                        return (
+                            <Text key={i}>
+                            {fullText.slice(start, end)}
+                            <InterrupIcon />
+                            </Text>
+                        );
+                        })}
+
+                        {fullText.slice(
+                        interruptIndexes[interruptIndexes.length - 1] || 0,
+                        charIndex
+                        )}
                     </HelperText>
-                    <HelperText>{state}</HelperText>
-                    
-                    {
-                        state == "dead" &&
-                        (
-                            <HelperText style={styles.answer}>
-                                {question.answers}
-                            </HelperText>
-                        )
-                    } 
                 </View>
+            </View>
 
-            </Animated.View>
+            <View style={styles.bottom}>
+                <HelperText>
+                    {
+                        state == "running" ?
+                        ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60_000).toFixed(1)                                
+                        : (msLeft / 1000).toFixed(1)
+                    }
+                    s
+                </HelperText>
+                {
+                    state == "dead" &&
+                    (
+                        <HelperText style={styles.answer}>
+                            {question.answers}
+                        </HelperText>
+                    )
+                } 
+            </View>
+        </GlassyView> :
+        <GlassyView
+            style={styles.collapsedBar}
+            onPress={handleDeadPressed}
+        >
+            <HelperText numberOfLines={1}>{question.tournament}</HelperText>
+            <HelperText style={styles.answer} numberOfLines={1}>
+                {question.answers}
+            </HelperText>
         </GlassyView>
+        }
+        </ExpandableView>
     );
 };
 
@@ -291,17 +294,13 @@ const iiStyles = StyleSheet.create({
 })
 
 const styles = StyleSheet.create({
-    container: {
-        borderRadius: 10,
-    },
-    animatedContainer: {
-        flexDirection: "column",
-        justifyContent: "space-between",
-    },
+    // Minimized
     collapsedBar: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        marginHorizontal: 1,
+        borderRadius: 10
     },
     tournament: {
 
@@ -310,22 +309,25 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: "bold",
     },
-    questionContainer: {
+
+    // Maximized
+    expandable: {
+        flexGrow: 1,
+        height: "max"
+    },
+    container: {
         flexDirection: "column",
-        display: "inline"
+        justifyContent: "space-between",
+        borderRadius: 10,
+        height: expandedHeight
     },
     questionText: {
         fontSize: 17,
-        flexGrow: 1,
         // TODO: Add an outline or something so that you can see the text over the background image better
         color: theme.onbackground,
-
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
-    },
-    progressBarContainer: {
-        width: "100%",
     },
     progressBar: {
         backgroundColor: theme.static.lightblue,
