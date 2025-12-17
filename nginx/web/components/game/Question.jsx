@@ -56,7 +56,7 @@ const Question = ({
 
     // Animation
     const [firstRenderForAnimation, setFirstRenderForAnimation] = useState(true)
-    const [renderMinimized, setRenderMinimized] = useState(false)
+    const [isMinimized, setIsMinimized] = useState(false)
 
     // Gamestate and buzz variables
     const [isFinished, setIsFinished] = useState(false);
@@ -160,28 +160,28 @@ const Question = ({
     }, [msLeft, charIndex])
 
     useEffect(() => {
-        setFirstRenderForAnimation(false)
-    }, [])
+        setIsMinimized(!question.expanded)
+    }, [question])
 
 
     function handleAnimationFinish(expanded) {
-        if(!expanded) setRenderMinimized(true)
+        if(!expanded) setIsMinimized(true)
     }
 
     function handleDeadPressed() {
         if(state !== "dead") return;
-        setRenderMinimized(!renderMinimized)
+        setIsMinimized(!isMinimized)
     }
 
     return (
         <ExpandableView
-            expanded={ question.expanded || (state == "dead" && !renderMinimized) }
+            expanded={ question.expanded || (state == "dead" && !isMinimized)}
             style={styles.expandable}
             maxHeight={expandedHeight}
             onAnimationFinish={handleAnimationFinish}
         >
         {
-        !renderMinimized ?
+        !isMinimized ?
         <GlassyView
             style={styles.container}
             onPress={handleDeadPressed}
