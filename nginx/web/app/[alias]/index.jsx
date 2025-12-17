@@ -23,6 +23,7 @@ import AnswerInput from "../../components/game/AnswerInput.jsx";
 import Question from "../../components/game/Question.jsx";
 import Interrupt from "../../components/game/Interrupt.jsx";
 import PlayerJoined from "../../components/game/PlayerJoined.jsx";
+import ExpandableView from "../../components/custom/ExpandableView.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -114,7 +115,8 @@ const Play = () => {
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
             // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
             setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
-
+            // Minimize the current quetsion
+            minimizeCurrentQuestion()
             setBuzzer(null)
             setSyncTimestamp(Timestamp)
             addEvent(Question, true)
@@ -220,6 +222,7 @@ const Play = () => {
                 // Prevent duplicates
                 if(prev[0]?.id === event?.id) return prev;
                 event.eventType = "question";
+                event.expanded = true;
                 return [event, ...prev]
             })
         }
@@ -247,6 +250,20 @@ const Play = () => {
         });
     }
 
+    function minimizeCurrentQuestion() {
+        setAllEvents((prev) => {
+            if(prev[0]?.eventType !== "question") return prev;
+
+            return [
+                {
+                    ...prev[0],
+                    expanded: false
+                },
+                ...prev.slice(1)
+            ]
+        })
+    }
+
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -272,7 +289,6 @@ const Play = () => {
                                             onDeath={i == 0 ? handleQuestionDeath : null}
                                             state={i == 0 ? questionState : "dead" }
                                             setState={setQuestionState}
-                                            minimized={i !== 0}
                                             style={styles.question}
                                             key={`q:${e.id}`}
                                         />
@@ -324,19 +340,12 @@ const styles = StyleSheet.create({
         width: "80%",
         flexDirection: "column"
     },
-    liveQuestion: {
-        height: 300
-    },
     questions: {
         marginTop: 10,
         gap: 10,
     },
-    previousQuestions: {
-        flexDirection: "column",
-        gap: 10
-    },
     question: {
-        width: "100%"
+        height: 300
     },
     optionsContainer: {
         flexShrink: 1,
