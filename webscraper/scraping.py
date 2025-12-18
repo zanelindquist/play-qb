@@ -18,13 +18,14 @@ import json
 import mysql.connector
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import random
-import string
 import numpy as np
 from scipy.stats import norm, sem
 from pathlib import Path
 
 from keywords import *
+from classifier_models import *
+from utils import *
+
 
 
 connection = mysql.connector.connect(
@@ -42,6 +43,8 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 session = SessionLocal()
 
+
+# SCRAPING
 
 def scrape_tournament_page(link, diagnostics=False, level="College"):
     # Text fetching and metadata
@@ -166,6 +169,9 @@ def scrape_tournament_page(link, diagnostics=False, level="College"):
         "packets": processed_packets
     }
 
+
+# PARSING
+
 def load_text_from_file(file):
     with open(file, "r", encoding="utf-8") as f:
         return f.read()
@@ -206,6 +212,9 @@ def parse_packet(text):
     except Exception as error:
         return {"error": f"{error}"}
 
+
+# WRITING TO MEMORY
+
 def write_csv(rows):
     with open(destination, "wb", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -227,12 +236,6 @@ def write_to_file(href, tournament, name):
         
         print("Wrote " + name + " to " + packet_prefix + tournament)
 
-def append_to_diagnostics_file(file, message):
-
-    utc_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(file, "a") as f:
-        f.write(f"{utc_now} --- {message}\n")
-
 def save_tpacket_to_json(tpacket, file):
     if not file.endswith(".json"):
         raise ValueError("save_tpacket_to_json: file must be json format")
@@ -244,48 +247,6 @@ def save_tpacket_to_json(tpacket, file):
         json.dump(tpacket, f, ensure_ascii=False, indent=4)
 
     print(f"SAVED tpackt to {file}")
-
-def get_json(file):
-    with open(file, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def update_model_stats(json_file_path, param_dict, save=True):
-    """
-    Updates the statistics of classifier models stored in a JSON file.
-    
-    Parameters:
-    - json_file_path (str or Path): path to the JSON file.
-    - param_dict (dict): dictionary of parameters to update, keyed by model name.
-        Example: {"history_model": {"mean": 0.8, "std": 0.1}, ...}
-    - save (bool): whether to save the updated JSON back to file.
-    
-    Returns:
-    - updated_data (dict): the updated dictionary from the JSON.
-    """
-    json_file_path = Path(json_file_path)
-    
-    # 1️⃣ Load existing JSON
-    if not json_file_path.exists():
-        raise FileNotFoundError(f"File {json_file_path} not found")
-    
-    with open(json_file_path, "r") as f:
-        data = json.load(f)
-    
-    # 2️⃣ Update statistics
-    for model_name, stats in param_dict.items():
-        if model_name in data:
-            # Update existing stats
-            data[model_name].update(stats)
-        else:
-            # If model doesn't exist, add it
-            data[model_name] = stats
-    
-    # 3️⃣ Optionally save back to JSON
-    if save:
-        with open(json_file_path, "w") as f:
-            json.dump(data, f, indent=4)
-    
-    return data
 
 def write_dict_to_sql(dict, diagnostics=False):
     meta = dict["tournament_metadata"]
@@ -384,6 +345,9 @@ def write_dict_to_sql(dict, diagnostics=False):
 
     return {"status": 200, "message": "Success!"}
 
+
+# MUTATING
+
 # Find questions in the database and change their fields
 def mutate_existing_questions(diagnostics=False):
     cursor = connection.cursor()
@@ -407,7 +371,7 @@ def mutate_existing_questions(diagnostics=False):
                 "answers": answers
             }
 
-            new_category = categorize_question(question_data)
+            new_category = categorize_question(question_data).get("category")
 
             if not new_category:
                 print(f"mutate_existing_questions(): Failed to re-categorize question WHERE id = {id}")
@@ -419,7 +383,10 @@ def mutate_existing_questions(diagnostics=False):
 
             cursor.execute("UPDATE questions SET category = %s WHERE id = %s", updated_question)
             questions_mutated += 1
+            connection.commit()
     except Exception as e:
+        connection.rollback()
+
         print(f"mutate_existing_questions(): Failed with error {e}")
         if diagnostics:
             append_to_diagnostics_file(diagnostics, f"FAILED recategorizing question: {e}")
@@ -428,100 +395,52 @@ def mutate_existing_questions(diagnostics=False):
     if diagnostics:
         append_to_diagnostics_file(diagnostics, f"SUCCESS recategorized {questions_mutated} out of {questions_encountered}")
 
-def generate_unique_hash(length=16):
-    """Generate a unique hash consisting of uppercase and lowercase letters."""
-    return ''.join(random.choices(string.ascii_letters, k=length))
 
-def categorize_question(question_data):
+# CATEGORIZATION
+
+def categorize_question(question_data, model="400 words"):
     if not question_data.get("question"):
         return None
     
-    category_scores = {}
-
-    question = question_data.get("question")
-    answers = question_data.get("answers")
+    classifier_function = None;
     
-    # Parse question into different parts (first sentance, middle, last sentance)
-    sentances = question.split(".")
-    # Each question has three parts
-    question_parts = [sentances[0], ".".join(sentances[1:-2]), sentances [-1]]
+    # Find model
+    for (name, function) in MODELS:
+        if model.endswith(name):
+            classifier_function = function
 
-    # Search each part for words in each category
-    for i in range(len(question_parts)):
-        part_multiplier = QUESTION_PART_WEIGHTS[i]
-        part = question_parts[i]
-
-        # Loop through each category
-        for category in CATEGORIZATION_KEYWORDS:
-            category_total = 0;
-            # loop through each power level
-            for (power_level, words) in CATEGORIZATION_KEYWORDS[category].items():
-                for word in words:
-                    # Search the part for each word
-                    tokens = re.findall(r'\b\w+\b', part.lower())  # splits into words ignoring punctuation
-                    if word.lower() in tokens:
-                        category_total += power_level * part_multiplier
-            if category not in category_scores:
-                category_scores[category] = 0
-
-            # Assign points to the category a word belongs to
-            category_scores[category] += category_total
-    
-    sorted_categories = sorted(
-        category_scores.items(),
-        key=lambda cat: cat[1],
-        reverse=True
-    )
+    result = classifier_function(question_data, model)
     
 
-    # Compute a confidence level?
-    mean = POPULATION_STATISTICS["mean"]
-    std = POPULATION_STATISTICS["std"]
-    confidence_level = 0;
-    if mean and std:
-        # Find the difference between the first and second
-        x = sorted_categories[0][1]
-        # z = (d_bar - u) / std
-        z = (x - mean) / std;
-        # Find the area that this z value offsets
-        area = norm.cdf(z)
+    return result
 
-        confidence_level = area
 
-    top = sorted_categories[0]
+# CLASSIFIER QUANTIFICATION
 
-    data = {
-        "category": top[0],
-        "points": top[1],
-        "confidence_level": confidence_level
-    }
-    
-    return data
-
-def find_question_points_stats(n, diagnostics=False, classifier_model="unnamed"):
+def find_question_points_stats(n, diagnostics=False, classifier_model="Untitled model"):
     cursor = connection.cursor()
     cursor.execute("SELECT question FROM questions LIMIT %s", (n,))
     questions = cursor.fetchall()
 
-    means = []
+    means_diff = []
     confidence_levels = []
 
     for question in questions:
         q_text = question[0]
-        result = categorize_question({"question": q_text})
-        means.append(result.get("points"))
+        result = categorize_question({"question": q_text}, model=classifier_model)
+        means_diff.append(result.get("points_diff"))
         confidence_levels.append(result.get("confidence_level"))
 
-    mean = np.mean(means)
-    std = np.std(means)
-    standard_error = sem(means)
+    mean = np.mean(means_diff)
+    std = np.std(means_diff)
+    standard_error = sem(means_diff)
 
     mean_confidence_level = np.mean(confidence_levels)
 
     data = {
         "n": n,
-        "mean": mean,
-        "std": std,
+        "mean_diff": mean,
+        "std_diff": std,
         "standard_error": standard_error,
         "mean_confidence_level": mean_confidence_level
     }
@@ -531,3 +450,42 @@ def find_question_points_stats(n, diagnostics=False, classifier_model="unnamed")
         append_to_diagnostics_file(diagnostics, f"CALCULATED stats for classifier model: {classifier_model}: {" | ".join([f"{key}: {value}" for (key, value) in data.items()])}")
 
     return data
+
+def update_model_stats(json_file_path, param_dict, save=True):
+    """
+    Updates the statistics of classifier models stored in a JSON file.
+    
+    Parameters:
+    - json_file_path (str or Path): path to the JSON file.
+    - param_dict (dict): dictionary of parameters to update, keyed by model name.
+        Example: {"history_model": {"mean": 0.8, "std": 0.1}, ...}
+    - save (bool): whether to save the updated JSON back to file.
+    
+    Returns:
+    - updated_data (dict): the updated dictionary from the JSON.
+    """
+    json_file_path = Path(json_file_path)
+    
+    # 1️⃣ Load existing JSON
+    if not json_file_path.exists():
+        raise FileNotFoundError(f"File {json_file_path} not found")
+    
+    with open(json_file_path, "r") as f:
+        data = json.load(f)
+    
+    # 2️⃣ Update statistics
+    for model_name, stats in param_dict.items():
+        if model_name in data:
+            # Update existing stats
+            data[model_name].update(stats)
+        else:
+            # If model doesn't exist, add it
+            data[model_name] = stats
+    
+    # 3️⃣ Optionally save back to JSON
+    if save:
+        with open(json_file_path, "w") as f:
+            json.dump(data, f, indent=4)
+    
+    return data
+

@@ -5,3 +5,6 @@
 2025-12-17 22:46:01 --- CALCULATED stats for classifier model: 100 words: n: 500 | mean: 7.898 | std: 6.418067933576272 | standard_error: 0.28731217965334205 | mean_confidence_level: 0.47392582716701814
 2025-12-17 22:47:06 --- CALCULATED stats for classifier model: 20 words: n: 500 | mean: 4.92 | std: 5.4313534224905675 | standard_error: 0.2431407717141234 | mean_confidence_level: 0.33149814384155846
 2025-12-17 22:58:12 --- CALCULATED stats for classifier model: 400 words: n: 500 | mean: 9.707 | std: 7.675653131818817 | standard_error: 0.34360942489074353 | mean_confidence_level: 0.5468448393239628
+2025-12-17 23:10:47 --- CALCULATED stats for classifier model: 400 words: n: 500 | mean: 9.707 | std: 7.675653131818817 | standard_error: 0.34360942489074353 | mean_confidence_level: 0.4694180528242058
+2025-12-17 23:24:49 --- CALCULATED stats for classifier model: 400 words: n: 500 | mean_diff: 5.241 | std_diff: 6.28835582644621 | standard_error: 0.28150546825472966 | mean_confidence_level: 0.0
+2025-12-17 23:26:21 --- CALCULATED stats for classifier model: 400 words: n: 500 | mean_diff: 5.241 | std_diff: 6.28835582644621 | standard_error: 0.28150546825472966 | mean_confidence_level: 0.5225842036136065

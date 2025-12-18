@@ -173,6 +173,10 @@ const Question = ({
         setIsMinimized(!isMinimized)
     }
 
+    function capitalize(text) {
+        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
+    }
+
     return (
         <ExpandableView
             expanded={ question.expanded || (state == "dead" && !isMinimized)}
@@ -215,7 +219,7 @@ const Question = ({
                 </View>
 
                 <View style={styles.questionTopline}>
-                    <HelperText>{question.tournament}</HelperText>
+                    <HelperText>{question.tournament} {">"} {capitalize(question.category)}</HelperText>
                 </View>
                 <View>
                     <HelperText style={styles.questionText}>

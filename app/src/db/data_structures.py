@@ -21,7 +21,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Questions": {
-        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "categoy", "question", "answers", "prompts"],
+        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "category", "question", "answers", "prompts"],
         "relationships": {
             "reports": "Reports"
         },
