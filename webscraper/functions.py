@@ -21,6 +21,9 @@ from sqlalchemy.orm import sessionmaker
 import random
 import string
 
+from keywords import CATEGORIZATION_KEYWORDS, QUESTION_PART_WEIGHTS
+
+
 connection = mysql.connector.connect(
     host="127.0.0.1",
     port=3306,
@@ -243,7 +246,7 @@ def get_json(file):
     with open(file, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def dict_to_sql(dict, diagnostics=False):
+def write_dict_to_sql(dict, diagnostics=False):
     meta = dict["tournament_metadata"]
 
     tournament = meta["name"]
@@ -267,13 +270,36 @@ def dict_to_sql(dict, diagnostics=False):
 
     cursor = connection.cursor()
 
+    # Prevent collisions. If another packet with the name is found, don't write the questions
+    query = """
+    SELECT * FROM questions WHERE tournament = %s
+    """
+
+    cursor.execute(query, (tournament,))
+    questions_exist = cursor.fetchone()is not None
+
+    if questions_exist:
+        print("FAILURE: packet already exists in database")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, "FAILURE: packet already exists in database")
+        return {"status": 400, "message": "FAILURE: packet already exists in database"}
+
+
     for packet in dict.get("packets"):
         # Save tossups to DB
-        for question in packet.get("tossups"):
+        for tossup in packet.get("tossups"):
+            # Increment for diagnostics
             total_questions += 1
-            if len(question) < 2:
+
+            if len(tossup) < 2:
                 continue
+
             try:
+                question = tossup[0]
+                answer = tossup[1]
+
+                category = categorize_question(tossup)
+
                 # Define query
                 query = """
                 INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
@@ -282,21 +308,23 @@ def dict_to_sql(dict, diagnostics=False):
 
                 # Define values
                 values = (
-                    generate_unique_hash(),
-                    tournament,
-                    0,        # type
-                    season,
-                    level,
-                    subjects,
-                    question[0],
-                    question[1],
-                    datetime.now(timezone.utc)
+                    # id auto generates
+                    generate_unique_hash(), # hash
+                    tournament, # tournament
+                    0,        # type (tossup or bonus)
+                    season, # year
+                    level, # level(ms, hs, college, open)
+                    category, # category
+                    question,  # question
+                    answer,  # answer
+                    datetime.now(timezone.utc) # created_at
                 )
 
                 # Execute and commit
                 cursor.execute(query, values)
                 connection.commit()
-
+                
+                # For diagnostics
                 questions_written += 1;
             except Exception as e:
                 #TODO: Have error checking and logging for malformed data
@@ -315,7 +343,76 @@ def dict_to_sql(dict, diagnostics=False):
 
     return {"status": 200, "message": "Success!"}
 
+# Find questions in the database and change their fields
+def mutate_existing_questions(diagnostics=False):
+    cursor = connection.cursor()
+    questions_encountered = 0
+    questions_mutated = 0
+
+    # ===== Re-classify questions =====
+    try: 
+        cursor.execute("SELECT id, difficulty, category, question, answers FROM questions")
+        questions = cursor.fetchall()
+
+        for question in questions:
+            questions_encountered += 1
+            id, difficulty, category, question_text, answers = question
+
+            question_data = {
+                "id": id,
+                "difficulty": difficulty,
+                "category": category,
+                "question": question_text,
+                "answers": answers
+            }
+
+            new_category = categorize_question(question_data)
+
+            if not new_category:
+                print(f"mutate_existing_questions(): Failed to re-categorize question WHERE id = {id}")
+                if diagnostics:
+                    append_to_diagnostics_file(diagnostics, "FAILED to re-categorize question WHERE id = {id}")
+                continue;
+
+            updated_question = (new_category, id)
+
+            cursor.execute("UPDATE questions SET category = %s WHERE id = %s", updated_question)
+            questions_mutated += 1
+    except Exception as e:
+        print(f"mutate_existing_questions(): Failed with error {e}")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"FAILED recategorizing question: {e}")
+
+
+    if diagnostics:
+        append_to_diagnostics_file(diagnostics, f"SUCCESS recategorized {questions_mutated} out of {questions_encountered}")
+
 def generate_unique_hash(length=16):
     """Generate a unique hash consisting of uppercase and lowercase letters."""
     return ''.join(random.choices(string.ascii_letters, k=length))
+
+def categorize_question(question_data):
+    if not question_data.get("question"):
+        return None
+    
+    category_scores = {}
+
+    question = question_data.get("question")
+    answers = question_data.get("answers")
+    
+    # Parse question into different parts (first sentance, middle, last sentance)
+    sentances = question.split(".")
+    question_parts = [sentances[0], sentances[1:-2].join("."), sentances [-1]]
+
+
+
+    # Search each part for words in each category
+
+    # Assign points to the category a word belongs to
+    
+    # Compute a confidence level?
+    
+    category = ""
+
+    return category;
 

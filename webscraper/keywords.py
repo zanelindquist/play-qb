@@ -1,0 +1,9 @@
+CATEGORIZATION_KEYWORDS = {
+
+}
+
+QUESTION_PART_WEIGHTS = [
+    1.5,
+    1,
+    2
+]
