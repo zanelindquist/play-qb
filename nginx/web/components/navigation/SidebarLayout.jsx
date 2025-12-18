@@ -16,6 +16,7 @@ import {
     Button,
     HelperText
 } from "react-native-paper";
+import Video from 'react-native-video';
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
 import { useAlert } from "../../utils/alerts";
@@ -45,8 +46,6 @@ const SidebarLayout = ({ children, style }) => {
     const { showAlert } = useAlert();
     const segments = useSegments();
 
-
-    console.log(theme)
 
     // Page variables
     const currentScreen = segments[0] || "Home";
@@ -118,7 +117,15 @@ const SidebarLayout = ({ children, style }) => {
     return (
         <View style={styles.root}>
             {/* Background Layer */}
-            <View style={styles.bg} />
+            <View style={styles.bg} >                
+            <Video
+                    source={{uri: "/videos/Earth.mp4"}}
+                    style={[StyleSheet.absoluteFill, { borderWidth: 3, borderColor: "red" }]}
+                    muted
+                    repeat
+                    resizeMode="cover"
+                />
+            </View>
 
             {/* Top Navigation Bar */}
             <View
@@ -129,7 +136,7 @@ const SidebarLayout = ({ children, style }) => {
             >
                 <GlassyView style={styles.topNav}>
                     <View style={styles.leftNav}>
-                        <Logo text={true}/>
+                        <Logo text={true} image={false}/>
                     </View>
 
                     <View style={styles.middleNav}>
@@ -170,7 +177,7 @@ const SidebarLayout = ({ children, style }) => {
                 style={[styles.scroll, {paddingTop: navBarHeight}]}
                 contentContainerStyle={styles.scrollContent}
             >
-                <View style={styles.childrenWrapper}>{children}</View>
+                {children}
             </ScrollView>
         </View>
     );
@@ -185,11 +192,13 @@ const styles = StyleSheet.create({
     },
     bg: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: theme.background, // light neutral
-        opacity: 0.5,
+        height: "100vh",
+        width: "100vw",
+        backgroundColor: "black", // light neutral
+        // opacity: 0.5,
 
         // more depth for glass
-        backgroundImage: theme.gradients.background,
+        // backgroundImage: theme.gradients.background,
     },
     navCenter: {
         width: "100%",
@@ -210,31 +219,23 @@ const styles = StyleSheet.create({
         gap: 10,
         padding: 10,
     },
-
-    scroll: {
-        flex: 1,
-        flexDirection: "column"
-    },
-    scrollContent: {
-        paddingBottom: 40,
-        alignSelf: "center"
-    },
-    childrenWrapper: {
-        margin: 10,
-        padding: 10,
-        maxWidth: 1500,
-        width: "100%",
-
-    },
-
     middleNav: {
         flexDirection: "row",
     },
     rightNav: {
         flexDirection: "row"
-    }
+    },
 
+    scroll: {
 
+    },
+    scrollContent: {
+        margin: 10,
+        padding: 10,
+        maxWidth: 1100,
+        width: "100vw",
+        alignSelf: "center",
+    },
 });
 
 export default SidebarLayout;

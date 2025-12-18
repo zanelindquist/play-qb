@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     TouchableOpacity,
@@ -6,183 +6,334 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
-    Image
-} from 'react-native';
-import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
-import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
-import theme from '../../assets/themes/theme';
-import GlassyView from '../custom/GlassyView';
+    Image,
+    Text
+} from "react-native";
+import {
+    Button,
+    HelperText,
+    Menu,
+    Title,
+    IconButton,
+    Icon,
+    ActivityIndicator,
+    Avatar,
+    Card,
+} from "react-native-paper";
+import {
+    useRouter,
+    useGlobalSearchParams,
+    useLocalSearchParams,
+    usePathname,
+} from "expo-router";
+import theme from "../../assets/themes/theme";
+import GlassyView from "../custom/GlassyView";
+import ExpandableView from "../custom/ExpandableView";
 
 const collapsedHeight = 40;
+const expandedHeight = 400;
 
-const Question = ({ question, style, interrupter, onFinish, deadMS = 6000, speed = 1400, minimize }) => {
+
+const Question = ({
+    question,
+    timestamp,
+    state="dead",
+    setState,
+    onInterruptOver,
+    onFinish,
+    onDeath,
+    style,
+    minimized = false,
+    MS_UNTIL_DEAD = 6000,
+    // Speed in WPM
+    SPEED = 400,
+    MS_FOR_ANSWER = 5000,
+}) => {
+    // Text variables
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
-    const [isFinished, setIsFinished] = useState(false)
-    const [isDead, setIsDead] = useState(false)
-    const [isMinimized, setIsMinimized] = useState(false)
-    const [untilDead, setUntilDead] = useState(deadMS)
+    const [interruptIndexes, setInterruptIndexes] = useState([]);
 
-    const animatedHeight = useRef(new Animated.Value(200)).current;
+    // Animation
+    const [firstRenderForAnimation, setFirstRenderForAnimation] = useState(true)
+    const [renderMinimized, setRenderMinimized] = useState(false)
 
-    // Approximate characters per minute from WPM:
-    // Average English word ≈ 5 characters
-    const charsPerMinute = speed * 6;
-    const delay = 60000 / charsPerMinute; // ms per char
+    // Gamestate and buzz variables
+    const [isFinished, setIsFinished] = useState(false);
+    const [isDead, setIsDead] = useState(false);
+    const [msLeft, setMsLeft] = useState(0)
+    const [msLeftInWaiting, setMsLeftInWaiting] = useState(MS_UNTIL_DEAD)
 
+    // Reading constants
+    const charsPerMinute = SPEED * 6;
+    const msPerChar = 60_000 / charsPerMinute; // ms per char
+
+    // Status bar
+    const [reRenderStatusBar, setReRenderStatusBar] = useState(0);
+
+    // When the state changes
     useEffect(() => {
-        if (!fullText) return;
+        if (state == "interrupted") {
+            setInterruptIndexes((prev) => {
+                // Make sure there are no duplicates
+                if(charIndex === prev[prev.length - 1]) return prev;
+                return [...prev, charIndex]
+            })
+            setMsLeft(MS_FOR_ANSWER)
+            const interval = setInterval(() => {
+                setMsLeft((prev) => {
+                    if (prev <= 0) {
+                        // If there is still more to read
+                        if (onInterruptOver) onInterruptOver(charIndex < fullText.length)
+                        clearInterval(interval);
+                        return 0;
+                    }
 
-        setCharIndex(0); // reset on new question
-        setIsFinished(false)
-        setIsDead(false)
-        setUntilDead(deadMS)
-        let currentIndex = 0;
+                    return prev - 10;
+                })
+            }, 10);
 
-        const interval = setInterval(() => {
-            if (interrupter?.current) {
-                clearInterval(interval);
-                return;
-            }
+            // Clear interval after enough time has passed
+            return () => clearInterval(interval);
 
-            currentIndex += 1;
-            setCharIndex(currentIndex);
+        } 
+        else if (state == "running") {
+            let currentIndex = charIndex;
 
-            if (currentIndex >= fullText.length) {
-                setIsFinished(true)
-                if (onFinish) onFinish();
-                setUntilDead(deadMS);
-                clearInterval(interval);
-            }
-        }, delay);
+            // Calculate how many chars we need since the timestamp on the quesiton
+            const diff = Date.now() - timestamp
+            currentIndex += Math.ceil(diff / msPerChar)
+            const interval = setInterval(() => {
+                if (state == "running") {
+                    currentIndex += 1;
+                    setCharIndex(currentIndex);
 
-        return () => clearInterval(interval);
-    }, [question, speed, interrupter]);
-
-    useEffect(() => {
-        if (!isFinished) return;   // do not start until finished
-
-        const delay = 10;
-
-        const id = setInterval(() => {
-            setUntilDead((prev) => {
-                if (prev <= 0 || interrupter?.current) {
-                    setIsDead(true);
-                    clearInterval(id);
-                    return 0;
+                    if (currentIndex >= fullText.length) {
+                        setIsFinished(true);
+                        if (onFinish) onFinish();
+                        clearInterval(interval);
+                    }
                 }
-                return prev - delay;
-            });
-        }, delay);
+            }, msPerChar);
+            return () => clearInterval(interval);
+        }
+        else if (state == "waiting") {
+            setMsLeft(msLeftInWaiting)
 
-        return () => clearInterval(id);
-    }, [isFinished]);
+            const interval = setInterval(() => {
+                setMsLeftInWaiting((prev) => {
+                    if (prev <= 0) {
+                        if (onDeath) onDeath();
+                        setIsDead(true);
+                        clearInterval(interval);
+                        return 0;
+                    }
+
+                    setMsLeft(prev - 10)
+
+                    return prev - 10;
+                });
+            }, 10);
+
+            return () => clearInterval(interval);
+        }
+        else if (state == "dead") {
+            setCharIndex(fullText.length)
+        }
+        else if (state == "resume") {
+            if(!setState) return;
+            if(charIndex < fullText.length) setState("running")
+            else if (msLeftInWaiting > 0) {
+                console.log("QUESTION SETTING TO WAITING")
+                setState("waiting")
+            }
+            else setState("dead")
+        }
+        else {
+            throw Error("<Question>: unknown state passed")
+        }
+    }, [state]);
+
+    // Rerender the status bar
+    useEffect(() => {
+        setReRenderStatusBar((prev) => prev + 1)
+    }, [msLeft, charIndex])
 
     useEffect(() => {
-        if(minimize) {
-            setIsMinimized(true)
-            setIsDead(true)
-            setIsFinished(true)
-            Animated.timing(animatedHeight, {
-                toValue: collapsedHeight,
-                duration: 300,
-                useNativeDriver: false, // cannot animate height with native driver
-            }).start();
-        }
-    }, [minimize]);
+        setFirstRenderForAnimation(false)
+    }, [])
 
-    if(isMinimized) {
-        return (
-            <GlassyView style={styles.collapsedBar}>
-                <HelperText numberOfLines={1}>{question.tournament}</HelperText>
-                <HelperText style={styles.answer} numberOfLines={1}>{question.answers}</HelperText>
-            </GlassyView>
-        )
+
+    function handleAnimationFinish(expanded) {
+        if(!expanded) setRenderMinimized(true)
+    }
+
+    function handleDeadPressed() {
+        if(state !== "dead") return;
+        setRenderMinimized(!renderMinimized)
     }
 
     return (
-        <GlassyView>
-                    <Animated.View style={[styles.container, { height: animatedHeight }, style]}>
-            
-            {/* Show full question ONLY while not collapsed */}
-            {!isMinimized && (
-                <>
-                    <View style={styles.progressBarContainer}>
-                        <View style={[
+        <ExpandableView
+            expanded={ question.expanded || (state == "dead" && !renderMinimized) }
+            style={styles.expandable}
+            maxHeight={expandedHeight}
+            onAnimationFinish={handleAnimationFinish}
+        >
+        {
+        !renderMinimized ?
+        <GlassyView
+            style={styles.container}
+            onPress={handleDeadPressed}
+        >
+            <View style={styles.top}>
+                <View style={styles.progressBarContainer}>
+                    <View
+                        style={[
                             styles.progressBar,
-                            { width: (1 - charIndex / fullText.length) * 100 + "%" },
-                            isFinished && {
-                                width: (untilDead / deadMS) * 100 + "%",
-                                backgroundColor: theme.static.red
+                            state === "running"
+                            ? {
+                                width: `${(1 - charIndex / fullText.length) * 100}%`,
+                                backgroundColor: theme.static.lightblue,
                             }
-                        ]} />
-                    </View>
+                            : state === "waiting"
+                            ? {
+                                width: `${(msLeft / MS_UNTIL_DEAD) * 100}%`,
+                                backgroundColor: theme.static.red,
+                            }
+                            : state === "interrupted"
+                            ? {
+                                width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
+                                backgroundColor: theme.primary,
+                            }
+                            : {
+                                width: 0,
+                                backgroundColor: "black",
+                            }
+                        ]}
+                    />
+                </View>
 
-                    <View style={styles.questionTopline}>
-                        <HelperText>{question.tournament}</HelperText>
-                    </View>
-
+                <View style={styles.questionTopline}>
+                    <HelperText>{question.tournament}</HelperText>
+                </View>
+                <View>
                     <HelperText style={styles.questionText}>
-                        {fullText.slice(0, charIndex)}
-                    </HelperText>
-                    <HelperText>
-                        {isFinished
-                            ? (untilDead / 1000).toFixed(1)
-                            : ((1 - charIndex / fullText.length) *
-                                fullText.length * charsPerMinute / 60000).toFixed(1)
-                        }s
-                    </HelperText>
-                </>
-            )}
+                        {interruptIndexes.map((char, i) => {
+                        const start = interruptIndexes[i - 1] || 0;
+                        const end = char;
 
-            {
-                !isMinimized && isDead &&
-                <HelperText style={styles.answer}>{question.answers}</HelperText>
-            }
-        </Animated.View>
+                        return (
+                            <Text key={i}>
+                            {fullText.slice(start, end)}
+                            <InterrupIcon />
+                            </Text>
+                        );
+                        })}
+
+                        {fullText.slice(
+                        interruptIndexes[interruptIndexes.length - 1] || 0,
+                        charIndex
+                        )}
+                    </HelperText>
+                </View>
+            </View>
+
+            <View style={styles.bottom}>
+                <HelperText>
+                    {
+                        state == "running" ?
+                        ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60_000).toFixed(1)                                
+                        : (msLeft / 1000).toFixed(1)
+                    }
+                    s
+                </HelperText>
+                {
+                    state == "dead" &&
+                    (
+                        <HelperText style={styles.answer}>
+                            {question.answers}
+                        </HelperText>
+                    )
+                } 
+            </View>
+        </GlassyView> :
+        <GlassyView
+            style={styles.collapsedBar}
+            onPress={handleDeadPressed}
+        >
+            <HelperText numberOfLines={1}>{question.tournament}</HelperText>
+            <HelperText style={styles.answer} numberOfLines={1}>
+                {question.answers}
+            </HelperText>
         </GlassyView>
-
+        }
+        </ExpandableView>
     );
-
 };
 
-const styles = StyleSheet.create({
+const InterrupIcon = ({}) => {
+
+    return (
+        <View style={iiStyles.container}>
+            <Icon
+                source={"bell"}
+                size={"0.8rem"}
+            />
+        </View>
+    )
+}
+
+const iiStyles = StyleSheet.create({
     container: {
-        borderRadius: 10,
-        // overflow: "hidden"
-    },
+        padding: 2,
+        marginHorizontal: 5,
+        backgroundColor: theme.static.early,
+        borderRadius: 3,
+    }
+})
+
+const styles = StyleSheet.create({
+    // Minimized
     collapsedBar: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-    },
-    questionTopline: {
-        flexDirection: "row",
-        alignContent: "space-between"
-
+        marginHorizontal: 1,
+        borderRadius: 10
     },
     tournament: {
 
     },
     answer: {
         fontSize: 17,
-        fontWeight: "bold"
+        fontWeight: "bold",
+    },
+
+    // Maximized
+    expandable: {
+        flexGrow: 1,
+        height: "max"
+    },
+    container: {
+        flexDirection: "column",
+        justifyContent: "space-between",
+        borderRadius: 10,
+        height: expandedHeight
     },
     questionText: {
-        fontSize: 16,
-        flexGrow: 1
-    },
-    progressBarContainer: {
-        width: "100%"
+        fontSize: 17,
+        // TODO: Add an outline or something so that you can see the text over the background image better
+        color: theme.onbackground,
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     progressBar: {
         backgroundColor: theme.static.lightblue,
-        width: 500,
         height: 10,
-        borderRadius: 999
+        borderRadius: 999,
     },
-
-})
-
+});
 
 export default Question;

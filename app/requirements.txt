@@ -3,6 +3,9 @@ Flask-JWT-Extended
 Flask-SQLAlchemy
 Flask-Session
 flask-cors
+flask-socketio
+eventlet
+redis
 flask_bcrypt
 mysql-connector-python
 apscheduler

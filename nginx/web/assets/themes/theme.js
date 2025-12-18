@@ -1,11 +1,20 @@
-import themeData from "./royal.json"
+import themeData from "./earthy.json"
 import universalThemeDate from "./universal.json"
 
-const themeMode = "light"
+const themeMode = "dark"
 
-let theme = themeData[themeMode].colors
+let theme = {};
+
+// For different theme formats
+if (themeData.schemes) {
+    theme = themeData.schemes[themeMode];
+    theme.palettes = themeData.palettes;
+} else {
+    theme = themeData[themeMode]?.colors
+}
+
+// Add constant colors
 let universal = universalThemeDate[themeMode].colors
-
 theme.static = universal
 theme.gradients = universalThemeDate[themeMode].gradients
 

@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# FILES
+.mp4
+public/videos
+
 # Native
 .kotlin/
 *.orig.*

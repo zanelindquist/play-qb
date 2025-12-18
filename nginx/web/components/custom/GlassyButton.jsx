@@ -76,6 +76,6 @@ const styles = StyleSheet.create({
         backgroundImage: theme.gradients.button,
     },
     textFilled: {
-        color: theme.onPrimary
+        color: theme.onBackground
     }
 });
