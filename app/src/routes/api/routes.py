@@ -7,7 +7,7 @@ from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 
-from ...db.utils import *
+from src.db.utils import*
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -21,11 +21,21 @@ def random_question():
     return question, 200
 
 
-# AUTHORIZED ROUTES
+# ===== AUTHORIZED ROUTES =====
 
-@bp.route("/connection")
+@bp.route("/identity")
 @jwt_required()
 def connection():
     email = get_jwt_identity()
     print(email)
+    return email, 200
+
+# GAME ROUTES
+
+@bp.route("/check_lobby_status/<hash>", methods=[])
+@jwt_required()
+def check_lobby_status(hash):
+    # Query database for the lobby with this hash
+
+    # Return the lobby
     return 200

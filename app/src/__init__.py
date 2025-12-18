@@ -5,6 +5,8 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 # from apscheduler.schedulers.background import BackgroundScheduler
 
+from src.socket_events.constructor import socketio
+
 from datetime import timedelta
 
 jwt = JWTManager()
@@ -15,7 +17,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     # Remove this later-- its just so we can use a different localhost port in development
-    CORS(app, resources={r"/*": {"origins": "https://localhost"}})
+    CORS(app, resources={r"/*": {"origins": "https://localhost"}}, origins=["https://app.localhost"])
 
     app.config.from_mapping(
         SECRET_KEY='dev',
@@ -34,17 +36,12 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-
-    # a simple page that says hello
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
     
     # Initialize JWT with the app
     app.config["JWT_SECRET_KEY"] = "abcdefghijklmnopqrstuvwxyz1234567890"
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=2)
 
-    from .db.utils import Session
+    from src.db.utils import Session
 
     # Make sure our Session factory closes when the app stops
     @app.teardown_appcontext
@@ -61,6 +58,10 @@ def create_app(test_config=None):
     app.register_blueprint(auth_routes.bp)
 
     from .db.db import init_db
+
+    # Register socket
+    from src.socket_events import events
+    socketio.init_app(app)
 
     init_db()
 

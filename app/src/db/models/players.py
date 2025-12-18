@@ -15,15 +15,19 @@ class Players(Base, CreatedAtColumn):
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("Users", back_populates="player_instances")
-    
-    stats_id = Column(Integer, ForeignKey("stats.id"), nullable=False)
-    stats = relationship("Stats", back_populates="player")
-    
+        
     lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
     lobby = relationship("Lobbies", back_populates="players")
     
     current_game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
     current_game = relationship("Games", back_populates="players")
+    
+    stats = relationship(
+        "Stats",
+        back_populates="player",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
     
     def __repr__(self):
         return f"<Players(id={self.id}, user_id={self.user_id})>"
