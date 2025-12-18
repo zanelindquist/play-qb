@@ -82,13 +82,23 @@ def packet_information(file):
 
     return {"tossups": tossups, "bonuses": bonuses}
 
+# Get cursory information about a packet
 # print(packet_information("./packets/2002 Michigan MLK.json"))
 
+# Write an in-memory dict to the mysql database
 # dict = get_json("./packets/2002 Michigan MLK.json")
 # write_dict_to_sql(dict, "./logs/tosql.txt") 
 
-question = {"question": "The narrator would like to respect the title characters, but doing so would be disagreeing with virtually all scholars.  Three of those characters appear and each, while establishing foundations, streets, and such facilities, gives the narrator a comparison of important contemporary women and women of antiquity.  Afterward the title location is populated with these great women, and the narrator, considered the first Frenchwoman to support herself by writing, warns women about men.  For 10 points -- name this 1405 feminist innovation written by Christine de Pizan. "}
+# Categorize a question
+question = {"question": 
+            """
+His battles with the Uzbeks, Persians, and the Deccan kingdoms served him well in his war of succession with his brother Dara Shikoh, whom he defeated and killed in 1658.  He expanded his empire to its zenith, but his Muslim militancy alienated Hindus and led to a series of revolts and economic crises.  When he died, the failure of his sons to resolve these issues led to the Mughal Empire’s breakup.  For 10 points – identify this man, the son of Shah Jehan.   
+            """}
 
-categorize_question(question)
+print(categorize_question(question))
 
+# Find population statistics for the classifier
+# find_question_points_stats(500, diagnostics="./logs/stats.txt", classifier_model="400 words")
+
+# Scrape all questions?
 # scrape_questions()

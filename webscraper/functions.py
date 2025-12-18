@@ -21,9 +21,10 @@ from sqlalchemy.orm import sessionmaker
 import random
 import string
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, sem
+from pathlib import Path
 
-from keywords import CATEGORIZATION_KEYWORDS, QUESTION_PART_WEIGHTS
+from keywords import *
 
 
 connection = mysql.connector.connect(
@@ -248,6 +249,44 @@ def get_json(file):
     with open(file, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def update_model_stats(json_file_path, param_dict, save=True):
+    """
+    Updates the statistics of classifier models stored in a JSON file.
+    
+    Parameters:
+    - json_file_path (str or Path): path to the JSON file.
+    - param_dict (dict): dictionary of parameters to update, keyed by model name.
+        Example: {"history_model": {"mean": 0.8, "std": 0.1}, ...}
+    - save (bool): whether to save the updated JSON back to file.
+    
+    Returns:
+    - updated_data (dict): the updated dictionary from the JSON.
+    """
+    json_file_path = Path(json_file_path)
+    
+    # 1️⃣ Load existing JSON
+    if not json_file_path.exists():
+        raise FileNotFoundError(f"File {json_file_path} not found")
+    
+    with open(json_file_path, "r") as f:
+        data = json.load(f)
+    
+    # 2️⃣ Update statistics
+    for model_name, stats in param_dict.items():
+        if model_name in data:
+            # Update existing stats
+            data[model_name].update(stats)
+        else:
+            # If model doesn't exist, add it
+            data[model_name] = stats
+    
+    # 3️⃣ Optionally save back to JSON
+    if save:
+        with open(json_file_path, "w") as f:
+            json.dump(data, f, indent=4)
+    
+    return data
+
 def write_dict_to_sql(dict, diagnostics=False):
     meta = dict["tournament_metadata"]
 
@@ -393,7 +432,7 @@ def generate_unique_hash(length=16):
     """Generate a unique hash consisting of uppercase and lowercase letters."""
     return ''.join(random.choices(string.ascii_letters, k=length))
 
-def categorize_question(question_data, mean=0, std=1):
+def categorize_question(question_data):
     if not question_data.get("question"):
         return None
     
@@ -419,9 +458,10 @@ def categorize_question(question_data, mean=0, std=1):
             for (power_level, words) in CATEGORIZATION_KEYWORDS[category].items():
                 for word in words:
                     # Search the part for each word
-                    if word.lower() in part.lower():
+                    tokens = re.findall(r'\b\w+\b', part.lower())  # splits into words ignoring punctuation
+                    if word.lower() in tokens:
                         category_total += power_level * part_multiplier
-            if not category_scores.get("category"):
+            if category not in category_scores:
                 category_scores[category] = 0
 
             # Assign points to the category a word belongs to
@@ -435,18 +475,59 @@ def categorize_question(question_data, mean=0, std=1):
     
 
     # Compute a confidence level?
-    confidence_level = 0.5;
+    mean = POPULATION_STATISTICS["mean"]
+    std = POPULATION_STATISTICS["std"]
+    confidence_level = 0;
     if mean and std:
         # Find the difference between the first and second
-        d_bar = sorted_categories[0][1] - sorted_categories[1][1]
+        x = sorted_categories[0][1]
         # z = (d_bar - u) / std
-        z = (d_bar - mean) / std;
+        z = (x - mean) / std;
         # Find the area that this z value offsets
         area = norm.cdf(z)
 
         confidence_level = area
+
+    top = sorted_categories[0]
+
+    data = {
+        "category": top[0],
+        "points": top[1],
+        "confidence_level": confidence_level
+    }
     
-    print(sorted_categories)
+    return data
 
-    return sorted_categories[0]
+def find_question_points_stats(n, diagnostics=False, classifier_model="unnamed"):
+    cursor = connection.cursor()
+    cursor.execute("SELECT question FROM questions LIMIT %s", (n,))
+    questions = cursor.fetchall()
 
+    means = []
+    confidence_levels = []
+
+    for question in questions:
+        q_text = question[0]
+        result = categorize_question({"question": q_text})
+        means.append(result.get("points"))
+        confidence_levels.append(result.get("confidence_level"))
+
+    mean = np.mean(means)
+    std = np.std(means)
+    standard_error = sem(means)
+
+    mean_confidence_level = np.mean(confidence_levels)
+
+    data = {
+        "n": n,
+        "mean": mean,
+        "std": std,
+        "standard_error": standard_error,
+        "mean_confidence_level": mean_confidence_level
+    }
+
+    if diagnostics:
+        update_model_stats("./logs/classifier_stats.json", {classifier_model: data})
+        append_to_diagnostics_file(diagnostics, f"CALCULATED stats for classifier model: {classifier_model}: {" | ".join([f"{key}: {value}" for (key, value) in data.items()])}")
+
+    return data
