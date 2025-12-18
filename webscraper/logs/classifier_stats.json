@@ -17,7 +17,9 @@
         "n": 500,
         "mean": 9.707,
         "std": 7.675653131818817,
-        "standard_error": 0.34360942489074353,
-        "mean_confidence_level": 0.5468448393239628
+        "standard_error": 0.28150546825472966,
+        "mean_confidence_level": 0.5225842036136065,
+        "mean_diff": 5.241,
+        "std_diff": 6.28835582644621
     }
 }
