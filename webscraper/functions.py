@@ -20,6 +20,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import random
 import string
+import numpy as np
+from scipy.stats import norm
 
 from keywords import CATEGORIZATION_KEYWORDS, QUESTION_PART_WEIGHTS
 
@@ -391,7 +393,7 @@ def generate_unique_hash(length=16):
     """Generate a unique hash consisting of uppercase and lowercase letters."""
     return ''.join(random.choices(string.ascii_letters, k=length))
 
-def categorize_question(question_data):
+def categorize_question(question_data, mean=0, std=1):
     if not question_data.get("question"):
         return None
     
@@ -402,17 +404,49 @@ def categorize_question(question_data):
     
     # Parse question into different parts (first sentance, middle, last sentance)
     sentances = question.split(".")
-    question_parts = [sentances[0], sentances[1:-2].join("."), sentances [-1]]
-
-
+    # Each question has three parts
+    question_parts = [sentances[0], ".".join(sentances[1:-2]), sentances [-1]]
 
     # Search each part for words in each category
+    for i in range(len(question_parts)):
+        part_multiplier = QUESTION_PART_WEIGHTS[i]
+        part = question_parts[i]
 
-    # Assign points to the category a word belongs to
+        # Loop through each category
+        for category in CATEGORIZATION_KEYWORDS:
+            category_total = 0;
+            # loop through each power level
+            for (power_level, words) in CATEGORIZATION_KEYWORDS[category].items():
+                for word in words:
+                    # Search the part for each word
+                    if word.lower() in part.lower():
+                        category_total += power_level * part_multiplier
+            if not category_scores.get("category"):
+                category_scores[category] = 0
+
+            # Assign points to the category a word belongs to
+            category_scores[category] += category_total
     
+    sorted_categories = sorted(
+        category_scores.items(),
+        key=lambda cat: cat[1],
+        reverse=True
+    )
+    
+
     # Compute a confidence level?
-    
-    category = ""
+    confidence_level = 0.5;
+    if mean and std:
+        # Find the difference between the first and second
+        d_bar = sorted_categories[0][1] - sorted_categories[1][1]
+        # z = (d_bar - u) / std
+        z = (d_bar - mean) / std;
+        # Find the area that this z value offsets
+        area = norm.cdf(z)
 
-    return category;
+        confidence_level = area
+    
+    print(sorted_categories)
+
+    return sorted_categories[0]
 

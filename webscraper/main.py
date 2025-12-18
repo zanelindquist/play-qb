@@ -84,7 +84,11 @@ def packet_information(file):
 
 # print(packet_information("./packets/2002 Michigan MLK.json"))
 
-dict = get_json("./packets/2002 Michigan MLK.json")
-write_dict_to_sql(dict, "./logs/tosql.txt") 
+# dict = get_json("./packets/2002 Michigan MLK.json")
+# write_dict_to_sql(dict, "./logs/tosql.txt") 
+
+question = {"question": "The narrator would like to respect the title characters, but doing so would be disagreeing with virtually all scholars.  Three of those characters appear and each, while establishing foundations, streets, and such facilities, gives the narrator a comparison of important contemporary women and women of antiquity.  Afterward the title location is populated with these great women, and the narrator, considered the first Frenchwoman to support herself by writing, warns women about men.  For 10 points -- name this 1405 feminist innovation written by Christine de Pizan. "}
+
+categorize_question(question)
 
 # scrape_questions()
