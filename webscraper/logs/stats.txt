@@ -1,0 +1,7 @@
+2025-12-17 22:23:55 --- CALCULATED stats for classifier model: 100words: n: 100 mean: 7.105 | std: 6.225068272717979 | standard_error: 0.6256429016651914
+2025-12-17 22:26:20 --- CALCULATED stats for classifier model: 100words: n: 500 mean: 7.898 | std: 6.418067933576272 | standard_error: 0.28731217965334205
+2025-12-17 22:38:21 --- CALCULATED stats for classifier model: 100 words: n: 500 mean: 7.898 | std: 6.418067933576272 | standard_error: 0.28731217965334205 | mean_confidence_level: 0.3538254086610783
+2025-12-17 22:40:11 --- CALCULATED stats for classifier model: 100 words: n: 500 mean: 7.898 | std: 6.418067933576272 | standard_error: 0.28731217965334205 | mean_confidence_level: 0.47392582716701814
+2025-12-17 22:46:01 --- CALCULATED stats for classifier model: 100 words: n: 500 | mean: 7.898 | std: 6.418067933576272 | standard_error: 0.28731217965334205 | mean_confidence_level: 0.47392582716701814
+2025-12-17 22:47:06 --- CALCULATED stats for classifier model: 20 words: n: 500 | mean: 4.92 | std: 5.4313534224905675 | standard_error: 0.2431407717141234 | mean_confidence_level: 0.33149814384155846
+2025-12-17 22:58:12 --- CALCULATED stats for classifier model: 400 words: n: 500 | mean: 9.707 | std: 7.675653131818817 | standard_error: 0.34360942489074353 | mean_confidence_level: 0.5468448393239628
