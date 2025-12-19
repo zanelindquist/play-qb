@@ -174,6 +174,7 @@ const Question = ({
     }
 
     function capitalize(text) {
+        if(!text) return "Undefined"
         return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
     }
 

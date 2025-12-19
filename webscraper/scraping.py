@@ -154,6 +154,7 @@ def scrape_tournament_page(link, diagnostics=False, level="College"):
             append_to_diagnostics_file(diagnostics, "Error while parsing packet \"" + name + "\":" + parsed_packet["error"])
             continue
 
+
     try:
         append_to_diagnostics_file(diagnostics, "COMPLETED tournament scrape: " + tournament + f"STATS: (success rate: {(len(processed_packets)/(len(processed_packets) + failed_packets))})")
     except Exception as error:
@@ -171,6 +172,26 @@ def scrape_tournament_page(link, diagnostics=False, level="College"):
         "packets": processed_packets
     }
 
+def scrape_tournament_to_sql(link, diagnostics=False, level="College"):
+    # Returns a dict
+    tpacket = scrape_tournament_page(link, diagnostics=diagnostics, level=level)
+    
+    # save_tpacket_to_json(tpacket, f"./packets/{tpacket["tournament_metadata"].get("name")}.json")
+
+    # Write the dict to SQL
+    try:
+        write_dict_to_sql(tpacket, diagnostics=diagnostics)
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, "SUCCESS wrote tournament packet to SQL database")
+    except Exception as e:
+        print(f"Writing to SQL failed: falling back to saving to JSON: {e}")
+        # Fallback and save to JSON
+        save_tpacket_to_json(tpacket, f"./packets/{tpacket["tournament_metadata"].get("name")}.json")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"FALLBACK wrote tournament packet to JSON instead of SQL database: {e}")
+
+
+# NOT READY
 def scrape_questions():
     if USE_PLAYWRIGHT:
         with sync_playwright() as p:
@@ -202,21 +223,10 @@ def scrape_questions():
             valid_links.append(href)
 
     for link in valid_links:
-        tpacket = scrape_tournament_page(link[1:])
-        break
+        tpacket = scrape_tournament_to_sql(link[1:], diagnostics="./logs/full_scrape.txt", level="College")
         
 
-    # Example: get all links
-    # for row in table_rows:
-    #     # Find all table data cells (<td>) within each row
-    #     table_data = row.find_all('td')
-        
-    #     # Extract text from each <td> cell
-    #     row_data = [data.get_text(strip=True) for data in table_data]
-        
-    #     print(row_data)
-
-def scrape_individual_page():
+def scrape_individual_page_to_json():
     print("BEGINNING webscrape")
     tournment_packet = scrape_tournament_page("/3209/", diagnostics="./logs/scrape.txt", level="College")
 
@@ -234,6 +244,10 @@ def scrape_individual_page():
             print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
 
 def packet_information(file):
+    # Make into an absolute paths
+    BASE_DIR = os.path.dirname(__file__)
+    file = os.path.join(BASE_DIR, file)
+
     tournament = {}
     with open(file, "r", encoding="utf-8") as f:
         tournament = json.load(f)
@@ -316,13 +330,17 @@ def save_tpacket_to_json(tpacket, file):
     if not file.endswith(".json"):
         raise ValueError("save_tpacket_to_json: file must be json format")
 
-    # make sure the folder exists
+    # Make into an absolute path
+    BASE_DIR = os.path.dirname(__file__)
+    file = os.path.join(BASE_DIR, file)
+
+    # Make sure the folder exists
     os.makedirs(os.path.dirname(file) or ".", exist_ok=True)
 
     with open(file, "w", encoding="utf-8") as f:
         json.dump(tpacket, f, ensure_ascii=False, indent=4)
 
-    print(f"SAVED tpackt to {file}")
+    print(f"SAVED tpacket to {file}")
 
 def write_dict_to_sql(dict, diagnostics=False):
     meta = dict["tournament_metadata"]
@@ -376,7 +394,18 @@ def write_dict_to_sql(dict, diagnostics=False):
                 question = tossup[0]
                 answer = tossup[1]
 
-                category = categorize_question(tossup)
+                if not question or not answer:
+                    continue
+
+                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                # If there is an error in this for some reason
+                if not classifier_data:
+                    continue
+
+                category = classifier_data.get("category")
+
+                if not category:
+                    continue
 
                 # Define query
                 query = """
@@ -409,7 +438,64 @@ def write_dict_to_sql(dict, diagnostics=False):
                 if diagnostics:
                     append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
                 connection.rollback()
+                # Throw the error again so that the final code does notrun
+                raise e;
+        
         # Save bonuess to DB
+        for bonus in packet.get("bonuses"):
+            try:
+                intro = bonus.get("intro");
+                if not intro:
+                    continue
+
+                questions = bonus.get("questions")
+
+                if not question or not answer:
+                    continue
+
+                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                # If there is an error in this for some reason
+                if not classifier_data:
+                    continue
+
+                category = classifier_data.get("category")
+
+                if not category:
+                    continue
+
+                # Define query
+                query = """
+                INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """
+
+                # Define values
+                values = (
+                    # id auto generates
+                    generate_unique_hash(), # hash
+                    tournament, # tournament
+                    0,        # type (tossup or bonus)
+                    season, # year
+                    level, # level(ms, hs, college, open)
+                    category, # category
+                    question,  # question
+                    answer,  # answer
+                    datetime.now(timezone.utc) # created_at
+                )
+
+                # Execute and commit
+                cursor.execute(query, values)
+                connection.commit()
+                
+                # For diagnostics
+                questions_written += 1;
+            except Exception as e:
+                #TODO: Have error checking and logging for malformed data
+                if diagnostics:
+                    append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
+                connection.rollback()
+                # Throw the error again so that the final code does notrun
+                raise e;
 
     cursor.close()
     connection.close()
@@ -417,7 +503,7 @@ def write_dict_to_sql(dict, diagnostics=False):
     if diagnostics:
         append_to_diagnostics_file(diagnostics, f"COMPLETED translating questions from json to sql: STATS: (created_questions: {questions_written} | success_rate: {questions_written/total_questions})")
     
-    print(f"Completed writing {questions_written} new questions to MySQL database")
+    print(f"Completed writing {questions_written} new questions to MySQL database out of {packet_length} questions")
 
     return {"status": 200, "message": "Success!"}
 
@@ -473,15 +559,15 @@ def mutate_existing_questions(diagnostics=False):
 
 
 # CATEGORIZATION
-
+# question_data: {"question": "...", "answers": "..."}
 def categorize_question(question_data, model="400 words"):
     if not question_data.get("question"):
         return None
     
     classifier_function = None;
-    
+
     # Find model
-    for (name, function) in MODELS:
+    for name, function in MODELS.items():
         if model.endswith(name):
             classifier_function = function
 

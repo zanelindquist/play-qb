@@ -5,21 +5,23 @@ from .classifiers.ml.ml import train_and_save_model
 
 html = False;
 
+# Scrape tournament page to SQL
+# scrape_tournament_to_sql("/2848/", diagnostics="./logs/tourny_to_sql.txt", level="Open")
 
 # Get cursory information about a packet
-# print(packet_information("./packets/2002 Michigan MLK.json"))
+# print(packet_information("./packets/2024 ACF Fall.json"))
 
 # Write an in-memory dict to the mysql database
-# dict = get_json("./packets/2002 Michigan MLK.json")
-# write_dict_to_sql(dict, "tosql.txt") 
+# dict = get_json("./packets/2024 ACF Fall.json")
+# write_dict_to_sql(dict, diagnostics="./logs/tosql.txt") 
 
 # Categorize a question
-question = {"question": 
+question = {"question":
             """
-His battles with the Uzbeks, Persians, and the Deccan kingdoms served him well in his war of succession with his brother Dara Shikoh, whom he defeated and killed in 1658.  He expanded his empire to its zenith, but his Muslim militancy alienated Hindus and led to a series of revolts and economic crises.  When he died, the failure of his sons to resolve these issues led to the Mughal Empire’s breakup.  For 10 points – identify this man, the son of Shah Jehan.   
+He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is amazed at the  sight of moon pie when he emerges after a brief stint as Frostillicus. He tells a drunkard, "The  sidewalk's for regular walking, not fancy walking," and sprouts hair all over his body after taking  Wednesday's pills on Friday. When he serves as a substitute teacher, he confiscates everything  made of tin, gets his beard caught in a pencil sharpener, and threatens paddlings. For 10 points - name this crotchety old companion of Abe Simpson.
             """}
 
-# print(categorize_question(question, model="400 words"))
+# print(categorize_question(question, model="1.0ml"))
 
 # Categorize all questions
 # mutate_existing_questions("recategorize.txt")
