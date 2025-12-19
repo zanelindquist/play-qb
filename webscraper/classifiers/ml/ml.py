@@ -1,0 +1,118 @@
+import re
+from scipy.stats import norm
+import numpy as np
+import joblib
+import os
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+from webscraper.keywords import *
+from webscraper.utils import *
+
+BASE_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(BASE_DIR, "question_classifier.joblib")
+VECTORIZER_PATH = os.path.join(BASE_DIR, "question_vectorizer.joblib")
+
+MODEL = None
+VECTORIZER = None
+
+def load_model():
+    global MODEL, VECTORIZER
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(VECTORIZER_PATH):
+        raise FileNotFoundError("Model files not found. Run train_and_save_model() first.")
+    MODEL = joblib.load(MODEL_PATH)
+    VECTORIZER = joblib.load(VECTORIZER_PATH)
+
+
+
+def classify_by_ml(question_data):
+    """
+    question_data = {"question": "..."}
+    """
+
+    text = preprocess_text(question_data["question"])
+    vec = VECTORIZER.transform([text])
+
+    probs = MODEL.predict_proba(vec)[0]
+    idx = np.argmax(probs)
+
+    predicted_category = MODEL.classes_[idx]
+    confidence = probs[idx]
+
+    return {
+        "category": predicted_category,
+        "confidence": float(confidence)
+    }
+
+def train_and_save_model(questions, model_name, diagnostics=False):
+    """
+    questions = [
+        {"question": "...", "category": "..."},
+        ...
+    ]
+    """
+
+    texts = [preprocess_text(q["question"]) for q in questions]
+    labels = [q["category"] for q in questions]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        texts,
+        labels,
+        test_size=0.2,
+        stratify=labels,
+        random_state=42
+    )
+
+    vectorizer = TfidfVectorizer(
+        ngram_range=(1, 2),
+        max_df=0.9,
+        min_df=5,
+        sublinear_tf=True
+    )
+
+    X_train_vec = vectorizer.fit_transform(X_train)
+    X_test_vec = vectorizer.transform(X_test)
+
+    model = LogisticRegression(
+        max_iter=500,
+        class_weight="balanced"
+    )
+
+    model.fit(X_train_vec, y_train)
+
+    # ---- Evaluation ----
+    predictions = model.predict(X_test_vec)
+
+    metrics = {
+        "n": len(labels),
+        "model_type": "LogisticRegression",
+        "accuracy": accuracy_score(y_test, predictions),
+        "confusion_matrix": confusion_matrix(y_test, predictions).tolist(),
+    }
+
+    if diagnostics:
+        update_model_stats("./logs/classifier_stats.json", {model_name: metrics})
+        append_to_diagnostics_file(diagnostics, f"COMPLETED training ML model '{model_name}':{" | ".join([f"{key}: {value}" for key, value in metrics.items()])}")
+
+    print("Accuracy:", accuracy_score(y_test, predictions))
+    print("Confusion matrix:\n", confusion_matrix(y_test, predictions))
+
+    # ---- Save artifacts ----
+    joblib.dump(model, "question_classifier.joblib")
+    joblib.dump(vectorizer, "question_vectorizer.joblib")
+
+def preprocess_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^\w\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    tokens = [
+        word for word in text.split()
+        if word not in ENGLISH_STOP_WORDS and len(word) > 2
+    ]
+
+    return " ".join(tokens)

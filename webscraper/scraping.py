@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import requests
 import csv
 import os
-from config import *
 from PyPDF2 import PdfReader
 import io
 import re
@@ -21,10 +20,13 @@ from sqlalchemy.orm import sessionmaker
 import numpy as np
 from scipy.stats import norm, sem
 from pathlib import Path
+from playwright.sync_api import sync_playwright
 
-from keywords import *
-from classifier_models import *
-from utils import *
+from .config import *
+from .keywords import *
+from .classifier_models import *
+from .utils import *
+from .classifiers.ml.ml import *
 
 
 
@@ -168,6 +170,80 @@ def scrape_tournament_page(link, diagnostics=False, level="College"):
         },
         "packets": processed_packets
     }
+
+def scrape_questions():
+    if USE_PLAYWRIGHT:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(url, wait_until="networkidle")
+            
+            # wait for table to load
+            page.wait_for_selector("table")
+            
+            html = page.content()
+    else:
+        response = requests.get(url)
+
+        # Check if request was successful
+        if response.status_code == 200:
+            html = response.text
+
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    links = soup.find_all("a")
+    valid_links = []
+
+    for link in links:
+        href = link.get("href")
+        if href and len(href) > 1 and href[0] == "/" and href[1].isdigit():
+            # This is a valid link that we would like to explore
+            valid_links.append(href)
+
+    for link in valid_links:
+        tpacket = scrape_tournament_page(link[1:])
+        break
+        
+
+    # Example: get all links
+    # for row in table_rows:
+    #     # Find all table data cells (<td>) within each row
+    #     table_data = row.find_all('td')
+        
+    #     # Extract text from each <td> cell
+    #     row_data = [data.get_text(strip=True) for data in table_data]
+        
+    #     print(row_data)
+
+def scrape_individual_page():
+    print("BEGINNING webscrape")
+    tournment_packet = scrape_tournament_page("/3209/", diagnostics="./logs/scrape.txt", level="College")
+
+    if not tournment_packet:
+        print("There was an error scraping that packet. Check the logs")
+    else:
+        tournment_name = tournment_packet.get("tournament_metadata").get("name")
+
+        # TODO: Save these questions to a mysql database or figure out how we want to save them
+
+        if tournment_name:
+            save_tpacket_to_json(tournment_packet, "./packets/" + tournment_name + ".json")
+        else:
+            save_tpacket_to_json(tournment_packet, "./packets/1.json")
+            print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
+
+def packet_information(file):
+    tournament = {}
+    with open(file, "r", encoding="utf-8") as f:
+        tournament = json.load(f)
+    tossups = 0
+    bonuses = 0
+    for packet in tournament.get("packets"):
+        tossups += len(packet.get("tossups"))
+        bonuses += len(packet.get("bonuses"))
+
+    return {"tossups": tossups, "bonuses": bonuses}
 
 
 # PARSING
@@ -414,6 +490,18 @@ def categorize_question(question_data, model="400 words"):
 
     return result
 
+def train_ml_classifier(model, diagnostics=False):
+    # Get questions to pass to the model here
+    cursor = connection.cursor()
+
+
+    # ===== Re-classify questions =====
+    cursor.execute("SELECT question, category, answers FROM questions")
+    questions = cursor.fetchall()
+
+    questions = [{"question": question[0], "category": question[1], "answers": question[2]} for question in questions]
+
+    train_and_save_model(questions, model, diagnostics=diagnostics)
 
 # CLASSIFIER QUANTIFICATION
 
@@ -446,46 +534,7 @@ def find_question_points_stats(n, diagnostics=False, classifier_model="Untitled 
     }
 
     if diagnostics:
-        update_model_stats("./logs/classifier_stats.json", {classifier_model: data})
+        update_model_stats("classifier_stats.json", {classifier_model: data})
         append_to_diagnostics_file(diagnostics, f"CALCULATED stats for classifier model: {classifier_model}: {" | ".join([f"{key}: {value}" for (key, value) in data.items()])}")
 
     return data
-
-def update_model_stats(json_file_path, param_dict, save=True):
-    """
-    Updates the statistics of classifier models stored in a JSON file.
-    
-    Parameters:
-    - json_file_path (str or Path): path to the JSON file.
-    - param_dict (dict): dictionary of parameters to update, keyed by model name.
-        Example: {"history_model": {"mean": 0.8, "std": 0.1}, ...}
-    - save (bool): whether to save the updated JSON back to file.
-    
-    Returns:
-    - updated_data (dict): the updated dictionary from the JSON.
-    """
-    json_file_path = Path(json_file_path)
-    
-    # 1️⃣ Load existing JSON
-    if not json_file_path.exists():
-        raise FileNotFoundError(f"File {json_file_path} not found")
-    
-    with open(json_file_path, "r") as f:
-        data = json.load(f)
-    
-    # 2️⃣ Update statistics
-    for model_name, stats in param_dict.items():
-        if model_name in data:
-            # Update existing stats
-            data[model_name].update(stats)
-        else:
-            # If model doesn't exist, add it
-            data[model_name] = stats
-    
-    # 3️⃣ Optionally save back to JSON
-    if save:
-        with open(json_file_path, "w") as f:
-            json.dump(data, f, indent=4)
-    
-    return data
-
