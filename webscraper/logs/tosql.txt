@@ -15,3 +15,6 @@
 2025-12-19 11:00:02 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 279 | success_rate: 0.9554794520547946)
 2025-12-19 11:05:02 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 272 | success_rate: 0.9315068493150684)
 2025-12-19 11:23:53 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 272 | success_rate: 0.9315068493150684)
+2025-12-19 12:39:01 --- FAILURE: packet already exists in database
+2025-12-19 12:39:13 --- Error while creating bonus question SQL row: Unread result found
+2025-12-19 13:25:22 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 0 | created_bonuses: 269 | success_rate: 0.0 | success_rate_bonuses: 0.9057239057239057)

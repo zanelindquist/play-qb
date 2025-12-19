@@ -342,7 +342,7 @@ def save_tpacket_to_json(tpacket, file):
 
     print(f"SAVED tpacket to {file}")
 
-def write_dict_to_sql(dict, diagnostics=False):
+def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
     meta = dict["tournament_metadata"]
 
     tournament = meta["name"]
@@ -363,8 +363,10 @@ def write_dict_to_sql(dict, diagnostics=False):
 
     questions_written = 0;
     total_questions = 0;
+    bonuses_written = 0;
+    total_bonuses = 0;
 
-    cursor = connection.cursor()
+    cursor = connection.cursor(buffered=True)
 
     # Prevent collisions. If another packet with the name is found, don't write the questions
     query = """
@@ -374,7 +376,7 @@ def write_dict_to_sql(dict, diagnostics=False):
     cursor.execute(query, (tournament,))
     questions_exist = cursor.fetchone()is not None
 
-    if questions_exist:
+    if questions_exist and not persist_db:
         print("FAILURE: packet already exists in database")
         if diagnostics:
             append_to_diagnostics_file(diagnostics, "FAILURE: packet already exists in database")
@@ -383,77 +385,94 @@ def write_dict_to_sql(dict, diagnostics=False):
 
     for packet in dict.get("packets"):
         # Save tossups to DB
-        for tossup in packet.get("tossups"):
-            # Increment for diagnostics
-            total_questions += 1
+        # for tossup in packet.get("tossups"):
+        #     # Increment for diagnostics
+        #     total_questions += 1
 
-            if len(tossup) < 2:
-                continue
+        #     if len(tossup) < 2:
+        #         continue
 
-            try:
-                question = tossup[0]
-                answer = tossup[1]
+        #     try:
+        #         question = remove_whitespace(tossup[0])
+        #         answer = remove_whitespace(tossup[1])
 
-                if not question or not answer:
-                    continue
+        #         if not question or not answer:
+        #             continue
 
-                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
-                # If there is an error in this for some reason
-                if not classifier_data:
-                    continue
+        #         classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+        #         # If there is an error in this for some reason
+        #         if not classifier_data:
+        #             continue
 
-                category = classifier_data.get("category")
+        #         category = classifier_data.get("category")
 
-                if not category:
-                    continue
+        #         if not category:
+        #             continue
 
-                # Define query
-                query = """
-                INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
-                """
+        #         # Define query
+        #         query = """
+        #         INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
+        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+        #         """
 
-                # Define values
-                values = (
-                    # id auto generates
-                    generate_unique_hash(), # hash
-                    tournament, # tournament
-                    0,        # type (tossup or bonus)
-                    season, # year
-                    level, # level(ms, hs, college, open)
-                    category, # category
-                    question,  # question
-                    answer,  # answer
-                    datetime.now(timezone.utc) # created_at
-                )
+        #         # Define values
+        #         values = (
+        #             # id auto generates
+        #             generate_unique_hash(), # hash
+        #             tournament, # tournament
+        #             0,        # type (tossup or bonus)
+        #             season, # year
+        #             level, # level(ms, hs, college, open)
+        #             category, # category
+        #             question,  # question
+        #             answer,  # answer
+        #             datetime.now(timezone.utc) # created_at
+        #         )
 
-                # Execute and commit
-                cursor.execute(query, values)
-                connection.commit()
+        #         # Execute and commit
+        #         cursor.execute(query, values)
+        #         connection.commit()
                 
-                # For diagnostics
-                questions_written += 1;
-            except Exception as e:
-                #TODO: Have error checking and logging for malformed data
-                if diagnostics:
-                    append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
-                connection.rollback()
-                # Throw the error again so that the final code does notrun
-                raise e;
+        #         # For diagnostics
+        #         questions_written += 1;
+        #     except Exception as e:
+        #         #TODO: Have error checking and logging for malformed data
+        #         if diagnostics:
+        #             append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
+        #         connection.rollback()
+        #         # Throw the error again so that the final code does notrun
+        #         raise e;
         
         # Save bonuess to DB
         for bonus in packet.get("bonuses"):
+            total_bonuses += 1
             try:
                 intro = bonus.get("intro");
                 if not intro:
                     continue
 
                 questions = bonus.get("questions")
+                question_parts = [intro]
+                answer_parts = []
 
-                if not question or not answer:
+                malformed_data = False
+
+                for q in questions:
+                    if len(q) < 2:
+                        malformed_data = True
+                        break
+
+                    question_parts.append(remove_whitespace(q[0]))
+                    answer_parts.append(remove_whitespace(q[1]))
+
+                if malformed_data:
                     continue
 
-                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                question = " ||| ".join(question_parts)
+                answer = " ||| ".join(answer_parts)
+
+                classifier_data = categorize_question({"question": intro, "answer": None}, model="1.0 ml")
+                
                 # If there is an error in this for some reason
                 if not classifier_data:
                     continue
@@ -474,12 +493,12 @@ def write_dict_to_sql(dict, diagnostics=False):
                     # id auto generates
                     generate_unique_hash(), # hash
                     tournament, # tournament
-                    0,        # type (tossup or bonus)
+                    1,        # type (tossup or bonus)
                     season, # year
                     level, # level(ms, hs, college, open)
                     category, # category
                     question,  # question
-                    answer,  # answer
+                    answer,  # answers
                     datetime.now(timezone.utc) # created_at
                 )
 
@@ -488,11 +507,11 @@ def write_dict_to_sql(dict, diagnostics=False):
                 connection.commit()
                 
                 # For diagnostics
-                questions_written += 1;
+                bonuses_written += 1;
             except Exception as e:
                 #TODO: Have error checking and logging for malformed data
                 if diagnostics:
-                    append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
+                    append_to_diagnostics_file(diagnostics, f"Error while creating bonus question SQL row: {e}")
                 connection.rollback()
                 # Throw the error again so that the final code does notrun
                 raise e;
@@ -500,10 +519,13 @@ def write_dict_to_sql(dict, diagnostics=False):
     cursor.close()
     connection.close()
 
+    if total_questions == 0: total_questions = 1;
+    if total_bonuses == 0: total_bonuses= 1;
+
     if diagnostics:
-        append_to_diagnostics_file(diagnostics, f"COMPLETED translating questions from json to sql: STATS: (created_questions: {questions_written} | success_rate: {questions_written/total_questions})")
+        append_to_diagnostics_file(diagnostics, f"COMPLETED translating questions from json to sql: STATS: (created_questions: {questions_written} | created_bonuses: {bonuses_written} | success_rate: {questions_written/total_questions} | success_rate_bonuses: {bonuses_written/total_bonuses})")
     
-    print(f"Completed writing {questions_written} new questions to MySQL database out of {packet_length} questions")
+    print(f"Completed writing {questions_written}/{total_questions} new questions and {bonuses_written}/{total_bonuses} bonuses to MySQL database")
 
     return {"status": 200, "message": "Success!"}
 

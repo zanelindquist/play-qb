@@ -12,8 +12,8 @@ html = False;
 # print(packet_information("./packets/2024 ACF Fall.json"))
 
 # Write an in-memory dict to the mysql database
-# dict = get_json("./packets/2024 ACF Fall.json")
-# write_dict_to_sql(dict, diagnostics="./logs/tosql.txt") 
+dict = get_json("./packets/2024 ACF Fall.json")
+write_dict_to_sql(dict, diagnostics="./logs/tosql.txt", persist_db=True) 
 
 # Categorize a question
 question = {"question":

@@ -98,3 +98,9 @@ def update_model_stats(json_file_path, param_dict, save=True):
             json.dump(data, f, indent=4)
 
     return data
+
+
+def remove_whitespace(text):
+    if not text:  # handle None or empty string
+        return ""
+    return text.strip()
