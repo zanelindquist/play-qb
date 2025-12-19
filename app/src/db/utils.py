@@ -299,7 +299,7 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
 def get_random_question(level=2, difficulty=0, subject=0):
     session = get_session()
     try:
-        count = math.floor(session.query(func.count(Questions.id)).scalar() * random.random())
+        count = math.floor(session.query(func.count(Questions.id)).scalar())
         random_question_number = random.randint(0 , count - 1)
         question = session.execute(
             select(Questions)

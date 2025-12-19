@@ -28,25 +28,36 @@ def load_model():
     VECTORIZER = joblib.load(VECTORIZER_PATH)
 
 
-
-def classify_by_ml(question_data):
+# Takes either a list of questions for many clasification or just one question data dict
+def classify_by_ml(questions, model_name):
     """
     question_data = {"question": "..."}
     """
+    load_model()
+    results = []
+    isDict = False
+    if type(questions) == dict:
+        questions = [questions]
+        isDict = True
 
-    text = preprocess_text(question_data["question"])
-    vec = VECTORIZER.transform([text])
+    for question_data in questions:
+        text = preprocess_text(question_data["question"])
+        vec = VECTORIZER.transform([text])
 
-    probs = MODEL.predict_proba(vec)[0]
-    idx = np.argmax(probs)
+        probs = MODEL.predict_proba(vec)[0]
+        idx = np.argmax(probs)
 
-    predicted_category = MODEL.classes_[idx]
-    confidence = probs[idx]
+        predicted_category = MODEL.classes_[idx]
+        confidence = probs[idx]
 
-    return {
-        "category": predicted_category,
-        "confidence": float(confidence)
-    }
+        results.append({
+            "category": str(predicted_category),
+            "confidence": float(confidence)
+        })
+
+    if isDict:
+        return results[0]
+    return results
 
 def train_and_save_model(questions, model_name, diagnostics=False):
     """
@@ -91,7 +102,11 @@ def train_and_save_model(questions, model_name, diagnostics=False):
         "n": len(labels),
         "model_type": "LogisticRegression",
         "accuracy": accuracy_score(y_test, predictions),
-        "confusion_matrix": confusion_matrix(y_test, predictions).tolist(),
+        "confusion_matrix": np.array2string( # Make this a string
+            confusion_matrix(y_test, predictions),
+            separator=", ",
+            max_line_width=120
+        ),
     }
 
     if diagnostics:
@@ -102,8 +117,9 @@ def train_and_save_model(questions, model_name, diagnostics=False):
     print("Confusion matrix:\n", confusion_matrix(y_test, predictions))
 
     # ---- Save artifacts ----
-    joblib.dump(model, "question_classifier.joblib")
-    joblib.dump(vectorizer, "question_vectorizer.joblib")
+    BASE_DIR = os.path.dirname(__file__)
+    joblib.dump(model, BASE_DIR + "/question_classifier.joblib")
+    joblib.dump(vectorizer, BASE_DIR + "/question_vectorizer.joblib")
 
 def preprocess_text(text: str) -> str:
     text = text.lower()
