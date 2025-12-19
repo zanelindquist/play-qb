@@ -1,3 +1,5 @@
+*.joblib
+
 certs
 certs-old
 
