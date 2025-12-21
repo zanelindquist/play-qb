@@ -78,7 +78,7 @@ def classify_by_keywords(question_data, model):
         "category": top[0],
         "points": top[1],
         "points_diff": top[1] - second[1],
-        "confidence_level": confidence_level
+        "confidence": confidence_level
     }
 
     return data

@@ -14,14 +14,15 @@ from webscraper.keywords import *
 from webscraper.utils import *
 
 BASE_DIR = os.path.dirname(__file__)
-MODEL_PATH = os.path.join(BASE_DIR, "question_classifier.joblib")
-VECTORIZER_PATH = os.path.join(BASE_DIR, "question_vectorizer.joblib")
-
 MODEL = None
 VECTORIZER = None
 
-def load_model():
+def load_model(model):
     global MODEL, VECTORIZER
+
+    MODEL_PATH = os.path.join(BASE_DIR, model, "question_classifier.joblib")
+    VECTORIZER_PATH = os.path.join(BASE_DIR, model, "question_vectorizer.joblib")
+
     if not os.path.exists(MODEL_PATH) or not os.path.exists(VECTORIZER_PATH):
         raise FileNotFoundError("Model files not found. Run train_and_save_model() first.")
     MODEL = joblib.load(MODEL_PATH)
@@ -29,11 +30,11 @@ def load_model():
 
 
 # Takes either a list of questions for many clasification or just one question data dict
-def classify_by_ml(questions, model_name):
+def classify_by_ml(questions, model_name="1.0 ml"):
     """
     question_data = {"question": "..."}
     """
-    load_model()
+    load_model(model_name)
     results = []
     isDict = False
     if type(questions) == dict:
@@ -52,14 +53,15 @@ def classify_by_ml(questions, model_name):
 
         results.append({
             "category": str(predicted_category),
-            "confidence": float(confidence)
+            "confidence": float(confidence),
+            "classes": MODEL.classes_.tolist()
         })
 
     if isDict:
         return results[0]
     return results
 
-def train_and_save_model(questions, model_name, diagnostics=False):
+def train_and_save_model(questions, model_name, diagnostics=False, confidence_threshold=0):
     """
     questions = [
         {"question": "...", "category": "..."},
@@ -118,9 +120,14 @@ def train_and_save_model(questions, model_name, diagnostics=False):
 
     # ---- Save artifacts ----
     BASE_DIR = os.path.dirname(__file__)
-    joblib.dump(model, BASE_DIR + "/question_classifier.joblib")
-    joblib.dump(vectorizer, BASE_DIR + "/question_vectorizer.joblib")
 
+    model_dir = os.path.join(BASE_DIR, model_name)
+    os.makedirs(model_dir, exist_ok=True)
+
+    joblib.dump(model, os.path.join(model_dir, "question_classifier.joblib"))
+    joblib.dump(vectorizer, os.path.join(model_dir, "question_vectorizer.joblib"))
+
+    
 def preprocess_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r"[^\w\s]", "", text)

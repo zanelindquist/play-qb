@@ -76,8 +76,9 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-        addEventListener("you_joined", ({Player}) => {
+        addEventListener("you_joined", ({Player, GameState}) => {
             setMyId(Player.id)
+            console.log(GameState)
         })
 
         addEventListener("player_joined", ({Player, GameState}) => {

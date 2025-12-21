@@ -61,14 +61,15 @@ def on_join_lobby(data):
     # do we echo the requested event type back to the user
     # or do we send it in an event channel that matches
     # the data type of the returning information?
-    GameState = {}
+    GameState = get_gamestate_by_lobby_alias(lobby)
 
     # Send PlayerInformation about the new player to existing players
     
     Player = get_player_by_email_and_lobby(user_id, lobby)
 
-    # Give the player just information about themselves
-    emit("you_joined", {"Player": Player})
+    # Give the player just information about themselves and the game
+
+    emit("you_joined", {"Player": Player, "GameState": GameState})
     
     emit("player_joined", {"Player": Player}, room=f"lobby:{lobby}")
 
@@ -111,7 +112,9 @@ def on_submit(data): # FinalAnswer
 
     # Logic for determining if an answer is acceptable or not
 
-    IsCorrect = False
+    # Get lobby's game's current question
+    question = {}
+    IsCorrect = check_question(question)
     FinalAnswer = data.get("FinalAnswer")
     Scores = False
     Player = get_player_by_email_and_lobby(user_id, lobby)
@@ -121,7 +124,7 @@ def on_submit(data): # FinalAnswer
     if IsCorrect:
         # If the answer is true
         # Get question according to game settings
-        data["Question"] = get_random_question()
+        data["Question"] = get_random_question(confidence_threshold=0)
         emit("next_question", data, room=f"lobby:{lobby}")
     else:
         # If the answer is false
@@ -138,6 +141,8 @@ def on_next_question(data):
 
     # Get question ACCORDING TO LOBBY SETTINGS
     Question = get_random_question()
+    # Set this question as the game's question
+    set_question_to_game(Question, lobby)
     emit("next_question", {"Question": Question, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused

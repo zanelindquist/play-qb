@@ -352,6 +352,11 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
     season = meta["season"]
     packet_length = meta["packet_length"]
 
+    if not difficulty:
+        difficulty = 2
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"write_dict_to_sql(): Difficulty not specified for {tournament}. Setting difficulty to Medium (2)")
+
     if level == "Middle School":
         level = 0;
     elif level == "High School":
@@ -478,14 +483,15 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                     continue
 
                 category = classifier_data.get("category")
+                confidence = classifier_data.get("confidence")
 
                 if not category:
                     continue
 
                 # Define query
                 query = """
-                INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                INSERT INTO questions (hash, tournament, type, year, level, category, category_confidence, question, answers, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
                 """
 
                 # Define values
@@ -497,6 +503,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                     season, # year
                     level, # level(ms, hs, college, open)
                     category, # category
+                    confidence, # category confidence
                     question,  # question
                     answer,  # answers
                     datetime.now(timezone.utc) # created_at
@@ -533,7 +540,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
 # MUTATING
 
 # Find questions in the database and change their fields
-def mutate_existing_questions(diagnostics=False):
+def mutate_existing_questions(diagnostics=False, model="400 words"):
     cursor = connection.cursor()
     questions_encountered = 0
     questions_mutated = 0
@@ -542,6 +549,8 @@ def mutate_existing_questions(diagnostics=False):
     try: 
         cursor.execute("SELECT id, difficulty, category, question, answers FROM questions")
         questions = cursor.fetchall()
+
+        print("LEN QUESTIONS", len(questions))
 
         for question in questions:
             questions_encountered += 1
@@ -555,17 +564,25 @@ def mutate_existing_questions(diagnostics=False):
                 "answers": answers
             }
 
-            new_category = categorize_question(question_data).get("category")
+            categorizer_data = categorize_question(question_data, model=model)
+            if not categorizer_data:
+                print(f"mutate_existing_questions(): No categorizer data WHERE id = {id}")
+                if diagnostics:
+                    append_to_diagnostics_file(diagnostics, "FAILED: No categorizer data WHERE id = {id}")
+                continue
 
-            if not new_category:
+            new_category = categorizer_data.get("category")
+            category_confidence = categorizer_data.get("confidence")
+
+            if not new_category or not category_confidence:
                 print(f"mutate_existing_questions(): Failed to re-categorize question WHERE id = {id}")
                 if diagnostics:
                     append_to_diagnostics_file(diagnostics, "FAILED to re-categorize question WHERE id = {id}")
                 continue;
 
-            updated_question = (new_category, id)
+            updated_question = (new_category, category_confidence, id)
 
-            cursor.execute("UPDATE questions SET category = %s WHERE id = %s", updated_question)
+            cursor.execute("UPDATE questions SET category = %s, category_confidence = %s WHERE id = %s", updated_question)
             questions_mutated += 1
             connection.commit()
     except Exception as e:
@@ -598,13 +615,14 @@ def categorize_question(question_data, model="400 words"):
 
     return result
 
-def train_ml_classifier(model, diagnostics=False):
+def train_ml_classifier(model, confidence_threshold=0.1, diagnostics=False):
     # Get questions to pass to the model here
     cursor = connection.cursor()
 
+    values = (confidence_threshold,)
 
     # ===== Re-classify questions =====
-    cursor.execute("SELECT question, category, answers FROM questions")
+    cursor.execute("SELECT question, category, answers FROM questions WHERE category_confidence >= %s AND category != ''", values)
     questions = cursor.fetchall()
 
     questions = [{"question": question[0], "category": question[1], "answers": question[2]} for question in questions]

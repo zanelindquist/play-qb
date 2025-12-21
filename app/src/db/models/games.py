@@ -22,6 +22,9 @@ class Games(Base, CreatedAtColumn):
 
     lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
     lobby = relationship("Lobbies", back_populates="games")
+
+    current_question_id = Column(Integer, ForeignKey("questions.id"), nullable=True)
+    current_question = relationship("Questions", back_populates="games")
     
     players = relationship("Players", back_populates="current_game")
 

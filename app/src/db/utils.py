@@ -296,14 +296,41 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     finally:
         session.remove()
 
-def get_random_question(level=2, difficulty=0, subject=0):
+def get_random_question(level=False, difficulty=False, subject=False, confidence_threshold=0.1):
     session = get_session()
+
     try:
-        count = math.floor(session.query(func.count(Questions.id)).scalar())
-        random_question_number = random.randint(0 , count - 1)
-        question = session.execute(
+        base_query = (
             select(Questions)
-            .where(Questions.id == random_question_number)
+            .where(Questions.category_confidence >= confidence_threshold)
+        )
+
+        # Optional filters (only apply if non-zero / non-null)
+        if level:
+            base_query = base_query.where(Questions.level == level)
+
+        if difficulty:
+            base_query = base_query.where(Questions.difficulty == difficulty)
+
+        if subject:
+            base_query = base_query.where(Questions.category == subject)
+
+        # Count filtered rows
+        count = session.execute(
+            select(func.count()).select_from(base_query.subquery())
+        ).scalar()
+
+        if count == 0:
+            return {
+                "code": 404,
+                "error": "No questions meet this query"
+            }
+
+        # Pick random offset
+        offset = random.randint(0, count - 1)
+
+        question = session.execute(
+            base_query.offset(offset).limit(1)
         ).scalars().first()
 
         return to_dict_safe(question, depth=0)
@@ -358,8 +385,32 @@ def get_lobby_by_alias(lobbyAlias):
     finally:
         session.commit()
 
+def get_gamestate_by_lobby_alias(lobbyAlias):
+    session = get_session()
+    try:
+        # Assuming every lobby only has one game
+        game = session.execute(
+            select(Games)
+            .join(Lobbies, Games.lobby_id == Lobbies.id)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        if not game:
+            return False;
+
+        # Create rel dep for this, just placeholder for now
+        return to_dict_safe(game, rel_depths={REL_DEP["db:game"]}, depth=0)
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_gamestate_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 # =====GAME FUNCTIONS=====
 
+def check_question(question):
+    return random.random() > 0.5
 
 def player_join_lobby(email, lobbyAlias):
     session = get_session()
@@ -395,6 +446,29 @@ def player_join_lobby(email, lobbyAlias):
     finally:
         session.commit()
 
+def set_question_to_game(question, lobbyAlias):
+    session = get_session()
+    try:
+        # Assuming every lobby only has one game
+        game = session.execute(
+            select(Games)
+            .join(Lobbies, Games.lobby_id == Lobbies.id)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        if not game:
+            return {'message': 'set_question_to_game(): failure', 'error': f'Game not found', "code": 400}
+
+        setattr(game, "current_question_id", question.get("id"))
+
+        session.commit()
+
+        return {'message': 'set_question_to_game(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'set_question_to_game(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # =====SANITATION AND VALIDATION=====
