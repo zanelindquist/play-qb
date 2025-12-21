@@ -38,7 +38,6 @@ const Play = () => {
     const {showAlert} = useAlert();
     const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
 
-    const [input, setInput] = useState("")
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
 
@@ -169,10 +168,9 @@ const Play = () => {
         send("typing", {content: text})
     }
 
-    function onSubmit() {
+    function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {FinalAnser: input})
-        setInput("")
+        send("submit", {FinalAnswer: text})
     }
 
     function onNextQuestion() {
@@ -193,7 +191,6 @@ const Play = () => {
     }
 
     function handleInputChange(text) {
-        setInput(text)
         onTyping(text)
     }
 
