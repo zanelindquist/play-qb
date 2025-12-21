@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Table, Text, ForeignKey, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, Table, Text, ForeignKey, Integer, Float, String, DateTime, Date, Boolean
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -19,9 +19,11 @@ class Questions(Base, CreatedAtColumn):
     category = Column(String(20), default="Unknown")
     question = Column(Text, nullable=False)
     answers = Column(Text, nullable=False)
+    category_confidence = Column(Float, nullable=False, default=0.5)
     prompts = Column(Text)
 
     reports = relationship("Reports", back_populates="question")
+    games = relationship("Games", back_populates="current_question")
 
     def __repr__(self):
         return f"<Question(id={self.id}, tournament={self.tournament})>"

@@ -12,8 +12,8 @@ html = False;
 # print(packet_information("./packets/2024 ACF Fall.json"))
 
 # Write an in-memory dict to the mysql database
-dict = get_json("./packets/2024 ACF Fall.json")
-write_dict_to_sql(dict, diagnostics="./logs/tosql.txt", persist_db=True) 
+# dict = get_json("./packets/2002 Michigan MLK.json")
+# write_dict_to_sql(dict, diagnostics="./logs/tosql.txt", persist_db=True) 
 
 # Categorize a question
 question = {"question":
@@ -24,7 +24,7 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # print(categorize_question(question, model="1.0ml"))
 
 # Categorize all questions
-# mutate_existing_questions("recategorize.txt")
+mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.1 ml")
 
 # Find population statistics for the classifier
 # find_question_points_stats(500, diagnostics="stats.txt", classifier_model="400 words")
@@ -33,4 +33,4 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # scrape_questions()
 
 # Train ML model
-# train_ml_classifier("1.0 ml", diagnostics="./logs/train_ml.txt")
+# train_ml_classifier("1.1 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
