@@ -253,6 +253,7 @@ const Question = ({
                     }
                     s
                 </HelperText>
+                <HelperText>{question.answers}</HelperText>
                 {
                     state == "dead" &&
                     (
