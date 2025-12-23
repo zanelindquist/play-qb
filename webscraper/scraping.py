@@ -390,63 +390,63 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
 
     for packet in dict.get("packets"):
         # Save tossups to DB
-        # for tossup in packet.get("tossups"):
-        #     # Increment for diagnostics
-        #     total_questions += 1
+        for tossup in packet.get("tossups"):
+            # Increment for diagnostics
+            total_questions += 1
 
-        #     if len(tossup) < 2:
-        #         continue
+            if len(tossup) < 2:
+                continue
 
-        #     try:
-        #         question = remove_whitespace(tossup[0])
-        #         answer = remove_whitespace(tossup[1])
+            try:
+                question = remove_whitespace(tossup[0])
+                answer = process_question_answer({"answers": remove_whitespace(tossup[1]), "tournament": tournament})
 
-        #         if not question or not answer:
-        #             continue
+                if not question or not answer:
+                    continue
 
-        #         classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
-        #         # If there is an error in this for some reason
-        #         if not classifier_data:
-        #             continue
+                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                # If there is an error in this for some reason
+                if not classifier_data:
+                    continue
 
-        #         category = classifier_data.get("category")
+                category = classifier_data.get("category")
 
-        #         if not category:
-        #             continue
+                if not category:
+                    continue
 
-        #         # Define query
-        #         query = """
-        #         INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
-        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
-        #         """
+                # Define query
+                query = """
+                INSERT INTO questions (hash, tournament, type, year, level, category, question, answers, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """
 
-        #         # Define values
-        #         values = (
-        #             # id auto generates
-        #             generate_unique_hash(), # hash
-        #             tournament, # tournament
-        #             0,        # type (tossup or bonus)
-        #             season, # year
-        #             level, # level(ms, hs, college, open)
-        #             category, # category
-        #             question,  # question
-        #             answer,  # answer
-        #             datetime.now(timezone.utc) # created_at
-        #         )
+                # Define values
+                values = (
+                    # id auto generates
+                    generate_unique_hash(), # hash
+                    tournament, # tournament
+                    0,        # type (tossup or bonus)
+                    season, # year
+                    level, # level(ms, hs, college, open)
+                    category, # category
+                    question,  # question
+                    answer,  # answer
+                    datetime.now(timezone.utc) # created_at
+                )
 
-        #         # Execute and commit
-        #         cursor.execute(query, values)
-        #         connection.commit()
+                # Execute and commit
+                cursor.execute(query, values)
+                connection.commit()
                 
-        #         # For diagnostics
-        #         questions_written += 1;
-        #     except Exception as e:
-        #         #TODO: Have error checking and logging for malformed data
-        #         if diagnostics:
-        #             append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
-        #         connection.rollback()
-        #         # Throw the error again so that the final code does notrun
-        #         raise e;
+                # For diagnostics
+                questions_written += 1;
+            except Exception as e:
+                #TODO: Have error checking and logging for malformed data
+                if diagnostics:
+                    append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
+                connection.rollback()
+                # Throw the error again so that the final code does notrun
+                raise e;
         
         # Save bonuess to DB
         for bonus in packet.get("bonuses"):

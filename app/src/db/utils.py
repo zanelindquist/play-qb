@@ -443,17 +443,24 @@ def check_question(question, guess) -> bool:
     # Handle tossups
 
     # Tokenize answer
-    answer = question.get("answers")
-    is_name = answer_is_name(answer)
+    answers = question.get("answers")
 
-    print("NAME", is_name)
+    # Parse parts of answer
+    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word
+    if len(main_answer.split(" ")) > 4:
+        main_answer = main_answer.split(" ")[0]
+    is_name = answer_is_name(main_answer)
 
     is_correct = False
 
-    if is_name:
-        is_correct = name_match(answer, guess)
-    else:
-        is_correct = normal_match(answer, guess)
+    for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
+        if is_name:
+            is_correct = name_match(answer, guess)
+        else:
+            is_correct = normal_match(answer, guess)
+        if is_correct:
+            break
         
     return is_correct
 
@@ -464,8 +471,8 @@ def name_match(answer: str, guess: str) -> bool:
     answer_norm = normalize(answer)
     guess_norm = normalize(guess)
 
-    answer_tokens = answer_norm.split()
-    guess_tokens = guess_norm.split()
+    answer_tokens = list(answer_norm)
+    guess_tokens = list(guess_norm)
 
     # Exact or near-exact match
     if similarity(answer_norm, guess_norm) >= 0.88:
@@ -473,8 +480,9 @@ def name_match(answer: str, guess: str) -> bool:
 
     # Last-name-only rule
     if len(answer_tokens) >= 2:
-        last_name = answer_tokens[-1]
-        if last_name in guess_tokens:
+        last_name = normalize(answer).split(" ")[-1]
+        last_name_tokens = list(last_name)
+        if similarity(last_name_tokens, guess_norm) >= 0.88:
             return True
 
     # Full token overlap (order-insensitive)
@@ -491,8 +499,8 @@ def normal_match(answer: str, guess: str) -> bool:
     answer_norm = normalize(answer)
     guess_norm = normalize(guess)
 
-    answer_tokens = set(answer_norm.split())
-    guess_tokens = set(guess_norm.split())
+    answer_tokens = set(list(answer_norm))
+    guess_tokens = set(list(guess_norm))
 
     # Exact match
     if answer_norm == guess_norm:
