@@ -432,13 +432,14 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
 
 # Question checking
 # TODO: ADD PROMPTING
+# Return -1 for incorrect, 0 for prompt, and 1 for correct
 def check_question(question, guess) -> bool:
     if not question or not guess:
         raise Exception("check_question(): no question provided")
 
     # Handle bonuses
     if question.get("type") == 1:
-        return False
+        return -1
     
     # Handle tossups
 
@@ -454,15 +455,28 @@ def check_question(question, guess) -> bool:
 
     is_correct = False
 
+    # TODO:DON'T ACCEPT
+ 
+    # CORRECT
     for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
         if is_name:
             is_correct = name_match(answer, guess)
         else:
             is_correct = normal_match(answer, guess)
         if is_correct:
-            break
+            return 1
         
-    return is_correct
+    is_prompt = False
+    
+    for prompt in prompts:
+        if is_name:
+            is_prompt = name_match(prompt, guess)
+        else:
+            is_prompt = normal_match(prompt, guess)
+        if is_prompt:
+            return 0
+        
+    return -1
 
 def name_match(answer: str, guess: str) -> bool:
     if not answer or not guess:
