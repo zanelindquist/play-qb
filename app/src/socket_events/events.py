@@ -76,8 +76,12 @@ def on_join_lobby(data):
 # When a player buzzes
 @socketio.on("buzz")
 def on_buzz(data): # Timestamp, AnswerContent
-    lobby = session["lobby"]
+    lobby = session.get("lobby")
     user_id = session["user_id"]
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     Player = get_player_by_email_and_lobby(user_id, lobby)
 
@@ -148,8 +152,12 @@ def on_submit(data): # FinalAnswer
 
 @socketio.on("next_question")
 def on_next_question(data):
-    lobby = session["lobby"]
+    lobby = session.get("lobby")
     user_id = session["user_id"]
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     # See if player has authority to skip question
 

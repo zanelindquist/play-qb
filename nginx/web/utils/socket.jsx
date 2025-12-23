@@ -32,6 +32,10 @@ export function useSocket(lobbyAlias) {
                     readyCallbacks.current = [];
                 });
 
+                socket.on("reconnect", () => {
+                    send("join_lobby", {lobbyAlias: lobbyAlias})
+                })
+
                 socket.on("failed_connection", (data) => {
                     if (data.message === "Invalid token") {
                         showAlert("Your session has expired. Please log in again.");
