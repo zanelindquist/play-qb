@@ -105,7 +105,7 @@ const Play = () => {
         })
 
         addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
-            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
             
             setBuzzer(null)
             setQuestionState("running")
@@ -114,7 +114,7 @@ const Play = () => {
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
             // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
             // Minimize the current quetsion
             minimizeCurrentQuestion()
             setBuzzer(null)

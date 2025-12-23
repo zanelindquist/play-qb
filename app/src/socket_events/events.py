@@ -117,19 +117,30 @@ def on_submit(data): # FinalAnswer
     question = gamestate.get("current_question")
     FinalAnswer = data.get("FinalAnswer")
     IsCorrect = check_question(question, FinalAnswer) # -1 for incorrect, 0 for prompt, and 1 for correct
+    # IsCorrect= math.floor(random.random() * 2) - 1
     Scores = False
     Player = get_player_by_email_and_lobby(user_id, lobby)
 
     data = {"Player": Player, "FinalAnswer": FinalAnswer, "Scores": Scores, "IsCorrect": IsCorrect, "Timestamp": get_timestamp()}
 
-    if IsCorrect:
+    if IsCorrect == 1:
         # If the answer is true
         # Get question according to game settings
         new_question = get_random_question(confidence_threshold=0)
         data["Question"] = new_question
         set_question_to_game(new_question, lobby)
         emit("next_question", data, room=f"lobby:{lobby}")
-    else:
+    elif IsCorrect == 0:
+        # If the answer is a prompt, then we want to emit another buzz
+        # Emit a resume and then emit another buzz
+        emit("question_resume", data, room=f"lobby:{lobby}")
+        emit(
+            "question_interrupt",
+            {"Player": Player, "AnswerContent": "", "Timestamp": get_timestamp()},
+            room=f"lobby:{lobby}"
+        )
+        
+    elif IsCorrect == -1:
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
 

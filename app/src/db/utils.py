@@ -355,7 +355,23 @@ def get_random_question(level=False, type=0, difficulty=False, subject=False, co
             base_query.offset(offset).limit(1)
         ).scalars().first()
 
-        return to_dict_safe(question, depth=0)
+        q = to_dict_safe(question, depth=0)
+
+        parsed_answers = {}
+        keys = ["main", "accept", "prompt", "reject", "suggested_category"]
+        index = 0;
+        for part in q.get("answers").split(" || "):
+            parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+            index += 1
+
+        # Make the main answer not a list
+        parsed_answers["main"] = parsed_answers["main"][0]
+
+        # Parse answer
+        q["answers"] = parsed_answers
+
+        return q
+
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
@@ -433,6 +449,8 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
 # Question checking
 # TODO: ADD PROMPTING
 # Return -1 for incorrect, 0 for prompt, and 1 for correct
+# We want to this to be loose rather than tight. It is more frustrating for players to have a correct answer denied than the rare occasion that a in inccorect answer is accepted
+# In short, we prefer false positives over false negatives
 def check_question(question, guess) -> bool:
     if not question or not guess:
         raise Exception("check_question(): no question provided")
@@ -454,33 +472,50 @@ def check_question(question, guess) -> bool:
     is_name = answer_is_name(main_answer)
 
     is_correct = False
+    is_prompt = False
+    is_reject = False
 
-    # TODO:DON'T ACCEPT
+    # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
+    correct_threshold = 0.85
+    prompt_threshold = 0.7
+    dont_accept_threshold = 0.90
+
+    # We want a very high theshold on this
+    # DON'T ACCEPT
+    for reject in [*(rejects.split(" | ") if rejects != "NONE" else [])]:
+        if is_name:
+            is_reject= name_match(reject, guess, threshold=dont_accept_threshold)
+        else:
+            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
+        if is_reject:
+            return -1
  
     # CORRECT
     for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
         if is_name:
-            is_correct = name_match(answer, guess)
+            is_correct = name_match(answer, guess, threshold=correct_threshold)
         else:
-            is_correct = normal_match(answer, guess)
-        if is_correct:
+            is_correct = normal_match(answer, guess, threshold=correct_threshold)
+        if is_correct == 1:
             return 1
         
-    is_prompt = False
-    
-    for prompt in prompts:
+    if is_correct < correct_threshold and is_correct > prompt_threshold:
+        return 0
+            
+    for prompt in [*(prompts.split(" | ") if prompts != "NONE" else [])]:
         if is_name:
-            is_prompt = name_match(prompt, guess)
+            is_prompt = name_match(prompt, guess, threshold=prompt_threshold)
         else:
-            is_prompt = normal_match(prompt, guess)
+            is_prompt = normal_match(prompt, guess, threshold=prompt_threshold)
         if is_prompt:
             return 0
         
     return -1
 
-def name_match(answer: str, guess: str) -> bool:
+# If the answer is in the range of 0.7 - threshold, then we will prompt
+def name_match(answer: str, guess: str, threshold=0.88):
     if not answer or not guess:
-        return False
+        return 0
 
     answer_norm = normalize(answer)
     guess_norm = normalize(guess)
@@ -488,27 +523,35 @@ def name_match(answer: str, guess: str) -> bool:
     answer_tokens = list(answer_norm)
     guess_tokens = list(guess_norm)
 
+    highest_sim = similarity(answer_norm, guess_norm)
+
     # Exact or near-exact match
-    if similarity(answer_norm, guess_norm) >= 0.88:
-        return True
+    if similarity(answer_norm, guess_norm) >= threshold:
+        return 1
 
     # Last-name-only rule
     if len(answer_tokens) >= 2:
         last_name = normalize(answer).split(" ")[-1]
         last_name_tokens = list(last_name)
-        if similarity(last_name_tokens, guess_norm) >= 0.88:
-            return True
+        last_name_sim = similarity(last_name_tokens, guess_norm)
+        if last_name_sim >= threshold:
+            return 1
+        elif last_name_sim >= 0.7:
+            if last_name_sim > highest_sim:
+                highest_sim = last_name_sim
+            return highest_sim
 
     # Full token overlap (order-insensitive)
     overlap = set(answer_tokens) & set(guess_tokens)
     if len(overlap) >= len(answer_tokens) - 1:
-        return True
+        return 1
 
-    return False
+    return 0
 
-def normal_match(answer: str, guess: str) -> bool:
+# If the answer is in the range of 0.7 - threshold, then we will prompt
+def normal_match(answer: str, guess: str, threshold=0.85):
     if not answer or not guess:
-        return False
+        return 0
 
     answer_norm = normalize(answer)
     guess_norm = normalize(guess)
@@ -518,21 +561,22 @@ def normal_match(answer: str, guess: str) -> bool:
 
     # Exact match
     if answer_norm == guess_norm:
-        return True
+        return 0
 
     # Require most tokens to be present
     overlap = answer_tokens & guess_tokens
     token_coverage = len(overlap) / len(answer_tokens)
 
-    if token_coverage < 0.75:
-        return False
+    if token_coverage < 0.7:
+        return 0
 
     # Guard against over-short guesses
     if len(guess_tokens) < len(answer_tokens) - 1:
-        return False
+        return 0
 
     # Final fuzzy check (conservative)
-    return similarity(answer_norm, guess_norm) >= 0.85
+    sim = similarity(answer_norm, guess_norm)
+    return 1 if sim >= threshold else sim if sim >= 0.7 else 0
 
 def answer_is_name(answer: str) -> bool:
     if not answer:
