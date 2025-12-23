@@ -464,13 +464,6 @@ def check_question(question, guess) -> bool:
     # Tokenize answer
     answers = question.get("answers")
 
-    # Parse parts of answer
-    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
-    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word
-    if len(main_answer.split(" ")) > 4:
-        main_answer = main_answer.split(" ")[0]
-    is_name = answer_is_name(main_answer)
-
     is_correct = False
     is_prompt = False
     is_reject = False
@@ -479,6 +472,15 @@ def check_question(question, guess) -> bool:
     correct_threshold = 0.85
     prompt_threshold = 0.7
     dont_accept_threshold = 0.90
+
+        # Parse parts of answer
+    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
+    if len(main_answer.split(" ")) > 4:
+        main_answer = main_answer.split(" ")[0]
+        correct_threshold = 0.4
+        prompt_threshold = 0.3
+    is_name = answer_is_name(main_answer)
 
     # We want a very high theshold on this
     # DON'T ACCEPT
@@ -561,7 +563,7 @@ def normal_match(answer: str, guess: str, threshold=0.85):
 
     # Exact match
     if answer_norm == guess_norm:
-        return 0
+        return 1
 
     # Require most tokens to be present
     overlap = answer_tokens & guess_tokens
@@ -584,11 +586,9 @@ def answer_is_name(answer: str) -> bool:
 
     # Get rid of "Accept:"s and "[]" stuff
     answer = strip_answerline_junk(answer)
-    print("ANSWER", answer)
 
     # Reject if contains digits (except Roman numerals as last token)
     tokens = answer.split()
-    print("TOKENS", tokens)
     if any(char.isdigit() for char in answer):
         return False
 
