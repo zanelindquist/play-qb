@@ -14,10 +14,10 @@ export default function ExpandableView({ style, expanded, children, onAnimationF
                 if(onAnimationFinish) onAnimationFinish(expanded)
             }
         });
-    }, [expanded]);
+    }, [expanded, maxHeight]);
 
     return (
-        <Animated.View style={{ height, overflow: "hidden" }}>
+        <Animated.View style={[{ height, overflow: "hidden" }, style]}>
             {children}
         </Animated.View>
     );

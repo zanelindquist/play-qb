@@ -29,9 +29,10 @@ import {
 import theme from "../../assets/themes/theme";
 import GlassyView from "../custom/GlassyView";
 import ExpandableView from "../custom/ExpandableView";
+import Answers from "./Answers";
 
 const collapsedHeight = 40;
-const expandedHeight = 400;
+const EXPANDED_HEIGHT = 400;
 
 
 const Question = ({
@@ -43,7 +44,6 @@ const Question = ({
     onFinish,
     onDeath,
     style,
-    minimized = false,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     SPEED = 400,
@@ -57,6 +57,7 @@ const Question = ({
     // Animation
     const [firstRenderForAnimation, setFirstRenderForAnimation] = useState(true)
     const [isMinimized, setIsMinimized] = useState(false)
+    const [expandedHeight, setExpandedHeight] = useState(EXPANDED_HEIGHT)
 
     // Gamestate and buzz variables
     const [isFinished, setIsFinished] = useState(false);
@@ -171,12 +172,25 @@ const Question = ({
     function handleDeadPressed() {
         if(state !== "dead") return;
         setIsMinimized(!isMinimized)
+        handleAnswerCollapsed()
     }
 
     function capitalize(text) {
         if(!text) return "Undefined"
         return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
     }
+
+    function handleAnswerExpanded(answerHeight) {
+        setExpandedHeight(expandedHeight + answerHeight)
+    }
+
+    function handleAnswerCollapsed() {
+        setExpandedHeight(EXPANDED_HEIGHT)
+    }
+
+    useEffect(()=> {
+        console.log("ExHeiht", expandedHeight)
+    }, [expandedHeight])
 
     return (
         <ExpandableView
@@ -188,7 +202,7 @@ const Question = ({
         {
         !isMinimized ?
         <GlassyView
-            style={styles.container}
+            style={[styles.container, {height: expandedHeight}]}
             onPress={handleDeadPressed}
         >
             <View style={styles.top}>
@@ -253,13 +267,16 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                <HelperText>{question.answers}</HelperText>
+                <HelperText>{question.answers.main}</HelperText>
                 {
                     state == "dead" &&
                     (
-                        <HelperText style={styles.answer}>
-                            {question.answers}
-                        </HelperText>
+                        <Answers
+                            answers={question.answers}
+                            style={styles.answerComponent}
+                            onExpand={handleAnswerExpanded}
+                            onCollapse={handleAnswerCollapsed}
+                        />
                     )
                 } 
             </View>
@@ -270,7 +287,7 @@ const Question = ({
         >
             <HelperText numberOfLines={1}>{question.tournament}</HelperText>
             <HelperText style={styles.answer} numberOfLines={1}>
-                {question.answers}
+                {question.answers.main}
             </HelperText>
         </GlassyView>
         }
@@ -311,6 +328,9 @@ const styles = StyleSheet.create({
     tournament: {
 
     },
+    answerComponent: {
+        // backgroundColor: "blue"
+    },
     answer: {
         fontSize: 17,
         fontWeight: "bold",
@@ -318,14 +338,12 @@ const styles = StyleSheet.create({
 
     // Maximized
     expandable: {
-        flexGrow: 1,
-        height: "max"
+
     },
     container: {
         flexDirection: "column",
         justifyContent: "space-between",
         borderRadius: 10,
-        height: expandedHeight
     },
     questionText: {
         fontSize: 17,
