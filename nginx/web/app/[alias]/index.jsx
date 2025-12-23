@@ -30,6 +30,8 @@ const { width } = Dimensions.get('window');
 // TEMPORARY
 const ANSWER_MS = 5000;
 
+const SHOW_EVENTS_INCREMENTS = 5
+
 const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();
@@ -47,6 +49,9 @@ const Play = () => {
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
     const [syncTimestamp, setSyncTimestamp] = useState(0)
+
+    // Memory manamgent
+    const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
 
     // Register keybinds
     useEffect(() => {
@@ -194,7 +199,8 @@ const Play = () => {
         onTyping(text)
     }
 
-    function handleInterruptOver(questionNotFinished) {
+    function handleInterruptOver(text, questionNotFinished) {
+        console.log("interrupt over")
         setBuzzer(null)
         if(questionNotFinished) {
             // TODO: keep track of waiting time
@@ -275,7 +281,7 @@ const Play = () => {
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
-                        allEvents.map((e, i) => {
+                        allEvents.slice(0, showNumberOfEvents).map((e, i) => {
                             switch(e?.eventType) {
                                 case "question":
                                     return (
@@ -302,8 +308,24 @@ const Play = () => {
                                 default:
 
                             }
-
                         })
+                    }
+                    {
+                        showNumberOfEvents < allEvents.length &&
+                        <View style={styles.showingContainer}>
+                            <GlassyButton
+                                mode="filled"
+                                // style={{width: 200}}
+                                onPress={() => {
+                                    setShowNumberOfEvents(showNumberOfEvents + SHOW_EVENTS_INCREMENTS)
+                                }}
+                            >Show more ({Math.min(showNumberOfEvents, allEvents.length)} / {allEvents.length} visible)</GlassyButton>
+                            <GlassyButton
+                                onPress={() => {
+                                    setShowNumberOfEvents(SHOW_EVENTS_INCREMENTS)
+                                }}
+                            >Hide all</GlassyButton>
+                        </View>
                     }
                     </ScrollView>
                 </View>
@@ -344,6 +366,11 @@ const styles = StyleSheet.create({
     },
     question: {
         height: 300
+    },
+    showingContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 10
     },
     optionsContainer: {
         flexShrink: 1,
