@@ -596,8 +596,221 @@ def mutate_existing_questions(diagnostics=False, model="400 words"):
     if diagnostics:
         append_to_diagnostics_file(diagnostics, f"SUCCESS recategorized {questions_mutated} out of {questions_encountered}")
 
+def mutate_category_to_basic(diagnostics=False):
+    cursor = connection.cursor()
+
+    try: 
+        cursor.execute("SELECT id, category FROM questions WHERE type = 0")
+        questions = cursor.fetchall()
+
+        for question in questions:
+            id, category = question
+            basic10_category = category_map.get(category.lower())
+            if not basic10_category:
+                continue;
+            basic10_category = basic10_category.lower()
+            updated_question = (basic10_category, id, )
+
+            cursor.execute("UPDATE questions SET category = %s WHERE id = %s", updated_question)
+            connection.commit()
+
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"SUCCESS: mutated the categories")
+
+    except Exception as e:
+        connection.rollback()
+
+        print(f"process_question_answers(): Failed with error {e}")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"FAILED answer parsing on question: {e}")
+
+# Returns {"answer": "...", "category?": "..."}
+# data = {"tournament": "...", "answers": "..."}
+def process_question_answer(data, diagnostics=False) -> dict:
+    """
+    We don't really want to remove any information, only parse the question into a series of digestiable parts for the answer checker
+    PARTS: *normal answer* || *accept* | *accept* || *prompt* | *prompt* || *not accept* || *category*
+    
+
+    Remove the tournament name bug lol
+    Remove pronunceations (all caps-ed words)
+    Parsing keywords: or, accept (then match a phrase of similar length to orgiginal answer), accept equivalents like, accept early, accept:, prompt on, do not accept, reject
+    Parsing punctuation: [] <> () ;
+
+    While we are at it, maybe take the answers with <"category"> and set that as their category lol
+
+    Algorithm:
+        1. Remove the tournament name
+        2. Remove pronunceations
+        3. Remove and store categories if present
+        4. Parse out and store parenthetical information and accepts
+            - First try []
+            - Then try ()
+            - If those don't work, parse by Accept: or prompt on: stuff
+        5. From the data in step 4
+            - Split by semi-colons, often used to seperate accepts and prompts and don't accepts
+            - Each seperated section, compile a list of accepts and prompts
+            - Parse by words like "accept" and create a list of accepts by parsing by "or"
+                - After removing these keywords for accept ONLY look for a word of the length of the actual answer
+        6. Organize the answer into PARTS above
+            - If there is no data for accepts and stuff, use NONE
+                ANSWER || ACCEPT || PROMPT || NOT ACCEPT || CATEGORY
+            - Seperate multiple answers and prompts by a single |
+    """
+
+    main_answer = ""
+    accepts = []
+    prompts = []
+    rejects = []
+    category = ""
+    
+    WORD_PARSES = re.compile(
+        r"(accept|prompt on|prompt|reject|do not|english)\s*:?\s*(.*?)(?=(accept|prompt on|prompt|reject|do not|english)\s*:|\]|$)",
+        re.IGNORECASE | re.DOTALL
+    )
+    ACCEPT_TERMS = re.compile(r"(accept equivalents like|accept equivalents|accept early|accept|\s+or\s+):?", re.IGNORECASE)
+    PROMPT_TERMS = re.compile(r"(prompt on|prompt):?", re.IGNORECASE)
+    REJECT_TERMS = re.compile(r"(do not accept|don't accept|reject|don't allow):?", re.IGNORECASE)
+    OR_TERMS = re.compile(r"\s+(or|and)\s+", re.IGNORECASE)
+
+    tournament_name = data.get("tournament")
+    answers = data.get("answers")
+
+    # IF THE ANSWER HAS ALREADY BEEN PARSED
+    if "||" in answers:
+        return answers;
+
+    # 1. Remove the tournament name
+    answers = re.sub(
+        r"\b2002\b.*?\bDuke\s+University\b",
+        "",
+        answers,
+        flags=re.IGNORECASE | re.DOTALL
+    ).strip()
+    if tournament_name:
+        answers = re.sub(
+            re.escape(tournament_name.strip()),
+            "",
+            answers,
+            flags=re.IGNORECASE
+        ).strip()
+
+    # 2. Remove pronunceations
+    answers = re.sub(r"\s+[A-Z][A-Z\-]{1,}:?\s+[a-zA-Z'\-]+", "", answers).strip()
+
+    # Remove random dashes
+    answers = re.sub(r"-{0,}", "", answers).strip()
+
+    # 3. Remove and store categories if present
+    category = re.search(r"<(.*?)>", answers)
+    answers = re.sub(r"<(.*?)>", "", answers).strip()
+    if category:
+        category = category.group(1).lower()
+    # print("CATEGORY", category)
+
+    # 4. Parse out and store parenthetical information and accepts
+    #     - First try []
+    brackets = re.search(r"\[(.*?)\]", answers)
+    if brackets:
+        brackets = brackets.group(1)
+    answers = re.sub(r"\[(.*?)\]", "", answers).strip()
+    # print("BRACKETS", brackets)
+
+    #     - Then try ()
+    parenthesis = re.search(r"\((.*?)\)", answers)
+    if parenthesis:
+        parenthesis = parenthesis.group(1)
+    answers = re.sub(r"\((.*?)\)", "", answers).strip()
+    # print("PARENTHESIS", parenthesis)
+
+    #     - If those don't work, parse by Accept: or prompt on: stuff
+    parsed = []
+
+    for match in WORD_PARSES.finditer(answers):
+        keyword = match.group(1).lower()
+        if keyword.lower() == "english":
+            keyword = "accept:"
+        content = match.group(2).strip()
+        parsed.append(f"{keyword} {content}")
+
+    # Remove all labeled sections from answers
+    answers = WORD_PARSES.sub("", answers).strip()
+
+    # Assign this to main answer now that we are done snipping out pieces
+    main_answer = answers.strip()
+    # print("ANSWER", answers)
+    # 5. From the data in step 4
+    #     - Split by semi-colons, often used to seperate accepts and prompts and don't accepts
+    parts = [
+        *(brackets.split(r";") if brackets else []),
+        *(parenthesis.split(r";\s?") if parenthesis else []),
+        *parsed
+    ]
+    # If there are parsed words, we want to treat them like we found them in brackets
+    for part in [part.strip() for part in parts]:
+        # Do rejects first because they may contain the word accept as in "do not accept"
+        #     - Each seperated section, compile a list of accepts and prompts
+        part_rejects = REJECT_TERMS.match(part)
+        part_accepts = ACCEPT_TERMS.match(part)
+        part_prompts = PROMPT_TERMS.match(part)
+        #     - Parse by words like "accept" and create a list of accepts by parsing by "or"
+        if part_rejects:
+            # print("REJECTS", part_rejects.group(0))
+            # Get rid of the reject terms and split by the or terms
+            rejects.extend(p.strip() for p in re.split(OR_TERMS, re.sub(REJECT_TERMS, "", part)))
+        if part_accepts:
+            # print("ACCEPTS", type(part_accepts.group(0)))
+            accepts.extend(p.strip() for p in re.split(OR_TERMS, re.sub(ACCEPT_TERMS, "", part)))
+        if part_prompts:
+            prompts.extend(p.strip() for p in re.split(OR_TERMS, re.sub(PROMPT_TERMS, "", part)))
+            # print("PROMPTS", part_prompts.groups())
+
+    # 6. Organize the answer into PARTS above
+    #     - If there is no data for accepts and stuff, use NONE
+    #         ANSWER || ACCEPT || PROMPT || NOT ACCEPT || CATEGORY
+    #     - Seperate multiple answers and prompts by a single |
+    return f"{main_answer} || {" | ".join(accepts) if len(accepts) > 0 else "NONE"} || {" | ".join(prompts) if len(prompts) > 0 else "NONE"} || {" | ".join(rejects) if len(rejects) > 0 else "NONE"} || {category if category else "NONE"}"
+
+def mutate_question_answers(diagnostics=False):
+    cursor = connection.cursor()
+    questions_encountered = 0
+    questions_mutated = 0
+    category_mutated = 0
+
+    last_id = 0;
+
+    # ===== Mutate all question answers =====
+    try: 
+        cursor.execute("SELECT id, tournament, answers, category FROM questions WHERE type = 0")
+        questions = cursor.fetchall()
+
+        for question in questions:
+            id, tournament, answers, cat = question
+            last_id = id
+            answers = process_question_answer({"tournament": tournament, "answers": answers}, diagnostics=diagnostics)
+            category = answers.split(" || ")[-1]
+            if category != "NONE"and len(category) < 19:
+                category_mutated += 1
+                cat = category
+            updated_question = (answers, cat, id, )
+
+            cursor.execute("UPDATE questions SET answers = %s, category = %s WHERE id = %s", updated_question)
+            questions_mutated += 1
+            connection.commit()
+
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"SUCCESS: mutated the answers to {questions_mutated} out of {questions_encountered} questions. Mutated {category_mutated} categories")
+
+    except Exception as e:
+        connection.rollback()
+
+        print(f"process_question_answers(): ID: {last_id} Failed with error {e}")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"FAILED answer parsing on question: {e}")
+
 
 # CATEGORIZATION
+
 # question_data: {"question": "...", "answers": "..."}
 def categorize_question(question_data, model="400 words"):
     if not question_data.get("question"):
