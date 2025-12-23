@@ -65,4 +65,6 @@ def create_app(test_config=None):
 
     init_db()
 
+    # TODO: Delete lobbies that have been inactive for more than a week
+
     return app

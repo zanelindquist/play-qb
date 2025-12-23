@@ -38,7 +38,6 @@ const Play = () => {
     const {showAlert} = useAlert();
     const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
 
-    const [input, setInput] = useState("")
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
 
@@ -76,8 +75,9 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-        addEventListener("you_joined", ({Player}) => {
+        addEventListener("you_joined", ({Player, GameState}) => {
             setMyId(Player.id)
+            console.log(GameState)
         })
 
         addEventListener("player_joined", ({Player, GameState}) => {
@@ -105,7 +105,7 @@ const Play = () => {
         })
 
         addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
-            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
             
             setBuzzer(null)
             setQuestionState("running")
@@ -114,7 +114,7 @@ const Play = () => {
 
         addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
             // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", IsCorrect ? "Correct" : "Wrong")
+            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
             // Minimize the current quetsion
             minimizeCurrentQuestion()
             setBuzzer(null)
@@ -168,10 +168,9 @@ const Play = () => {
         send("typing", {content: text})
     }
 
-    function onSubmit() {
+    function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {FinalAnser: input})
-        setInput("")
+        send("submit", {FinalAnswer: text})
     }
 
     function onNextQuestion() {
@@ -192,7 +191,6 @@ const Play = () => {
     }
 
     function handleInputChange(text) {
-        setInput(text)
         onTyping(text)
     }
 

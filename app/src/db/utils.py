@@ -7,6 +7,7 @@ import re
 import math
 import random
 from decimal import Decimal
+from difflib import SequenceMatcher
 
 from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
@@ -15,6 +16,27 @@ from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE 
 
 from .db import engine
 
+# Answer judging constants
+BRACKETED = re.compile(r"\[.*?\]")
+PARENTHETICAL = re.compile(r"(\(.*?\)|<.*?>)")
+LEADING_DIRECTIVES = re.compile(
+    r"^(accept on|prompt on|accept|prompt|do not accept|reject)[:\-]\s*",
+    re.I
+)
+TRAILING_DIRECTIVES = re.compile(
+    r"(—|;).*?$"
+)
+ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
+                           r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
+
+def normalize(s: str) -> str:
+    return re.sub(r"\s+", " ", s.lower().strip())
+
+def similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, a, b).ratio()
+
+
+# Database session
 Session = scoped_session(sessionmaker(bind=engine))
 
 def get_session():
@@ -28,7 +50,6 @@ def json_safe(value):
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     return value
-
 
 def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
     # If depth is 0 we only lo the static properties of object
@@ -296,17 +317,61 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     finally:
         session.remove()
 
-def get_random_question(level=2, difficulty=0, subject=0):
+def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1):
     session = get_session()
+
     try:
-        count = math.floor(session.query(func.count(Questions.id)).scalar() * random.random())
-        random_question_number = random.randint(0 , count - 1)
-        question = session.execute(
+        base_query = (
             select(Questions)
-            .where(Questions.id == random_question_number)
+            .where(Questions.category_confidence >= confidence_threshold)
+            .where(Questions.type == type)
+        )
+
+        # Optional filters (only apply if non-zero / non-null)
+        if level:
+            base_query = base_query.where(Questions.level == level)
+
+        if difficulty:
+            base_query = base_query.where(Questions.difficulty == difficulty)
+
+        if subject:
+            base_query = base_query.where(Questions.category == subject)
+
+        # Count filtered rows
+        count = session.execute(
+            select(func.count()).select_from(base_query.subquery())
+        ).scalar()
+
+        if count == 0:
+            return {
+                "code": 404,
+                "error": "No questions meet this query"
+            }
+
+        # Pick random offset
+        offset = random.randint(0, count - 1)
+
+        question = session.execute(
+            base_query.offset(offset).limit(1)
         ).scalars().first()
 
-        return to_dict_safe(question, depth=0)
+        q = to_dict_safe(question, depth=0)
+
+        parsed_answers = {}
+        keys = ["main", "accept", "prompt", "reject", "suggested_category"]
+        index = 0;
+        for part in q.get("answers").split(" || "):
+            parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+            index += 1
+
+        # Make the main answer not a list
+        parsed_answers["main"] = parsed_answers["main"][0]
+
+        # Parse answer
+        q["answers"] = parsed_answers
+
+        return q
+
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
@@ -358,9 +423,235 @@ def get_lobby_by_alias(lobbyAlias):
     finally:
         session.commit()
 
+def get_gamestate_by_lobby_alias(lobbyAlias):
+    session = get_session()
+    try:
+        # Assuming every lobby only has one game
+        game = session.execute(
+            select(Games)
+            .join(Lobbies, Games.lobby_id == Lobbies.id)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        if not game:
+            return False;
+
+        return to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_gamestate_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 # =====GAME FUNCTIONS=====
 
+# Question checking
+# TODO: ADD PROMPTING
+# Return -1 for incorrect, 0 for prompt, and 1 for correct
+# We want to this to be loose rather than tight. It is more frustrating for players to have a correct answer denied than the rare occasion that a in inccorect answer is accepted
+# In short, we prefer false positives over false negatives
+def check_question(question, guess) -> bool:
+    if not question or not guess:
+        raise Exception("check_question(): no question provided")
 
+    # Handle bonuses
+    if question.get("type") == 1:
+        return -1
+    
+    # Handle tossups
+
+    # Tokenize answer
+    answers = question.get("answers")
+
+    # Parse parts of answer
+    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word
+    if len(main_answer.split(" ")) > 4:
+        main_answer = main_answer.split(" ")[0]
+    is_name = answer_is_name(main_answer)
+
+    is_correct = False
+    is_prompt = False
+    is_reject = False
+
+    # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
+    correct_threshold = 0.85
+    prompt_threshold = 0.7
+    dont_accept_threshold = 0.90
+
+    # We want a very high theshold on this
+    # DON'T ACCEPT
+    for reject in [*(rejects.split(" | ") if rejects != "NONE" else [])]:
+        if is_name:
+            is_reject= name_match(reject, guess, threshold=dont_accept_threshold)
+        else:
+            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
+        if is_reject:
+            return -1
+ 
+    # CORRECT
+    for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
+        if is_name:
+            is_correct = name_match(answer, guess, threshold=correct_threshold)
+        else:
+            is_correct = normal_match(answer, guess, threshold=correct_threshold)
+        if is_correct == 1:
+            return 1
+        
+    if is_correct < correct_threshold and is_correct > prompt_threshold:
+        return 0
+            
+    for prompt in [*(prompts.split(" | ") if prompts != "NONE" else [])]:
+        if is_name:
+            is_prompt = name_match(prompt, guess, threshold=prompt_threshold)
+        else:
+            is_prompt = normal_match(prompt, guess, threshold=prompt_threshold)
+        if is_prompt:
+            return 0
+        
+    return -1
+
+# If the answer is in the range of 0.7 - threshold, then we will prompt
+def name_match(answer: str, guess: str, threshold=0.88):
+    if not answer or not guess:
+        return 0
+
+    answer_norm = normalize(answer)
+    guess_norm = normalize(guess)
+
+    answer_tokens = list(answer_norm)
+    guess_tokens = list(guess_norm)
+
+    highest_sim = similarity(answer_norm, guess_norm)
+
+    # Exact or near-exact match
+    if similarity(answer_norm, guess_norm) >= threshold:
+        return 1
+
+    # Last-name-only rule
+    if len(answer_tokens) >= 2:
+        last_name = normalize(answer).split(" ")[-1]
+        last_name_tokens = list(last_name)
+        last_name_sim = similarity(last_name_tokens, guess_norm)
+        if last_name_sim >= threshold:
+            return 1
+        elif last_name_sim >= 0.7:
+            if last_name_sim > highest_sim:
+                highest_sim = last_name_sim
+            return highest_sim
+
+    # Full token overlap (order-insensitive)
+    overlap = set(answer_tokens) & set(guess_tokens)
+    if len(overlap) >= len(answer_tokens) - 1:
+        return 1
+
+    return 0
+
+# If the answer is in the range of 0.7 - threshold, then we will prompt
+def normal_match(answer: str, guess: str, threshold=0.85):
+    if not answer or not guess:
+        return 0
+
+    answer_norm = normalize(answer)
+    guess_norm = normalize(guess)
+
+    answer_tokens = set(list(answer_norm))
+    guess_tokens = set(list(guess_norm))
+
+    # Exact match
+    if answer_norm == guess_norm:
+        return 0
+
+    # Require most tokens to be present
+    overlap = answer_tokens & guess_tokens
+    token_coverage = len(overlap) / len(answer_tokens)
+
+    if token_coverage < 0.7:
+        return 0
+
+    # Guard against over-short guesses
+    if len(guess_tokens) < len(answer_tokens) - 1:
+        return 0
+
+    # Final fuzzy check (conservative)
+    sim = similarity(answer_norm, guess_norm)
+    return 1 if sim >= threshold else sim if sim >= 0.7 else 0
+
+def answer_is_name(answer: str) -> bool:
+    if not answer:
+        return False
+
+    # Get rid of "Accept:"s and "[]" stuff
+    answer = strip_answerline_junk(answer)
+    print("ANSWER", answer)
+
+    # Reject if contains digits (except Roman numerals as last token)
+    tokens = answer.split()
+    print("TOKENS", tokens)
+    if any(char.isdigit() for char in answer):
+        return False
+
+    if len(tokens) > 5:
+        return False
+
+    # Strong negative signal: grammatical glue words
+    if any(t.lower() in {"of", "and", "the", "for", "to", "with"} for t in tokens):
+        return False
+
+    score = 0
+
+    # Token count: names cluster tightly
+    if 1 <= len(tokens) <= 4:
+        score += 2
+
+    # Capitalization pattern (very strong)
+    capitalized = sum(t[0].isupper() for t in tokens if t)
+    if capitalized == len(tokens):
+        score += 3
+    elif capitalized >= len(tokens) - 1:
+        score += 2
+
+    # Roman numeral suffix (Henry VIII)
+    if ROMAN_NUMERAL.match(tokens[-1]):
+        score += 2
+
+    # Shortenability test (CRITICAL)
+    if len(tokens) >= 2:
+        shortened = tokens[-1]
+        if shortened[0].isupper():
+            score += 3
+
+    # Single-token names must be capitalized
+    if len(tokens) == 1 and tokens[0][0].isupper():
+        score += 2
+
+    return score >= 5
+
+def strip_answerline_junk(answer: str) -> str:
+    if not answer:
+        return ""
+
+    s = answer.strip()
+
+    # Remove bracketed instructions
+    s = BRACKETED.sub("", s)
+
+    # Remove parenthetical notes
+    s = PARENTHETICAL.sub("", s)
+
+    # Remove leading judging directives
+    s = LEADING_DIRECTIVES.sub("", s)
+
+    # Remove trailing commentary
+    s = TRAILING_DIRECTIVES.sub("", s)
+
+    # Normalize whitespace
+    s = re.sub(r"\s+", " ", s)
+
+    return s.strip()
+
+# Game state management
 def player_join_lobby(email, lobbyAlias):
     session = get_session()
     try:
@@ -395,6 +686,32 @@ def player_join_lobby(email, lobbyAlias):
     finally:
         session.commit()
 
+def set_question_to_game(question, lobbyAlias):
+    session = get_session()
+    try:
+        # Assuming every lobby only has one game
+        game = session.execute(
+            select(Games)
+            .join(Lobbies, Games.lobby_id == Lobbies.id)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        if not game:
+            return {'message': 'set_question_to_game(): failure', 'error': f'Game not found', "code": 400}
+
+        setattr(game, "current_question_id", question.get("id"))
+
+        session.commit()
+
+        print("UPDATING GAME with new question", question.get("id"))
+
+
+        return {'message': 'set_question_to_game(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'set_question_to_game(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # =====SANITATION AND VALIDATION=====

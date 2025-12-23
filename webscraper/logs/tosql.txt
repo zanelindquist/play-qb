@@ -1,1 +1,23 @@
 2025-10-29 09:14:57 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 763 | success_rate: 0.9883419689119171)
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:27 --- Error while creating question SQL row: 'list' object has no attribute 'get'
+2025-12-19 09:47:28 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 0 | success_rate: 0.0)
+2025-12-19 09:55:11 --- Error while creating question SQL row: 'NoneType' object has no attribute 'get'
+2025-12-19 10:00:13 --- FAILURE: packet already exists in database
+2025-12-19 10:50:45 --- FAILURE: packet already exists in database
+2025-12-19 10:55:13 --- Error while creating question SQL row: 'NoneType' object has no attribute 'get'
+2025-12-19 11:00:02 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 279 | success_rate: 0.9554794520547946)
+2025-12-19 11:05:02 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 272 | success_rate: 0.9315068493150684)
+2025-12-19 11:23:53 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 272 | success_rate: 0.9315068493150684)
+2025-12-19 12:39:01 --- FAILURE: packet already exists in database
+2025-12-19 12:39:13 --- Error while creating bonus question SQL row: Unread result found
+2025-12-19 13:25:22 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 0 | created_bonuses: 269 | success_rate: 0.0 | success_rate_bonuses: 0.9057239057239057)
+2025-12-19 16:24:17 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 0 | created_bonuses: 270 | success_rate: 0.0 | success_rate_bonuses: 0.8463949843260188)
+2025-12-19 16:25:05 --- write_dict_to_sql(): Difficulty not specified for 2002 Michigan MLK. Setting difficulty to Medium (2)
+2025-12-19 16:25:11 --- COMPLETED translating questions from json to sql: STATS: (created_questions: 0 | created_bonuses: 555 | success_rate: 0.0 | success_rate_bonuses: 0.7124518613607189)

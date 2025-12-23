@@ -18,15 +18,11 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
         onChange(e.nativeEvent.text)
         setValue(e.nativeEvent.text)
     }
-
-    useEffect(() => {
-        window.addEventListener("keypress", (e) => {
-            if(e.key === "Enter"){
-                onSubmit()
-                setValue("")
-            }
-        })
-    }, [])
+    
+    const handleSubmit = (e) => {
+        setValue("")
+        onSubmit(e.nativeEvent.text)
+    }
 
     useEffect(() => {
         if (!disabled) {
@@ -44,9 +40,11 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
                     isFocused && styles.focused
                 ]}
                 onChange={handleChange}
+                onSubmitEditing={handleSubmit}
                 disabled={disabled}
-
                 value={value}
+
+                // value={value}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
             />

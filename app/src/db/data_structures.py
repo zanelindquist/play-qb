@@ -21,7 +21,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Questions": {
-        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "categoy", "question", "answers", "prompts"],
+        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "category", "category_confidence", "question", "answers", "prompts"],
         "relationships": {
             "reports": "Reports"
         },
@@ -43,15 +43,17 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Games": {
-        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "level", "category", "speed", "lobby_id"],
+        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "level", "category", "speed", "lobby_id", "current_question_id"],
         "relationships": {
             "lobby": "Lobbies",
-            "players": "Players"
+            "players": "Players",
+            "current_question": "Questions"
         }
     }
 }
 
 RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:player": {"user": 0, "lobby": 0, "stats": 0},
-    "db:lobby": {"players": 0, "games": 0}
+    "db:lobby": {"players": 0, "games": 0},
+    "db:game": {"current_question": 0}
 }

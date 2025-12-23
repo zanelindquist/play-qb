@@ -1,90 +1,44 @@
-from bs4 import BeautifulSoup
-import requests
-import csv
-from playwright.sync_api import sync_playwright
 
-from functions import *
-from config import *
+from .scraping import *
+from .config import *
+from .classifiers.ml.ml import train_and_save_model
 
 html = False;
 
-def scrape_questions():
-    if USE_PLAYWRIGHT:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.goto(url, wait_until="networkidle")
-            
-            # wait for table to load
-            page.wait_for_selector("table")
-            
-            html = page.content()
-    else:
-        response = requests.get(url)
+# Scrape tournament page to SQL
+# scrape_tournament_to_sql("/2848/", diagnostics="./logs/tourny_to_sql.txt", level="Open")
 
-        # Check if request was successful
-        if response.status_code == 200:
-            html = response.text
+# Get cursory information about a packet
+# print(packet_information("./packets/2024 ACF Fall.json"))
 
+# Write an in-memory dict to the mysql database
+# dict = get_json("./packets/2002 Michigan MLK.json")
+# write_dict_to_sql(dict, diagnostics="./logs/tosql.txt", persist_db=True) 
 
-    soup = BeautifulSoup(html, "html.parser")
+# Categorize a question
+question = {"question":
+            """
+He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is amazed at the  sight of moon pie when he emerges after a brief stint as Frostillicus. He tells a drunkard, "The  sidewalk's for regular walking, not fancy walking," and sprouts hair all over his body after taking  Wednesday's pills on Friday. When he serves as a substitute teacher, he confiscates everything  made of tin, gets his beard caught in a pencil sharpener, and threatens paddlings. For 10 points - name this crotchety old companion of Abe Simpson.
+            """,
+            "answers": "Mexico [or United Mexican States; or Estados Unidos Mexicanos] (The photographer in the first line is Graciela Iturbide.) <Painting & Sculpture>",
+            "tournament": "2002 Martin Luther King Jr. Memorial Tournament University of Michigan/Duke University"
+            }
 
-    links = soup.find_all("a")
-    valid_links = []
+# print(categorize_question(question, model="1.0ml"))
 
-    for link in links:
-        href = link.get("href")
-        if href and len(href) > 1 and href[0] == "/" and href[1].isdigit():
-            # This is a valid link that we would like to explore
-            valid_links.append(href)
+# Categorize all questions
+# mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.1 ml")
 
-    for link in valid_links:
-        tpacket = scrape_tournament_page(link[1:])
-        break
-        
+# result = process_question_answer(question)
+# print(result)
+# mutate_question_answers()
+# mutate_category_to_basic()
 
-    # Example: get all links
-    # for row in table_rows:
-    #     # Find all table data cells (<td>) within each row
-    #     table_data = row.find_all('td')
-        
-    #     # Extract text from each <td> cell
-    #     row_data = [data.get_text(strip=True) for data in table_data]
-        
-    #     print(row_data)
+# Find population statistics for the classifier
+# find_question_points_stats(500, diagnostics="stats.txt", classifier_model="400 words")
 
-def scrape_individual_page():
-    print("BEGINNING webscrape")
-    tournment_packet = scrape_tournament_page("/3209/", diagnostics="logs/scrape.txt", level="College")
-
-    if not tournment_packet:
-        print("There was an error scraping that packet. Check the logs")
-    else:
-        tournment_name = tournment_packet.get("tournament_metadata").get("name")
-
-        # TODO: Save these questions to a mysql database or figure out how we want to save them
-
-        if tournment_name:
-            save_tpacket_to_json(tournment_packet, "./packets/" + tournment_name + ".json")
-        else:
-            save_tpacket_to_json(tournment_packet, "./packets/1.json")
-            print("WARNING: no name specified so data saved to ./packets/1.json. MUST RENAME")
-
-def packet_information(file):
-    tournament = {}
-    with open(file, "r", encoding="utf-8") as f:
-        tournament = json.load(f)
-    tossups = 0
-    bonuses = 0
-    for packet in tournament.get("packets"):
-        tossups += len(packet.get("tossups"))
-        bonuses += len(packet.get("bonuses"))
-
-    return {"tossups": tossups, "bonuses": bonuses}
-
-# print(packet_information("./packets/2002 Michigan MLK.json"))
-
-dict = get_json("./packets/2002 Michigan MLK.json")
-dict_to_sql(dict, "./logs/tosql.txt") 
-
+# Scrape all questions?
 # scrape_questions()
+
+# Train ML model
+# train_ml_classifier("1.1 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
