@@ -188,10 +188,6 @@ const Question = ({
         setExpandedHeight(EXPANDED_HEIGHT)
     }
 
-    useEffect(()=> {
-        console.log("ExHeiht", expandedHeight)
-    }, [expandedHeight])
-
     return (
         <ExpandableView
             expanded={ question.expanded || (state == "dead" && !isMinimized)}
@@ -267,7 +263,7 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                <HelperText>{question.answers.main}</HelperText>
+                {/* <HelperText>{question.answers.main}</HelperText> */}
                 {
                     state == "dead" &&
                     (

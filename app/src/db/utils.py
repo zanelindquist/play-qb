@@ -212,6 +212,7 @@ def create_user(client_data, rel_depths=None, depth=1):
     finally:
         session.remove()
 
+# Creates a game by default for this lobby
 def create_lobby(lobbyAlias):
     session = get_session()
     try:
@@ -652,6 +653,7 @@ def strip_answerline_junk(answer: str) -> str:
     return s.strip()
 
 # Game state management
+
 def player_join_lobby(email, lobbyAlias):
     session = get_session()
     try:
@@ -659,6 +661,11 @@ def player_join_lobby(email, lobbyAlias):
             select(Lobbies)
             .where(Lobbies.name == lobbyAlias)
         ).scalars().first()
+
+        lobby_games = session.execute(
+            select(Games)
+            .where(Games.lobby_id == lobby.id)
+        ).scalars().all()
 
         player = session.execute(
             select(Players)
@@ -675,7 +682,23 @@ def player_join_lobby(email, lobbyAlias):
         if not player:
             return {'message': 'player_join_lobby(): failure', 'error': f'User not found', "code": 400}
 
-        setattr(player, "lobby_id", lobby.get("id"))
+        # Set the player's lobby to this lobby
+        setattr(player, "lobby_id", lobby.id)
+
+        # TODO: If a game is non-custom and that game is full, add them to another game
+
+        game = None
+
+        # Add them to a specific game
+        if len(lobby_games) == 1:
+            game = lobby_games[0]
+        else:
+            # TODO: Handle putting the player into a seperate lobby
+            return
+
+        setattr(player, "current_game_id", game.id)
+        setattr(player, "is_online", True)
+        
 
         session.commit()
 
@@ -685,6 +708,39 @@ def player_join_lobby(email, lobbyAlias):
         return {'message': 'player_join_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def player_disconnect_from_lobby(email, lobbyAlias):
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        player = session.execute(
+            select(Players)
+            .join(Users, Players.user_id == Users.id)
+            .where(
+                Users.email == email,
+                Players.lobby_id == lobby.id
+            )
+        ).scalars().first()
+
+        if not player:
+            return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'User not found', "code": 400}
+
+        setattr(player, "current_game_id", None)
+        setattr(player, "is_online", False)
+
+        session.commit()
+
+        return {'message': 'player_disconnect_from_lobby(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 
 def set_question_to_game(question, lobbyAlias):
     session = get_session()

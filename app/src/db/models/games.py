@@ -12,6 +12,7 @@ class Games(Base, CreatedAtColumn):
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     active = Column(Boolean, default=True)
+    
     question_number = Column(Integer, default=0)
     game_mode = Column(Integer, default=1)
     rounds = Column(JSON, default=[])

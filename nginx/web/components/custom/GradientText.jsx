@@ -6,7 +6,7 @@ import theme from "@/assets/themes/theme";
 
 export default function GradientText({
     children,
-    colors = theme.gradients.textArray,
+    colors = [theme.primary, theme.secondary], //theme.static.gradients.textArray
     start = { x: 0, y: 0 },
     end = { x: 1, y: 0 },
     style,

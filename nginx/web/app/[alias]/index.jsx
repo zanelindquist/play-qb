@@ -30,7 +30,7 @@ const { width } = Dimensions.get('window');
 // TEMPORARY
 const ANSWER_MS = 5000;
 
-const SHOW_EVENTS_INCREMENTS = 5
+const SHOW_EVENTS_INCREMENTS = 20
 
 const Play = () => {
     // Get the lobby alias
@@ -38,7 +38,7 @@ const Play = () => {
     const alias = query.alias || "";
 
     const {showAlert} = useAlert();
-    const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
+    const {socket, send, addEventListener, removeEventListener, onReady} = useSocket("game", alias);
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
@@ -315,7 +315,6 @@ const Play = () => {
                         <View style={styles.showingContainer}>
                             <GlassyButton
                                 mode="filled"
-                                // style={{width: 200}}
                                 onPress={() => {
                                     setShowNumberOfEvents(showNumberOfEvents + SHOW_EVENTS_INCREMENTS)
                                 }}

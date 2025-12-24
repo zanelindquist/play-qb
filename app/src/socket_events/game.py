@@ -1,3 +1,8 @@
+"""
+    This file is for the game namespace of the sockets.
+    It handles events that are directly related to playing the game
+"""
+
 from flask_socketio import emit, disconnect, join_room, leave_room
 from flask import request, session
 from flask_jwt_extended import decode_token
@@ -13,7 +18,7 @@ def get_timestamp():
 # ===== INCOMMING EVENT HANDLERS =====
 
 # On connect we will need to get the auth token of the user so that we can know their identity
-@socketio.on("connect")
+@socketio.on("connect", namespace="/game")
 def connect(auth):
     token = auth.get("token")
 
@@ -31,16 +36,16 @@ def connect(auth):
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
-    session["user_id"] = identity;
+    request.environ["user_id"] = identity;
 
     print(f"Socket connected: user={identity}")
 
 # When a player joins the lobby
-@socketio.on("join_lobby")
+@socketio.on("join_lobby", namespace="/game")
 def on_join_lobby(data):
-    user_id = session["user_id"]
+    user_id = request.environ["user_id"]
     lobby = data.get("lobbyAlias")
-    session["lobby"] = lobby
+    request.environ["lobby"] = lobby
     join_room(f"lobby:{lobby}")
 
     if not lobby:
@@ -54,7 +59,9 @@ def on_join_lobby(data):
     create_player(user_id, lobby)
 
     # Add player to lobby in database
-    player_join_lobby(user_id, lobby)
+    result = player_join_lobby(user_id, lobby)
+
+    print("join", result)
 
     # Send GameState to the joining player (if possible)
 
@@ -74,10 +81,10 @@ def on_join_lobby(data):
     emit("player_joined", {"Player": Player}, room=f"lobby:{lobby}")
 
 # When a player buzzes
-@socketio.on("buzz")
+@socketio.on("buzz", namespace="/game")
 def on_buzz(data): # Timestamp, AnswerContent
-    lobby = session.get("lobby")
-    user_id = session["user_id"]
+    lobby = request.environ.get("lobby")
+    user_id = request.environ["user_id"]
 
     if not lobby:
         emit("reconnect")
@@ -93,10 +100,10 @@ def on_buzz(data): # Timestamp, AnswerContent
     )
 
 # When a player is buzzing (every 100 ms or so when typing)
-@socketio.on("typing")
+@socketio.on("typing", namespace="/game")
 def on_typing(data): # AnswerContent
-    lobby = session["lobby"]
-    user_id = session["user_id"]
+    lobby = request.environ["lobby"]
+    user_id = request.environ["user_id"]
 
     AnswerContent = data.get("content");
     Player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
@@ -109,10 +116,10 @@ def on_typing(data): # AnswerContent
     )
 
 # When the player has submitted their final answer
-@socketio.on("submit")
+@socketio.on("submit", namespace="/game")
 def on_submit(data): # FinalAnswer
-    lobby = session["lobby"]
-    user_id = session["user_id"]
+    lobby = request.environ["lobby"]
+    user_id = request.environ["user_id"]
 
     # Logic for determining if an answer is acceptable or not
 
@@ -150,10 +157,10 @@ def on_submit(data): # FinalAnswer
 
 # PAUSING AND PLAYING THE GAME
 
-@socketio.on("next_question")
+@socketio.on("next_question", namespace="/game")
 def on_next_question(data):
-    lobby = session.get("lobby")
-    user_id = session["user_id"]
+    lobby = request.environ.get("lobby")
+    user_id = request.environ["user_id"]
 
     if not lobby:
         emit("reconnect")
@@ -168,21 +175,34 @@ def on_next_question(data):
     emit("next_question", {"Question": Question, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused
-@socketio.on("game_resume")
+@socketio.on("game_resume", namespace="/game")
 def on_game_resume(): # Empty
-    lobby = session["lobby"]
-    user_id = session["user_id"]
+    lobby = request.environ["lobby"]
+    user_id = request.environ["user_id"]
 
     Player = get_player_by_email_and_lobby(user_id, lobby)
 
     emit("game_resumed", {"Player": Player, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
-@socketio.on("game_pause")
+@socketio.on("game_pause", namespace="/game")
 def on_game_pause(): # Empty
-    lobby = session["lobby"]
-    user_id = session["user_id"]
+    lobby = request.environ["lobby"]
+    user_id = request.environ["user_id"]
 
     Player = False;
 
     emit("game_pause", {Player}, room=f"lobby:{lobby}")
+
+@socketio.on("disconnect", namespace="/game")
+def on_disconnect():
+    user_id = request.environ.get("user_id")
+    lobby = request.environ.get("lobby")
+
+    print(f"Received disconnect form {user_id}")
+
+    result = player_disconnect_from_lobby(user_id, lobby)
+
+    print(result)
+
+    emit("player_disconnected", room=f"lobby:{lobby}")

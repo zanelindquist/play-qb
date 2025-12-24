@@ -18,4 +18,4 @@ class Lobbies(Base, CreatedAtColumn):
     players = relationship("Players", back_populates="lobby")
 
     def __repr__(self):
-        return f"<Lobby(id={self.id}, lobby_id={self.lobby_id})>"
+        return f"<Lobby(id={self.id} name={self.name})>"
