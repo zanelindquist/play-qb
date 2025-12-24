@@ -21,5 +21,17 @@ class Users(Base, CreatedAtColumn):
 
     player_instances = relationship("Players", back_populates="user")
 
+    sent_requests = relationship("Friends", back_populates="sender", foreign_keys="[Friend.sender_id]")
+    received_requests = relationship("Friends", back_populates="receiver", foreign_keys="[Friend.receiver_id]")
+
+    @property
+    def friends(self):
+        """Return accepted friends as a list of Users"""
+        accepted = []
+        for fr in self.sent_requests + self.received_requests:
+            if fr.is_accepted:
+                accepted.append(fr.receiver if fr.sender_id == self.id else fr.sender)
+        return accepted
+
     def __repr__(self):
         return f"<User(id={self.id}, name={self.lastname}, {self.firstname}, email={self.email})>"
