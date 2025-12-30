@@ -18,6 +18,7 @@ class Users(Base, CreatedAtColumn):
     birthday = Column(Date, nullable=False)
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
+    is_online = Column(Boolean, default=False)
 
     player_instances = relationship("Players", back_populates="user")
 

@@ -561,16 +561,48 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_friends_by_email(email):
+def get_friends_by_email(email, online=False):
+    session = get_session()
+
     if not email:
         raise Exception("get_friends_by_email(): No email provided")
     
-    user = get_user_by_email(email, rel_depths={"friends": 0})
+    user = session.execute(
+        select(Users)
+        .where(Users.email == email)
+    ).scalars().first()
 
     if not user:
         return []
+    
+    if not online:
+        return get_user_by_email(email).get("friends")
+    
+    friends = session.execute(
+        select(Friends)
+        .where(
+            or_(
+                Friends.sender_id == user.id,
+                Friends.receiver_id == user.id,
+            ),
+            and_(
+                Friends.is_accepted == True
+            )
+        )
+    ).scalars().all()
 
-    return user.get("friends")
+    if online:
+        online_friends = []
+        for friend in friends:
+            # Get the other person
+            target = friend.sender
+            if friend.sender_id == user.id:
+                target = friend.receiver
+
+            if target.is_online:
+                online_friends.append(target)
+        return [to_dict_safe(friend) for friend in online_friends]
+
 
 def get_users_by_query(query):
     session = get_session()
@@ -592,6 +624,32 @@ def get_users_by_query(query):
 
     # REL DEP is empty right now
     return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
+
+
+# EDITING RESOURCES
+
+def set_user_online(email: str, online=True):
+    try:
+        session = get_session()
+
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        setattr(user, "is_online", online)
+
+        session.commit()
+
+        return {"message": "set_user_online(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        return {"message": "set_user_online(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
+    
 
 
 # =====GAME FUNCTIONS=====
@@ -889,7 +947,6 @@ def player_disconnect_from_lobby(email, lobbyAlias):
         return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
-
 
 def set_question_to_game(question, lobbyAlias):
     session = get_session()

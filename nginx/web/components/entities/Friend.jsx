@@ -46,7 +46,7 @@ export default function Friend ({ style, friend, onPress = () => {}}) {
                 <View style={styles.circle}>
                     <Icon source={"account-outline"} size={"2rem"} color={theme.onPrimary}/>
                 </View>
-                <GradientText size={"1.5rem"} style={styles.name}>{friend.firstname[0]}. {friend.lastname}</GradientText>
+                <HelperText style={styles.name}>{friend.firstname} {friend.lastname}</HelperText>
             </View>
             <View>
                 <View style={[styles.circle, {backgroundColor: theme.onPrimary}]}>
@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.primary
     },
     name: {
+        fontSize: "1rem",
         letterSpacing: 0,
         textAlign: "center",
         textShadowColor: "black",

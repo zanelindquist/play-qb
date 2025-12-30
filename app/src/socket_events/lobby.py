@@ -39,6 +39,17 @@ def on_connect(auth):
 
     print(f"Socket connected to /lobby: user={identity}")
 
+@socketio.on("disconnect", "/lobby")
+def on_disconnect():
+    user_id = request.environ.get("user_id")
+    lobby = request.environ.get("lobby")
+
+    print(f"Received disconnect form {user_id}")
+
+    set_user_online(user_id, False)
+
+    emit("user_disconnected")
+
 # This is where we get information about a lobby
 @socketio.on("enter_lobby", "/lobby")
 def on_enter_lobby(data):
@@ -64,6 +75,8 @@ def on_enter_lobby(data):
     Player = get_player_by_email_and_lobby(user_id, lobby)
     User = get_user_by_email(user_id)
 
+    set_user_online(user_id, True)
+
     emit("prelobby_joined", {"Player": Player, "User": User, "Lobby": lobby_data})
 
 @socketio.on("search_friends", "/lobby")
@@ -73,11 +86,12 @@ def on_search_friends(data):
 
     query = data.get("query")
 
-    friends = get_friends_by_email(user_id)
+    friends = get_friends_by_email(user_id, True)
 
     # Apply the query
     friends = search_filter(friends, ["firstname", "lastname"], query)
 
+    print(friends)
 
     emit("friends_found", {"friends": friends})
 
