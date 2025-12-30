@@ -318,6 +318,62 @@ def create_player(email, lobbyAlias):
     finally:
         session.commit()
 
+def create_friend_request_from_email_to_hash(email, hash):
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        target = get_user_by_hash(hash)
+
+        if not user or not target:
+            return {'message': 'Cannot find sender or target', "code": 404}
+        
+        if user.get("id") == target.get("id"):
+            return {'message': "Cannot send yourself a friend request", "code": 400}
+
+        # See if there is already a friend request
+        correct_direction_request = session.execute(
+            select(Friends)
+            .where(
+                and_(Friends.sender_id == user.get("id"), Friends.receiver_id == target.get("id"))
+            )
+        ).scalars().first()
+
+        if correct_direction_request:
+            if correct_direction_request.is_accepted:
+                return {'message': 'You are already friends', "code": 200}
+            return {'message': 'This user already has a pending friend request', "code": 409}
+        
+        # If the target has sent the user a friend request, then we want to make it is_accepted
+        reverse_direction_request = session.execute(
+            select(Friends)
+            .where(
+                and_(Friends.sender_id == target.get("id"), Friends.receiver_id == user.get("id"))
+            )
+        ).scalars().first()
+
+        if reverse_direction_request:
+            if reverse_direction_request.is_accepted:
+                return {'message': 'You are already friends', "code": 200}
+            setattr(reverse_direction_request, "is_accepted", True)
+            return {'message': 'Friend added', "code": 201}
+
+
+        friend_request = Friends(
+            sender_id=user.get("id"),
+            receiver_id=target.get("id")
+        )
+
+        session.add(friend_request)
+        session.commit()
+
+        return {'message': 'create_friend_request_from_email_to_hash(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+
 # RETRIEVING RESOURCES
 
 # All of thse functions must return dicts, not SQL Alchemy objects
@@ -335,6 +391,34 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
             user = session.execute(
                 select(Users)
                 .where(Users.email == email)
+                .options(
+                    joinedload(Users.player_instances),
+                )
+            ).scalars().first()
+
+        if advanced:
+            return to_dict_safe(user, gentle=True, rel_depths=[], depth=3)
+        else:
+            return to_dict_safe(user, gentle=gentle, rel_depths=rel_depths, depth=depth)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
+def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+    try:
+        session = get_session()
+        user = None
+        if not joinedloads: 
+            user = session.execute(
+                select(Users)
+                .where(Users.hash == hash)
+            ).scalars().first()
+        else:
+            user = session.execute(
+                select(Users)
+                .where(Users.hash == hash)
                 .options(
                     joinedload(Users.player_instances),
                 )
@@ -483,7 +567,31 @@ def get_friends_by_email(email):
     
     user = get_user_by_email(email, rel_depths={"friends": 0})
 
+    if not user:
+        return []
+
     return user.get("friends")
+
+def get_users_by_query(query):
+    session = get_session()
+    users = session.execute(
+        select(
+            Users.hash,
+            Users.firstname,
+            Users.lastname
+        )
+        .where(
+            or_(
+                func.concat(Users.firstname, " ", Users.lastname).ilike(f"%{query}%"),
+                Users.firstname.ilike(f"%{query}%"),
+                Users.lastname.ilike(f"%{query}%"),
+            )
+        )
+        .limit(20)
+    ).all()
+
+    # REL DEP is empty right now
+    return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
 
 
 # =====GAME FUNCTIONS=====
