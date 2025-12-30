@@ -77,7 +77,7 @@ export default function PartySlot ({ style, player, isMe=false, onPress = () => 
             <View style={styles.circle}>
                 <Icon source={"account-outline"} size={"3rem"} color={theme.onPrimary}/>
             </View>
-            <GradientText size={"1.2rem"} style={styles.name}>{player?.user.firstname[0]}. {player.user.lastname}</GradientText>
+            <GradientText size={"1.2rem"} style={styles.name}>{player?.firstname[0]}. {player.lastname}</GradientText>
             </>
             :
             <IconButton icon={"plus"}/>

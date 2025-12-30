@@ -47,16 +47,12 @@ def on_enter_lobby(data):
     request.environ["prelobby"] = lobby
     join_room(f"prelobby:{lobby}")
 
-    print("ENTER LOBBY")
-
     if not lobby:
         emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
     # Get the number of current players in the lobby
     lobby_data = get_lobby_by_alias(lobby)
-
-    print("LOBBY", lobby_data)
 
     if not lobby_data:
         emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
@@ -66,13 +62,12 @@ def on_enter_lobby(data):
 
     # Give the player their information (load profiles, ect)
     Player = get_player_by_email_and_lobby(user_id, lobby)
+    User = get_user_by_email(user_id)
 
-    print("PLAYER", Player)
-
-    emit("prelobby_joined", {"Player": Player, "Lobby": lobby_data})
+    emit("prelobby_joined", {"Player": Player, "User": User, "Lobby": lobby_data})
 
 @socketio.on("search_friends", "/lobby")
-def on_find_friends(data):
+def on_search_friends(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
 
@@ -85,3 +80,34 @@ def on_find_friends(data):
 
 
     emit("friends_found", {"friends": friends})
+
+@socketio.on("search_users", "/lobby")
+def on_search_users(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    query = data.get("query")
+    if not query:
+        emit("users_found", {"users": []})
+        return
+
+    users = get_users_by_query(query)
+
+    emit("users_found", {"users": users})
+
+@socketio.on("add_friend", "/lobby")
+def on_add_friend(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    hash = data.get("hash")
+
+    print(hash)
+
+    if not hash:
+        emit("added_friend", {"message": "add_friend(): hash not provided", "code": 400})
+        return
+
+    result = create_friend_request_from_email_to_hash(user_id, hash)
+
+    emit("added_friend", result)

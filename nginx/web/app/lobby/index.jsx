@@ -39,7 +39,7 @@ import theme from "@/assets/themes/theme.js";
 import GradientText from "../../components/custom/GradientText.jsx";
 import { useSocket } from "../../utils/socket.jsx";
 import GameMode from "../../components/game/GameMode.jsx";
-import PartySlot from "../../components/game/PartySlot.jsx";
+import PartySlot from "../../components/entities/PartySlot.jsx";
 import InviteFriendModal from "../../components/modals/InviteFriendModal.jsx";
 import AddFriendModal from "../../components/modals/AddFriendModal.jsx";
 
@@ -81,15 +81,16 @@ export default function LobbyScreen() {
     
     useEffect(() => {
         onReady(() => {
-            addEventListener("prelobby_joined", ({ Player }) => {
-                setMyId(Player.id);
+            addEventListener("prelobby_joined", ({ Player, User }) => {
+                console.log(User)
+                setMyId(User.id);
                 // Get the party from the server
                 setPartySlots((prev) => {
                     if(prev[2]) {
                         for (let i = 0; i < prev.length; i++)
-                            if(!prev[i]) return [...prev.slice(0, i), Player, ...prev.slice(i + 1, prev.length)]
+                            if(!prev[i]) return [...prev.slice(0, i), User, ...prev.slice(i + 1, prev.length)]
                     } else {
-                        return [prev[0], prev[1], Player, prev[3], prev[4]]
+                        return [prev[0], prev[1], User, prev[3], prev[4]]
                     }
                 })
             });
