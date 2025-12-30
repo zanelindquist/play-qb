@@ -6,12 +6,12 @@ import theme from "@/assets/themes/theme";
 
 export default function GradientText({
     children,
-    colors = [theme.primary, theme.secondary], //theme.static.gradients.textArray
+    colors = [theme.primary, theme.tertiary], //theme.static.gradients.textArray
     start = { x: 0, y: 0 },
-    end = { x: 1, y: 0 },
+    end = { x: 1, y: 1 },
     style,
     size=20,
-    weight=500
+    weight=500,
 }){
 
   // Web fallback using CSS background-clip

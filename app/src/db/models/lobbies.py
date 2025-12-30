@@ -17,5 +17,13 @@ class Lobbies(Base, CreatedAtColumn):
     games = relationship("Games", back_populates="lobby")
     players = relationship("Players", back_populates="lobby")
 
+    @property
+    def number_of_online_players(self):
+        online_players = 0;
+        for player in self.players:
+            if player.is_online:
+                online_players += 1;
+        return online_players
+
     def __repr__(self):
         return f"<Lobby(id={self.id} name={self.name})>"
