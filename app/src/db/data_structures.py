@@ -5,7 +5,8 @@ SERIALIZATION_CONFIG = {
             "account_disabled", "email_verified"
         ],
         "relationships": {
-            "player_instances": "Players"    
+            "player_instances": "Players",
+            "friends": "Users"
         },
     },
     "Stats": {
@@ -36,7 +37,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Lobbies": {
-        "fields": ["id", "hash", "name", "total_games"],
+        "fields": ["id", "hash", "name", "total_games", "number_of_online_players"],
         "relationships": {
             "games": "Games",
             "players": "Players",

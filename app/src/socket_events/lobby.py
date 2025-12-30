@@ -35,26 +35,53 @@ def on_connect(auth):
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
-    session["user_id"] = identity;
+    request.environ["user_id"] = identity;
 
-    print(f"Socket connected: user={identity}")
+    print(f"Socket connected to /lobby: user={identity}")
 
-# This is where we establish connection with the lobby
+# This is where we get information about a lobby
 @socketio.on("enter_lobby", "/lobby")
 def on_enter_lobby(data):
-    user_id = session["user_id"]
+    user_id = request.environ["user_id"]
     lobby = data.get("lobbyAlias")
-    session["prelobby"] = lobby
+    request.environ["prelobby"] = lobby
     join_room(f"prelobby:{lobby}")
+
+    print("ENTER LOBBY")
 
     if not lobby:
         emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
     # Get the number of current players in the lobby
+    lobby_data = get_lobby_by_alias(lobby)
+
+    print("LOBBY", lobby_data)
+
+    if not lobby_data:
+        emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+        return;
 
     # Tell this player's friends what gamemode they are now in
 
     # Give the player their information (load profiles, ect)
     Player = get_player_by_email_and_lobby(user_id, lobby)
-    emit("prelobby_joined", {"Player": Player})
+
+    print("PLAYER", Player)
+
+    emit("prelobby_joined", {"Player": Player, "Lobby": lobby_data})
+
+@socketio.on("search_friends", "/lobby")
+def on_find_friends(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    query = data.get("query")
+
+    friends = get_friends_by_email(user_id)
+
+    # Apply the query
+    friends = search_filter(friends, ["firstname", "lastname"], query)
+
+
+    emit("friends_found", {"friends": friends})

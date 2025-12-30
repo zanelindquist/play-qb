@@ -176,6 +176,38 @@ def validate_data(data, key=False, check_email=True):
     else:
         return data
 
+# Items is a list of dicts, fields is a list of strings of the keys on those dicts, and query is what to filter by
+def search_filter(items, keys, query):
+    if not query:
+        return items
+    
+    query = query.lower()
+    
+    filtered = []
+    for item in items:
+        for key in keys:
+            value = item.get(key)
+            if value and type(value) == str:
+                value = value.lower()
+                # Filtering logic
+                # String starting with
+                if value.startswith(query):
+                    filtered.append(item)
+                    continue
+
+                # Filter by token matching
+                query_tokens = set(query.tolist())
+                value_tokens = set(query.tolist())
+
+                # Compare overlay
+                overlap = query_tokens & value_tokens
+
+                if overlap / len(value_tokens) >= 0.8:
+                    filtered.append(item)
+                    continue
+
+    return filtered
+
 
 
 # CREATING RESOURCES
@@ -444,6 +476,15 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
         return {'message': 'get_gamestate_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def get_friends_by_email(email):
+    if not email:
+        raise Exception("get_friends_by_email(): No email provided")
+    
+    user = get_user_by_email(email, rel_depths={"friends": 0})
+
+    return user.get("friends")
+
 
 # =====GAME FUNCTIONS=====
 

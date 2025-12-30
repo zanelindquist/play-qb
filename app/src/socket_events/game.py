@@ -38,7 +38,7 @@ def connect(auth):
     
     request.environ["user_id"] = identity;
 
-    print(f"Socket connected: user={identity}")
+    print(f"Socket connected to /game: user={identity}")
 
 # When a player joins the lobby
 @socketio.on("join_lobby", namespace="/game")
@@ -202,7 +202,5 @@ def on_disconnect():
     print(f"Received disconnect form {user_id}")
 
     result = player_disconnect_from_lobby(user_id, lobby)
-
-    print(result)
 
     emit("player_disconnected", room=f"lobby:{lobby}")

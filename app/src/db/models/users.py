@@ -21,8 +21,8 @@ class Users(Base, CreatedAtColumn):
 
     player_instances = relationship("Players", back_populates="user")
 
-    sent_requests = relationship("Friends", back_populates="sender", foreign_keys="[Friend.sender_id]")
-    received_requests = relationship("Friends", back_populates="receiver", foreign_keys="[Friend.receiver_id]")
+    sent_requests = relationship("Friends", back_populates="sender", foreign_keys="Friends.sender_id")
+    received_requests = relationship("Friends", back_populates="receiver", foreign_keys="Friends.receiver_id")
 
     @property
     def friends(self):
