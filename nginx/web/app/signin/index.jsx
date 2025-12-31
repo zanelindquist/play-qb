@@ -84,7 +84,7 @@ export default function SignInScreen() {
             
             saveAccessToken(response.data.access_token)
             // Redirect user to the dashboard page
-            router.push("/play")
+            router.push("/")
         } catch (error) {
             console.log(error)
             if (error.response?.data?.error) handleInvalidField(error.response.data.error)

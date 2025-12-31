@@ -37,6 +37,10 @@ def on_connect(auth):
     
     request.environ["user_id"] = identity;
 
+    user = get_user_by_email(identity)
+
+    join_room(f"user:{user.get("hash")}")
+
     print(f"Socket connected to /lobby: user={identity}")
 
 @socketio.on("disconnect", "/lobby")
@@ -91,9 +95,22 @@ def on_search_friends(data):
     # Apply the query
     friends = search_filter(friends, ["firstname", "lastname"], query)
 
-    print(friends)
-
     emit("friends_found", {"friends": friends})
+
+@socketio.on("invite_friend", "/lobby")
+def on_add_friend(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    hash = data.get("hash")
+
+    if not hash:
+        emit("invite_friend", {"message": "add_friend(): hash not provided", "code": 400})
+        return
+    
+    inviter = get_user_by_email(user_id)
+
+    emit("invited", {"from_user": inviter}, room=f"user:{hash}")
 
 @socketio.on("search_users", "/lobby")
 def on_search_users(data):

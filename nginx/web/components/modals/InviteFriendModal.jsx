@@ -15,7 +15,7 @@ import Friend from '../entities/Friend';
 import AddFriend from './AddFriendModal';
 
 
-export default function InviteFriendModal({socket, addEventListener, openAddFriendModal, close}) {
+export default function InviteFriendModal({socket, addEventListener, removeEventListener, openAddFriendModal, close}) {
     const [searchQuery, setSearchQuery] = useState("")
     const [results, setResults] = useState([])
 
@@ -35,11 +35,17 @@ export default function InviteFriendModal({socket, addEventListener, openAddFrie
     }
 
     useEffect(() => {
-        addEventListener("friends_found", ({friends}) => {
-            console.log(friends)
-            setFriends(friends)
+        addEventListener("friends_found", ({friends: newFriends}) => {
+            console.log(newFriends)
+            setFriends(newFriends)
         })
 
+        return () => {
+            removeEventListener("friends_found")
+        }
+    }, [])
+
+    useEffect(() => {
         fetchFriends(searchQuery)
     }, [searchQuery])
 
@@ -47,29 +53,39 @@ export default function InviteFriendModal({socket, addEventListener, openAddFrie
         socket.emit("search_friends", {query: query})
     }
     
-    function handleInvite(friendId) {
-        socket.emit("invite_friend", {friend_id: friendId})
+    function handleInvite(hash) {
+        socket.emit("invite_friend", {hash: hash})
+        console.log(hash)
     } 
 
     return (
         <View style={styles.container}>
             <View style={styles.dialogueTitle}>
                 <Title style={styles.createDTitle}>Invite Friend</Title>
-                <IconButton
-                    icon="close"
-                    size={20}
-                    iconColor={theme.onPrimaryContainer}
-                    onPress={() => {
-                        close();
-                    }}
-                />
+                <View style={styles.rightDialogue}>
+                    <IconButton 
+                        icon="refresh"
+                        size={20}
+                        iconColor={theme.onPrimaryContainer}
+                        onPress={() => {
+                            fetchFriends(searchQuery)
+                        }}
+                    />
+                    <IconButton
+                        icon="close"
+                        size={20}
+                        iconColor={theme.onPrimaryContainer}
+                        onPress={close}
+                    /> 
+                </View>
+
             </View>
             {
-                friends?.length > 0 ?
+                friends ?
                 friends.map((friend, i) => 
                     <Friend
                         friend={friend}
-                        onPress={() => handleInvite(friend.id)}    
+                        onPress={() => handleInvite(friend.hash)}    
                     />
                 )
                 :
@@ -97,6 +113,9 @@ const styles = StyleSheet.create({
     createDTitle: {
         fontSize: 20,
         fontWeight: 'bold',
+    },
+    rightDialogue: {
+        flexDirection: 'row',
     },
     noFriendsContainer: {
         flexDirection: "row",

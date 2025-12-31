@@ -42,6 +42,7 @@ import GameMode from "../../components/game/GameMode.jsx";
 import PartySlot from "../../components/entities/PartySlot.jsx";
 import InviteFriendModal from "../../components/modals/InviteFriendModal.jsx";
 import AddFriendModal from "../../components/modals/AddFriendModal.jsx";
+import InvitedModal from "../../components/modals/InvitedModal.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -82,7 +83,6 @@ export default function LobbyScreen() {
     useEffect(() => {
         onReady(() => {
             addEventListener("prelobby_joined", ({ Player, User }) => {
-                console.log(User)
                 setMyId(User.id);
                 // Get the party from the server
                 setPartySlots((prev) => {
@@ -99,6 +99,15 @@ export default function LobbyScreen() {
                 showAlert("Lobby not found")
             })
 
+            addEventListener("invited", ({from_user}) => {
+                showAlert(
+                    <InvitedModal
+                        acceptInvite={handleAcceptInvite}
+                        user={from_user}
+                    />
+                )
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             send("enter_lobby", { lobbyAlias: gameMode });
         });
@@ -113,6 +122,7 @@ export default function LobbyScreen() {
             <InviteFriendModal
                 socket={socket}
                 addEventListener={addEventListener}
+                removeEventListener={removeEventListener}
                 openAddFriendModal={openAddFriendModal}
             />, 
             styles.dialogueModalStyle
@@ -124,6 +134,7 @@ export default function LobbyScreen() {
             <AddFriendModal
                 socket={socket}
                 addEventListener={addEventListener}
+                removeEventListener={removeEventListener}
             />,
             styles.dialogueModalStyle
         );
@@ -137,6 +148,10 @@ export default function LobbyScreen() {
 
     function handlePartySlotPressed() {
         openInviteFriendModal()
+    }
+
+    function handleAcceptInvite() {
+        send("accepted_invite")
     }
 
     return (

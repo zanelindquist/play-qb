@@ -149,7 +149,7 @@ const SignUp = () => {
             saveAccessToken(accessToken)
             
             // Now, lets redirect them to the dashboard page
-            router.push("/play")
+            router.push("/")
         } catch (error) {
             console.log(error)
             // Handle data input errors
