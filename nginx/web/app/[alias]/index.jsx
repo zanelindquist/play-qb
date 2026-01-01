@@ -39,7 +39,7 @@ const Play = () => {
     const router = useRouter()
 
     const {showAlert} = useAlert();
-    const {socket, send, addEventListener, removeEventListener, onReady} = useSocket("game", alias);
+    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady} = useSocket("game", alias);
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
@@ -153,6 +153,7 @@ const Play = () => {
 
         return () => {
             clearInterval(typingEmitInterval)
+            removeAllEventListeners()
             if(socket) socket.disconnect()
         }
     }, [socket])

@@ -89,11 +89,22 @@ export function useSocket(namespace, lobbyAlias) {
         }
     };
 
+    const removeAllEventListeners= () => {
+        for (let event of listenersRef.current.keys()) {
+            const cb = listenersRef.current.get(event);
+            if (cb && socketRef.current) {
+                socketRef.current.off(event, cb);
+                listenersRef.current.delete(event);
+            }
+        }
+    }
+
     return {
         socket: socketRef.current,
         send,
         addEventListener,
         removeEventListener,
+        removeAllEventListeners,
         onReady
     };
 }

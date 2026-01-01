@@ -77,7 +77,7 @@ export default function LobbyScreen() {
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
 
-    const { socket, send, addEventListener, removeEventListener, onReady } = useSocket("lobby", params.mode || "solos");
+    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady } = useSocket("lobby", params.mode || "solos");
 
     const [gameMode, setGameMode] = useState(params.mode || "solos");
     const [myHash, setMyHash] = useState(undefined);
@@ -89,7 +89,7 @@ export default function LobbyScreen() {
     useEffect(() => {
         onReady(() => {
             addEventListener("prelobby_joined", ({ player, party_members, user }) => {
-                console.log("PMS", party_members)
+                console.log(user)
                 setMyHash(user.hash);
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
@@ -110,11 +110,25 @@ export default function LobbyScreen() {
                 )
             })
 
-            addEventListener("joined_party", ({members}) => {
+            addEventListener("joined_party", ({members, user}) => {
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
-                showBanner("Member joined party")
+                showBanner(`${user.firstname} ${user.lastname} joined party`)
+            })
+
+            addEventListener("member_left_party", ({user}) => {
+                console.log(user.hash, myHash)
+                // If this user is me
+                if (user.hash === myHash) {
+                    setPartySlots([])
+                    joinParty(user)
+                    showBanner(`You left the party`)
+                    return
+                }
+
+                leaveParty(user.hash)
+                showBanner(`${user.firstname} ${user.lastname} left the party`)
             })
 
             addEventListener("party_member_readied", ({ready_info}) => {
@@ -154,9 +168,13 @@ export default function LobbyScreen() {
         // useEffect() cleanup
         return () => {
             // if(socket) socket.disconnect()
+            removeAllEventListeners()
         };
-    }, [gameMode, partySlots, socket]);
+    }, [gameMode, partySlots, socket, myHash]);
 
+    useEffect(() => {
+        console.log("MY HASH", myHash)
+    }, [myHash])
 
     const openInviteFriendModal = React.useCallback(() => {
         showAlert(
@@ -197,6 +215,10 @@ export default function LobbyScreen() {
     function handleReadyPressed() {
         send("party_member_ready", {ready: !isReady})
         setIsReady(!isReady)
+    }
+
+    function handleLeaveParty() {
+        send("leave_party")
     }
 
     function joinParty(user) {
@@ -264,6 +286,10 @@ export default function LobbyScreen() {
                     </View>
                     <View style={styles.bottomOptions}>
                         <GlassyButton
+                            style={styles.leaveButton}
+                            onPress={handleLeaveParty}
+                        >Leave Party</GlassyButton>
+                        <GlassyButton
                             style={styles.readyButton}
                             mode={isReady ? "filled" : "contained"}
                             onPress={handleReadyPressed}
@@ -310,6 +336,10 @@ const styles = StyleSheet.create({
     },
     readyButton: {
         width: 200,
+    },
+    leaveButton: {
+        width: 200,
+        backgroundImage: theme.gradients.buttonRed
     },
     gamemodes: {
         width: 200,

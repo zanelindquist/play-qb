@@ -266,7 +266,35 @@ def on_accepted_invite(data):
     for member in party_members:
         member["ready"] = party.get("members").get(member.get("hash"))
 
-    emit("joined_party", {"members": party_members}, room=f"party:{party_hash}")
+    emit("joined_party", {"members": party_members, "user": user}, room=f"party:{party_hash}")
+
+@socketio.on("leave_party", "/lobby")
+def on_accepted_invite(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+    party_hash = request.environ["party"]
+
+    user = get_user_by_email(user_id)
+    user_hash = user.get("hash")
+
+    # Leave old party
+    leave_party(user_hash)
+    leave_room(f"party:{party_hash}")
+
+    # Join new personal party
+    new_party_hash = create_party(user.get("hash"))
+    new_party = parties[new_party_hash]
+    join_room(f"party:{new_party_hash}")
+    request.environ["party"] = new_party_hash
+
+    # Get party members to send back to update UI (include ready state)
+    # For new party
+    emit("member_left_party", {"user": user}, room=f"party:{new_party_hash}")
+
+    # For old party
+    emit("member_left_party", {"user": user}, room=f"party:{party_hash}")
+
+
 
 # Entering the game
 @socketio.on("party_member_ready", "/lobby")
