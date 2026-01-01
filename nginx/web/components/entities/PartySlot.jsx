@@ -13,7 +13,7 @@ const HOVER_MULTIPLIER = 1.1;
 const ANIMATION_DURATION = 150;
 const HOVER_DELAY = 100;
 
-export default function PartySlot ({ style, player, isMe=false, onPress = () => {}}) {
+export default function PartySlot ({ style, player, isMe=false, ready, onPress = () => {}}) {
     const [normalHeight, setNormalHeight] = useState(0)
     const animatedHeight = useRef(new Animated.Value(0)).current
     const [isHovering, setIsHovering] = useState(false)
@@ -25,25 +25,10 @@ export default function PartySlot ({ style, player, isMe=false, onPress = () => 
 
     function handleHoverIn() {
         setTimeout(() => setIsHovering(true), HOVER_DELAY)
-        
-        // if (normalHeight > 0) {
-        //     Animated.timing(animatedHeight, {
-        //         toValue: normalHeight * HOVER_MULTIPLIER,
-        //         duration: ANIMATION_DURATION,
-        //         useNativeDriver: false,
-        //     }).start()
-        // }
     }
 
     function handleHoverOut() {
         setTimeout(() => setIsHovering(false), HOVER_DELAY)
-        // if (normalHeight > 0) {
-        //     Animated.timing(animatedHeight, {
-        //         toValue: normalHeight,
-        //         duration: ANIMATION_DURATION,
-        //         useNativeDriver: false,
-        //     }).start()
-        // }
     }
 
     return (
@@ -62,11 +47,18 @@ export default function PartySlot ({ style, player, isMe=false, onPress = () => 
         <GlassyView
             style={styles.container}
             gradient={
+                !ready ?
                 isHovering && !isMe && {
-                colors: theme.gradients.backgroundTint,
-                start: { x: 1, y: 0 },
-                end: { x: 1, y: 1 },
-            }}
+                    colors: theme.gradients.backgroundTint,
+                    start: { x: 1, y: 0 },
+                    end: { x: 1, y: 1 },
+                } :
+                {
+                    colors: theme.gradients.readyTint,
+                    start: { x: 1, y: 0 },
+                    end: { x: 1, y: 1 },
+                }
+            }
             onPress={onPress}
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}

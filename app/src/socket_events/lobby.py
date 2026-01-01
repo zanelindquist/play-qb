@@ -30,7 +30,7 @@ def create_party(user_hash: str) -> str:
     parties[party_hash] = {
         "leader_hash": user_hash,
         "members": {user_hash: False},
-        "lobby_alias": None 
+        "lobby_alias": "solos" # Default gamemode 
     }
 
     return party_hash
@@ -46,6 +46,19 @@ def is_in_party(user_hash: str, party_hash: str) -> bool:
     else:
         return False
         
+# Reaturns a boolean of if everyone is ready
+def set_party_member_ready(user_hash: str, party_hash: str, is_ready: bool) -> bool:
+    parties[party_hash]["members"][user_hash] = is_ready
+
+    for value in list(parties[party_hash]["members"].values()):
+        if not value:
+            return False
+        
+    return True
+
+def set_party_lobby_alias(party_hash: str, lobby_alias: str) -> None:
+    parties[party_hash]["lobby_alias"] = lobby_alias
+
 def join_party(user_hash: str, party_hash: str) -> tuple:
     if not parties.get(party_hash):
         raise Exception("join_party(): party does not exist")
@@ -151,7 +164,11 @@ def on_enter_lobby(data):
     # Give the player their information (load profiles, ect)
     player = get_player_by_email_and_lobby(user_id, lobby)
     user = get_user_by_email(user_id)
-    party_members = [get_user_by_hash(hash) for hash in parties[party_hash].get("members")]
+    party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
+
+    # Set who is ready or not
+    for member in party_members:
+        member["ready"] = parties[party_hash].get("members")[member.get("hash")]
 
     set_user_online(user_id, True)
 
@@ -180,8 +197,6 @@ def on_invite_friend(data):
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    print(parties)
-
     invited_hash = data.get("hash")
 
     if not invited_hash:
@@ -202,22 +217,38 @@ def on_accepted_invite(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
 
-    party_hash = data.get("party_hash")
-    request.environ["party"] = party_hash
+    new_party_hash = data.get("party_hash")
+    if not new_party_hash:
+        emit("accepted_invite", {"message": "accepted_invite(): party_hash not provided", "code": 400})
+        return
 
     user = get_user_by_email(user_id)
+    user_hash = user.get("hash")
+
+    old_party_hash = request.environ.get("party")
+
+    # Leave old party/room first if different
+    if old_party_hash and old_party_hash != new_party_hash:
+        try:
+            leave_room(f"party:{old_party_hash}")
+        except Exception:
+            pass
+        leave_party(user_hash)
 
     # Join new party
-    party_hash, party = join_party(user.get("hash"), party_hash)
+    try:
+        party_hash, party = join_party(user_hash, new_party_hash)
+    except Exception as e:
+        emit("accepted_invite", {"message": str(e), "code": 400})
+        return
+
     join_room(f"party:{party_hash}")
+    request.environ["party"] = party_hash
 
-    # Leave old party
-    leave_party(user.get("hash"))
-
-    print("PARTIES", party, parties[party_hash])
-
-    # Get party members to send back to update UI
+    # Get party members to send back to update UI (include ready state)
     party_members = [get_user_by_hash(user_hash) for user_hash in party.get("members")]
+    for member in party_members:
+        member["ready"] = party.get("members").get(member.get("hash"))
 
     emit("joined_party", {"members": party_members}, room=f"party:{party_hash}")
 
@@ -226,25 +257,40 @@ def on_accepted_invite(data):
 def on_party_member_ready(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
-
-    party_hash = data.get("party_hash")
-    request.environ["party"] = party_hash
+    party_hash = request.environ["party"]
 
     user = get_user_by_email(user_id)
 
-    # Join new party
-    party_hash, party = join_party(user.get("hash"), party_hash)
-    join_room(f"party:{party_hash}")
+    is_ready = data.get("ready")
 
-    # Leave old party
-    leave_party(user.get("hash"))
+    everyone_ready = set_party_member_ready(user.get("hash"), party_hash, is_ready)
 
-    print("PARTIES", party, parties[party_hash])
+    emit("party_member_readied", {"ready_info": parties[party_hash]["members"]}, room=f"party:{party_hash}")
 
-    # Get party members to send back to update UI
-    party_members = [get_user_by_hash(user_hash) for user_hash in party.get("members")]
+    if everyone_ready:
+        lobby_alias = parties[party_hash]["lobby_alias"]
 
-    emit("joined_party", {"members": party_members}, room=f"party:{party_hash}")
+        emit("enter_game", {"lobby_alias": lobby_alias}, room=f"party:{party_hash}")
+
+@socketio.on("change_gamemode", "/lobby")
+def on_party_member_ready(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+    party_hash = request.environ["party"]
+
+    user = get_user_by_email(user_id)
+
+    # Make sure the user is the party leader
+
+    if user.get("hash") != parties[party_hash]["leader_hash"]:
+        return;
+
+    new_lobby_alias = data.get("lobby_alias")
+
+    set_party_lobby_alias(party_hash, new_lobby_alias)
+
+    emit("changed_gamemode", {"lobby_alias": new_lobby_alias}, room=f"party:{party_hash}")
+
 
 
 # Adding friends
@@ -269,8 +315,6 @@ def on_add_friend(data):
     lobby = request.environ["prelobby"]
 
     hash = data.get("hash")
-
-    print(hash)
 
     if not hash:
         emit("added_friend", {"message": "add_friend(): hash not provided", "code": 400})

@@ -109,10 +109,32 @@ export default function LobbyScreen() {
             })
 
             addEventListener("joined_party", ({members}) => {
-                console.log("JOINED", members)
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
+            })
+
+            addEventListener("party_member_readied", ({ready_info}) => {
+                // Set who is ready or not
+                setPartySlots((prev) => {
+                    let updatedArray = Array(5)
+                    for(let i = 0; i < prev.length; i++){
+                        updatedArray[i] = undefined
+                        if(!prev[i]) continue
+                        let user = prev[i]
+                        user.ready = ready_info[prev[i].hash]
+                        updatedArray[i] = user
+                    }
+                    return updatedArray
+                })
+            })
+
+            addEventListener("changed_gamemode", ({lobby_alias}) => {
+                setGameMode(lobby_alias)
+            })
+            
+            addEventListener("enter_game", () => {
+               router.push(`/${gameMode}`)
             })
 
             addEventListener("user_disconnected", ({user_hash})=> {
@@ -120,9 +142,10 @@ export default function LobbyScreen() {
             })
 
             // Now that the listners are registered, we are ready to join the lobby
-            if(!enteredLobby)
+            if(!enteredLobby) {
                 send("enter_lobby", { lobbyAlias: gameMode });
                 setEnteredLobby(true)
+            }
         });
 
         // useEffect() cleanup
@@ -155,7 +178,7 @@ export default function LobbyScreen() {
     
 
     function handleGameModePress(mode) {
-        setGameMode(mode)
+        send("change_gamemode", {lobby_alias: mode})
     }
 
     function handlePartySlotPressed() {
@@ -167,8 +190,8 @@ export default function LobbyScreen() {
     }
 
     function handleReadyPressed() {
+        send("party_member_ready", {ready: !isReady})
         setIsReady(!isReady)
-        send("party_member_ready", {member_hash: myHash})
     }
 
     function joinParty(user) {
@@ -229,6 +252,7 @@ export default function LobbyScreen() {
                                 style={styles.partySlot}
                                 onPress={handlePartySlotPressed}
                                 isMe={user?.hash == myHash}
+                                ready={user?.ready}
                             />
                         )
                     }
