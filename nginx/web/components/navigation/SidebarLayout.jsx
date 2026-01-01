@@ -92,7 +92,7 @@ const SidebarLayout = ({ children, style }) => {
                             removeAccessToken();
                             close();
                             showAlert("Successfully logged out");
-                            router.push("/signin");
+                            router.replace("/signin");
                         }}
                         style={styles.confirmButton}
                     >
@@ -142,7 +142,7 @@ const SidebarLayout = ({ children, style }) => {
                     <View style={styles.middleNav}>
                         <TopNavItem
                             label="Play"
-                            onPress={() => router.push("/play")}
+                            onPress={() => router.replace("/play")}
                             icon="play-outline"
                             iconColor={iconColor}
                         />

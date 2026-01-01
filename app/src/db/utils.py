@@ -673,7 +673,7 @@ def set_user_online(email: str, online=True):
 # In short, we prefer false positives over false negatives
 def check_question(question, guess) -> bool:
     if not question or not guess:
-        raise Exception("check_question(): no question provided")
+        raise Exception("check_question(): no question or guess provided")
 
     # Handle bonuses
     if question.get("type") == 1:

@@ -134,7 +134,7 @@ export default function LobbyScreen() {
             })
             
             addEventListener("enter_game", () => {
-               router.push(`/${gameMode}`)
+               router.replace(`/${gameMode}`)
             })
 
             addEventListener("user_disconnected", ({user_hash})=> {
@@ -149,8 +149,10 @@ export default function LobbyScreen() {
         });
 
         // useEffect() cleanup
-        return () => {};
-    }, [gameMode, partySlots]);
+        return () => {
+            // if(socket) socket.disconnect()
+        };
+    }, [gameMode, partySlots, socket]);
 
 
     const openInviteFriendModal = React.useCallback(() => {

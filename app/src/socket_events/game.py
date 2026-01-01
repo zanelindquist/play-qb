@@ -105,6 +105,10 @@ def on_typing(data): # AnswerContent
     lobby = request.environ["lobby"]
     user_id = request.environ["user_id"]
 
+    if not lobby:
+        emit("reconnect")
+        return
+
     answer_content = data.get("content");
     player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
 
@@ -126,7 +130,7 @@ def on_submit(data): # FinalAnswer
     # Get lobby's game's current question
     gamestate = get_gamestate_by_lobby_alias(lobby);
     question = gamestate.get("current_question")
-    final_answer = data.get("FinalAnswer")
+    final_answer = data.get("final_answer")
     is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
     # IsCorrect= math.floor(random.random() * 2) - 1
     scores = False

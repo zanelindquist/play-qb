@@ -36,6 +36,7 @@ const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();
     const alias = query.alias || "";
+    const router = useRouter()
 
     const {showAlert} = useAlert();
     const {socket, send, addEventListener, removeEventListener, onReady} = useSocket("game", alias);
@@ -150,8 +151,11 @@ const Play = () => {
         
         })
 
-        return () => clearInterval(typingEmitInterval)
-    }, [])
+        return () => {
+            clearInterval(typingEmitInterval)
+            if(socket) socket.disconnect()
+        }
+    }, [socket])
 
     // Update the ref for it to be used in the listeners
     useEffect(() => {
@@ -335,6 +339,7 @@ const Play = () => {
                     <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
                     <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
+                    <GlassyButton mode="filled" onPress={() => router.replace(`/lobby?mode=${alias}`)}>Exit</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>
 
