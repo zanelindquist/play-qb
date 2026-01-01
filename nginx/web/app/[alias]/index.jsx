@@ -48,7 +48,7 @@ const Play = () => {
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
-    const [syncTimestamp, setSyncTimestamp] = useState(0)
+    const [synctimestamp, setSynctimestamp] = useState(0)
 
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
@@ -80,64 +80,64 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-        addEventListener("you_joined", ({Player, GameState}) => {
-            setMyId(Player.id)
-            console.log(GameState)
+        addEventListener("you_joined", ({player, game_state}) => {
+            setMyId(player.id)
+            console.log(game_state)
         })
 
-        addEventListener("player_joined", ({Player, GameState}) => {
-            Player.eventType = "player_joined"
-            addEvent(Player)
+        addEventListener("player_joined", ({player, game_state}) => {
+            player.eventType = "player_joined"
+            addEvent(player)
         })
 
-        addEventListener("question_interrupt", ({Player, AnswerContent, Timestamp}) => {
-            setSyncTimestamp(Timestamp)
-            setBuzzer({current: Player})
+        addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
+            setSynctimestamp(timestamp)
+            setBuzzer({current: player})
             setQuestionState("interrupted")
             // For non-question events, put them second in the list
             addEvent({
                 eventType: "interrupt",
                 // Set the interrupt status for the buzzer color
                 status: questionStateRef.current == "waiting" ? "late" : "early",
-                player: Player,
-                content: AnswerContent
+                player: player,
+                content: answer_content
             })
         })
 
-        addEventListener("player_typing", ({AnswerContent}) => {
-            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("content", AnswerContent)
+        addEventListener("player_typing", ({answer_content}) => {
+            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+            setInterruptData("content", answer_content)
         })
 
-        addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
-            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
+        addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
             
             setBuzzer(null)
             setQuestionState("running")
-            setSyncTimestamp(Timestamp)
+            setSynctimestamp(timestamp)
         })
 
-        addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
-            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
+        addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
             // Minimize the current quetsion
             minimizeCurrentQuestion()
             setBuzzer(null)
-            setSyncTimestamp(Timestamp)
-            addEvent(Question, true)
+            setSynctimestamp(timestamp)
+            addEvent(question, true)
             setQuestionState("running")
         })
 
-        addEventListener("reward_points", ({Scores}) => {
+        addEventListener("reward_points", ({scores}) => {
             
         })
 
-        addEventListener("game_paused", ({Player}) => {
+        addEventListener("game_paused", ({player}) => {
             
         })
 
-        addEventListener("game_resumed", ({Player, Timestamp}) => {
-            setSyncTimestamp(Timestamp)
+        addEventListener("game_resumed", ({player, timestamp}) => {
+            setSynctimestamp(timestamp)
         })
 
         // Mostly test listner
@@ -166,7 +166,7 @@ const Play = () => {
     function onBuzz() {
         // Can't buzz when there is already an interruption
         if(buzzer || questionState == "dead") return;
-        send("buzz", {Timestamp: Date.now()})
+        send("buzz", {timestamp: Date.now()})
     }
 
     function onTyping(text) {
@@ -175,7 +175,7 @@ const Play = () => {
 
     function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {FinalAnswer: text})
+        send("submit", {final_answer: text})
     }
 
     function onNextQuestion() {
@@ -241,7 +241,7 @@ const Play = () => {
     }
 
     function setInterruptData(field, value) {
-        // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
+        // Update the typing box with the answer_content by setting the content of the second in list interrupt event
         setAllEvents(prev => {
             return prev.map((event, index) => {
                 if (event?.eventType === "interrupt" && index === 1) {
@@ -287,7 +287,7 @@ const Play = () => {
                                     return (
                                         <Question
                                             question={e}
-                                            timestamp={syncTimestamp}
+                                            timestamp={synctimestamp}
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}
