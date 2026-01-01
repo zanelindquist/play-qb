@@ -15,7 +15,7 @@ import Friend from '../entities/Friend';
 import AddFriend from './AddFriendModal';
 
 
-export default function InvitedModal({acceptInvite, user, close}) {
+export default function InvitedModal({acceptInvite, user, partyHash, close}) {
 
 
     return (
@@ -25,7 +25,7 @@ export default function InvitedModal({acceptInvite, user, close}) {
                 <View style={styles.rightDialogue}>
                     <GlassyButton
                         onPress={() => {
-                            acceptInvite()
+                            acceptInvite(partyHash)
                             close()
                         }}
                         mode='contained'

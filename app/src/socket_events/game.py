@@ -68,17 +68,17 @@ def on_join_lobby(data):
     # do we echo the requested event type back to the user
     # or do we send it in an event channel that matches
     # the data type of the returning information?
-    GameState = get_gamestate_by_lobby_alias(lobby)
+    game_state = get_gamestate_by_lobby_alias(lobby)
 
     # Send PlayerInformation about the new player to existing players
     
-    Player = get_player_by_email_and_lobby(user_id, lobby)
+    player = get_player_by_email_and_lobby(user_id, lobby)
 
     # Give the player just information about themselves and the game
 
-    emit("you_joined", {"Player": Player, "GameState": GameState})
+    emit("you_joined", {"player": player, "game_state": game_state})
     
-    emit("player_joined", {"Player": Player}, room=f"lobby:{lobby}")
+    emit("player_joined", {"player": player}, room=f"lobby:{lobby}")
 
 # When a player buzzes
 @socketio.on("buzz", namespace="/game")
@@ -90,12 +90,12 @@ def on_buzz(data): # Timestamp, AnswerContent
         emit("reconnect")
         return
 
-    Player = get_player_by_email_and_lobby(user_id, lobby)
+    player = get_player_by_email_and_lobby(user_id, lobby)
 
     # Broadcast that a player has buzzed
     emit(
         "question_interrupt",
-        {"Player": Player, "AnswerContent": "", "Timestamp": get_timestamp()},
+        {"player": player, "answer_content": "", "timestamp": get_timestamp()},
         room=f"lobby:{lobby}"
     )
 
@@ -105,13 +105,13 @@ def on_typing(data): # AnswerContent
     lobby = request.environ["lobby"]
     user_id = request.environ["user_id"]
 
-    AnswerContent = data.get("content");
-    Player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
+    answer_content = data.get("content");
+    player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
 
     # Broadcast that a player is typing
     emit(
         "player_typing",
-        {"Player": Player, "AnswerContent": AnswerContent},
+        {"player": player, "answer_content": answer_content},
         room=f"lobby:{lobby}"
     )
 
@@ -126,32 +126,32 @@ def on_submit(data): # FinalAnswer
     # Get lobby's game's current question
     gamestate = get_gamestate_by_lobby_alias(lobby);
     question = gamestate.get("current_question")
-    FinalAnswer = data.get("FinalAnswer")
-    IsCorrect = check_question(question, FinalAnswer) # -1 for incorrect, 0 for prompt, and 1 for correct
+    final_answer = data.get("FinalAnswer")
+    is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
     # IsCorrect= math.floor(random.random() * 2) - 1
-    Scores = False
-    Player = get_player_by_email_and_lobby(user_id, lobby)
+    scores = False
+    player = get_player_by_email_and_lobby(user_id, lobby)
 
-    data = {"Player": Player, "FinalAnswer": FinalAnswer, "Scores": Scores, "IsCorrect": IsCorrect, "Timestamp": get_timestamp()}
+    data = {"player": player, "final_answer": final_answer, "scores": scores, "is_correct": is_correct, "timestamp": get_timestamp()}
 
-    if IsCorrect == 1:
+    if is_correct == 1:
         # If the answer is true
         # Get question according to game settings
         new_question = get_random_question(confidence_threshold=0)
-        data["Question"] = new_question
+        data["question"] = new_question
         set_question_to_game(new_question, lobby)
         emit("next_question", data, room=f"lobby:{lobby}")
-    elif IsCorrect == 0:
+    elif is_correct == 0:
         # If the answer is a prompt, then we want to emit another buzz
         # Emit a resume and then emit another buzz
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
             "question_interrupt",
-            {"Player": Player, "AnswerContent": "", "Timestamp": get_timestamp()},
+            {"player": player, "answer_content": "", "timestamp": get_timestamp()},
             room=f"lobby:{lobby}"
         )
         
-    elif IsCorrect == -1:
+    elif is_correct == -1:
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
 
@@ -169,10 +169,10 @@ def on_next_question(data):
     # See if player has authority to skip question
 
     # Get question ACCORDING TO LOBBY SETTINGS
-    Question = get_random_question(type=0)
+    question = get_random_question(type=0)
     # Set this question as the game's question
-    set_question_to_game(Question, lobby)
-    emit("next_question", {"Question": Question, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
+    set_question_to_game(question, lobby)
+    emit("next_question", {"question": question, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume", namespace="/game")
@@ -180,9 +180,9 @@ def on_game_resume(): # Empty
     lobby = request.environ["lobby"]
     user_id = request.environ["user_id"]
 
-    Player = get_player_by_email_and_lobby(user_id, lobby)
+    player = get_player_by_email_and_lobby(user_id, lobby)
 
-    emit("game_resumed", {"Player": Player, "Timestamp": get_timestamp()}, room=f"lobby:{lobby}")
+    emit("game_resumed", {"player": player, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("game_pause", namespace="/game")
@@ -190,9 +190,9 @@ def on_game_pause(): # Empty
     lobby = request.environ["lobby"]
     user_id = request.environ["user_id"]
 
-    Player = False;
+    player = False;
 
-    emit("game_pause", {Player}, room=f"lobby:{lobby}")
+    emit("game_pause", {player}, room=f"lobby:{lobby}")
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():

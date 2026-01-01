@@ -43,6 +43,7 @@ import PartySlot from "../../components/entities/PartySlot.jsx";
 import InviteFriendModal from "../../components/modals/InviteFriendModal.jsx";
 import AddFriendModal from "../../components/modals/AddFriendModal.jsx";
 import InvitedModal from "../../components/modals/InvitedModal.jsx";
+import GlassyButton from "../../components/custom/GlassyButton.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -77,44 +78,56 @@ export default function LobbyScreen() {
     const { socket, send, addEventListener, removeEventListener, onReady } = useSocket("lobby", params.mode || "solos");
 
     const [gameMode, setGameMode] = useState(params.mode || "solos");
-    const [myId, setMyId] = useState(undefined);
+    const [myHash, setMyHash] = useState(undefined);
     const [partySlots, setPartySlots] = useState([])
+    const [enteredLobby, setEnteredLobby] = useState(false)
+
+    const [isReady, setIsReady] = useState(false)
     
     useEffect(() => {
         onReady(() => {
-            addEventListener("prelobby_joined", ({ Player, User }) => {
-                setMyId(User.id);
-                // Get the party from the server
-                setPartySlots((prev) => {
-                    if(prev[2]) {
-                        for (let i = 0; i < prev.length; i++)
-                            if(!prev[i]) return [...prev.slice(0, i), User, ...prev.slice(i + 1, prev.length)]
-                    } else {
-                        return [prev[0], prev[1], User, prev[3], prev[4]]
-                    }
-                })
+            addEventListener("prelobby_joined", ({ player, party_members, user }) => {
+                console.log("PMS", party_members)
+                setMyHash(user.hash);
+                for(let i = 0; i < party_members.length; i++) {
+                    joinParty(party_members[i])
+                }
             });
 
-            addEventListener("prelobby_not_found", ({ Player }) => {
+            addEventListener("prelobby_not_found", ({ player }) => {
                 showAlert("Lobby not found")
             })
 
-            addEventListener("invited", ({from_user}) => {
+            addEventListener("invited", ({from_user, party_hash}) => {
                 showAlert(
                     <InvitedModal
                         acceptInvite={handleAcceptInvite}
+                        partyHash={party_hash}
                         user={from_user}
                     />
                 )
             })
 
+            addEventListener("joined_party", ({members}) => {
+                console.log("JOINED", members)
+                for(let i = 0; i < members.length; i++) {
+                    joinParty(members[i])
+                }
+            })
+
+            addEventListener("user_disconnected", ({user_hash})=> {
+                leaveParty(user_hash)
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
-            send("enter_lobby", { lobbyAlias: gameMode });
+            if(!enteredLobby)
+                send("enter_lobby", { lobbyAlias: gameMode });
+                setEnteredLobby(true)
         });
 
         // useEffect() cleanup
         return () => {};
-    }, [gameMode]);
+    }, [gameMode, partySlots]);
 
 
     const openInviteFriendModal = React.useCallback(() => {
@@ -142,7 +155,6 @@ export default function LobbyScreen() {
     
 
     function handleGameModePress(mode) {
-        if(mode !== gameMode) setPartySlots([])
         setGameMode(mode)
     }
 
@@ -150,8 +162,48 @@ export default function LobbyScreen() {
         openInviteFriendModal()
     }
 
-    function handleAcceptInvite() {
-        send("accepted_invite")
+    function handleAcceptInvite(hash) {
+        send("accepted_invite", {party_hash: hash})
+    }
+
+    function handleReadyPressed() {
+        setIsReady(!isReady)
+        send("party_member_ready", {member_hash: myHash})
+    }
+
+    function joinParty(user) {
+        if(!user)
+            return
+        setPartySlots((prev) => {
+            // Prevent dupliate users
+            for (let i = 0; i < prev.length; i++) {
+                if(!prev[i])
+                    continue
+                if(prev[i]?.hash == user.hash){
+                    return prev
+                }
+            }
+            if(prev[2]) {
+                for (let i = 0; i < prev.length; i++)
+                    if(!prev[i]) return [...prev.slice(0, i), user, ...prev.slice(i + 1, prev.length)]
+            } else {
+                return [prev[0], prev[1], user, prev[3], prev[4]]
+            }
+        })
+    }
+
+    function leaveParty(userHash) {
+        setPartySlots((prev) => {
+            let newMembers = Array(undefined, undefined, undefined, undefined, undefined)
+            for (let i = 0; i < prev.length; i++) {
+                newMembers[i] = undefined;
+                if(!prev[i])
+                    continue
+                if(prev[i].hash !== userHash)
+                    newMembers[i] = prev[i]
+            }
+            return newMembers
+        })
     }
 
     return (
@@ -169,17 +221,31 @@ export default function LobbyScreen() {
                     ))}
                 </View>
                 <View style={styles.right}>
+                    <View style={styles.partySlots}>
                     {
-                        partySlots.map((player, i) => 
+                        partySlots.map((user, i) => 
                             <PartySlot
-                                player={player}
+                                player={user}
                                 style={styles.partySlot}
                                 onPress={handlePartySlotPressed}
-                                isMe={player?.id == myId}
+                                isMe={user?.hash == myHash}
                             />
                         )
                     }
+                    </View>
+                    <View style={styles.bottomOptions}>
+                        <GlassyButton
+                            style={styles.readyButton}
+                            mode={isReady ? "filled" : "contained"}
+                            onPress={handleReadyPressed}
+                        >Ready</GlassyButton>
+                    </View>
+                    <View style={styles.partyChat}>
+
+                    </View>
                 </View>
+            </View>
+            <View style={styles.container}>
             </View>
         </SidebarLayout>
     );
@@ -194,14 +260,27 @@ const styles = StyleSheet.create({
 
     },
     right: {
-        marginLeft: 30,
         flexGrow: 1,
+        marginLeft: 30,
+        flexDirection: "column",
+        gap: 20
+    },
+    partySlots: {
         flexDirection: "row",
         gap: 10,
     },
     partySlot: {
         flexGrow: 1,
-        maxWidth: "23%"
+        flexShrink: 1,
+        maxWidth: "19%"
+    },
+    bottomOptions: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 10,
+    },
+    readyButton: {
+        width: 200,
     },
     gamemodes: {
         width: 200,

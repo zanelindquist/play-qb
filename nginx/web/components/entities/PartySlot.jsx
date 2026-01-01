@@ -77,7 +77,7 @@ export default function PartySlot ({ style, player, isMe=false, onPress = () => 
             <View style={styles.circle}>
                 <Icon source={"account-outline"} size={"3rem"} color={theme.onPrimary}/>
             </View>
-            <GradientText size={"1.2rem"} style={styles.name}>{player?.firstname[0]}. {player.lastname}</GradientText>
+            <HelperText style={styles.name}>{player?.firstname} {player.lastname}</HelperText>
             </>
             :
             <IconButton icon={"plus"}/>
@@ -107,10 +107,11 @@ const styles = StyleSheet.create({
         backgroundColor: theme.primary
     },
     name: {
+        fontSize: "1.2rem",
         letterSpacing: 0,
         textAlign: "center",
-        textShadowColor: "black",
-        textShadowOffset: 2,
-        textShadowRadius: 1
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     }
 })

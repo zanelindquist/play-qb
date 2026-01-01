@@ -561,7 +561,7 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_friends_by_email(email, online=False):
+def get_friends_by_email(email, online=False, party=False):
     session = get_session()
 
     if not email:
@@ -575,8 +575,15 @@ def get_friends_by_email(email, online=False):
     if not user:
         return []
     
+    # If we only want online users
     if not online:
-        return get_user_by_email(email).get("friends")
+        friends = get_user_by_email(email).get("friends")
+        # Filter by party members
+        return [
+            friend for friend in friends
+            if not party
+            or friend.get("hash") not in party.get("members")
+        ]
     
     friends = session.execute(
         select(Friends)
@@ -601,7 +608,12 @@ def get_friends_by_email(email, online=False):
 
             if target.is_online:
                 online_friends.append(target)
-        return [to_dict_safe(friend) for friend in online_friends]
+        # Filter for parties if that is present
+        return [
+            to_dict_safe(friend) for friend in online_friends
+            if not party
+            or friend.hash not in party.get("members")
+        ]
 
 
 def get_users_by_query(query):
