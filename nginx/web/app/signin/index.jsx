@@ -48,7 +48,7 @@ export default function SignInScreen() {
             if(token){
                 getProtectedRoute("/account")
                 .then((response) => {
-                    router.push("/play")
+                    router.replace("/play")
                     showAlert("Logged in as " + response.data.user.firstname + " " + response.data.user.lastname + " 🎉")
                 })
                 .catch((error) => {
@@ -84,7 +84,7 @@ export default function SignInScreen() {
             
             saveAccessToken(response.data.access_token)
             // Redirect user to the dashboard page
-            router.push("/")
+            router.replace("/")
         } catch (error) {
             console.log(error)
             if (error.response?.data?.error) handleInvalidField(error.response.data.error)
@@ -159,7 +159,7 @@ export default function SignInScreen() {
                         Don't have an account yet?
                         <Button
                             style={{margin: "0px"}}
-                            onPress={() => router.push("/signup")}>
+                            onPress={() => router.replace("/signup")}>
                             Sign up
                         </Button>
                     </Text>

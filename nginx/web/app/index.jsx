@@ -28,7 +28,7 @@ export default function HomeScreen() {
                 <GlassyView style={[styles.topBoxes, styles.bentoRow]}>
                     <GlassyView
                         style={[styles.topLeftBox, styles.bentoBox]}
-                        onPress={() => router.push("/lobby?mode=customs")}
+                        onPress={() => router.replace("/lobby?mode=customs")}
                         gradient={{
                             colors: theme.gradients.customsArray,
                             start: { x: 0, y: 0 },
@@ -41,7 +41,7 @@ export default function HomeScreen() {
                     </GlassyView>
                     <GlassyView
                         style={[styles.topRightBox, styles.bentoBox]}
-                        onPress={() => router.push("/lobby?mode=mystery")}
+                        onPress={() => router.replace("/lobby?mode=mystery")}
                         gradient={{
                             colors: theme.gradients.mysteryArray,
                             start: { x: 0, y: 0 },
@@ -56,7 +56,7 @@ export default function HomeScreen() {
                 <GlassyView style={[styles.bottomBoxes, styles.bentoRow]}>
                     <GlassyView
                         style={[styles.solos, styles.bentoBox]}
-                        onPress={() => router.push("/lobby?mode=solos")}
+                        onPress={() => router.replace("/lobby?mode=solos")}
                         gradient={{
                             colors: theme.gradients.solosArray,
                             start: { x: 0, y: 0 },
@@ -69,7 +69,7 @@ export default function HomeScreen() {
                     </GlassyView>
                     <GlassyView
                         style={[styles.duos, styles.bentoBox]}
-                        onPress={() => router.push("/lobby?mode=duos")}
+                        onPress={() => router.replace("/lobby?mode=duos")}
                         gradient={{
                             colors: theme.gradients.duosArray,
                             start: { x: 0, y: 0 },
@@ -82,7 +82,7 @@ export default function HomeScreen() {
                     </GlassyView>
                     <GlassyView
                         style={[styles.fives, styles.bentoBox]}
-                        onPress={() => router.push("/lobby?mode=fives")}
+                        onPress={() => router.replace("/lobby?mode=fives")}
                         gradient={{
                             colors: theme.gradients.fivesArray,
                             start: { x: 0, y: 0 },

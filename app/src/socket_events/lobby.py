@@ -25,6 +25,11 @@ parties = {
 }
 
 def create_party(user_hash: str) -> str:
+    # Make sure user isn't already in a party
+    has_party = get_party(user_hash)
+    if has_party:
+        return has_party[0]
+
     party_hash = generate_unique_hash()
 
     parties[party_hash] = {
@@ -53,6 +58,10 @@ def set_party_member_ready(user_hash: str, party_hash: str, is_ready: bool) -> b
     for value in list(parties[party_hash]["members"].values()):
         if not value:
             return False
+        
+    # Now that everyone is ready, we will set them to not ready for the next time they enter the pre lobby party
+    for key in list(parties[party_hash]["members"].keys()):
+        parties[party_hash]["members"][key] = False
         
     return True
 
@@ -143,6 +152,14 @@ def on_enter_lobby(data):
     user_id = request.environ["user_id"]
     party_hash = request.environ["party"]
 
+    user = get_user_by_email(user_id)
+
+    if not party_hash:
+        # Set the party to just the user right now
+        party_hash = create_party(user.get("hash"))
+        join_room(f"party:{party_hash}")
+        request.environ["party"] = party_hash
+
     # Put the user in the pre-lobby room
     lobby = data.get("lobbyAlias")
     request.environ["prelobby"] = lobby
@@ -163,7 +180,6 @@ def on_enter_lobby(data):
 
     # Give the player their information (load profiles, ect)
     player = get_player_by_email_and_lobby(user_id, lobby)
-    user = get_user_by_email(user_id)
     party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
 
     # Set who is ready or not
