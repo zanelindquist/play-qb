@@ -44,6 +44,7 @@ import InviteFriendModal from "../../components/modals/InviteFriendModal.jsx";
 import AddFriendModal from "../../components/modals/AddFriendModal.jsx";
 import InvitedModal from "../../components/modals/InvitedModal.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx";
+import { useBanner } from "../../utils/banners.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -74,6 +75,7 @@ export default function LobbyScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const {showAlert} = useAlert()
+    const {showBanner} = useBanner()
 
     const { socket, send, addEventListener, removeEventListener, onReady } = useSocket("lobby", params.mode || "solos");
 
@@ -112,6 +114,7 @@ export default function LobbyScreen() {
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
+                showBanner("Member joined party")
             })
 
             addEventListener("party_member_readied", ({ready_info}) => {

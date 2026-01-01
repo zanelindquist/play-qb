@@ -13,6 +13,7 @@ import theme from '../../assets/themes/theme';
 import GlassyButton from '../custom/GlassyButton';
 import Friend from '../entities/Friend';
 import AddFriend from './AddFriendModal';
+import { useBanner } from '../../utils/banners';
 
 
 export default function InviteFriendModal({socket, addEventListener, removeEventListener, openAddFriendModal, close}) {
@@ -55,7 +56,6 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
     
     function handleInvite(hash) {
         socket.emit("invite_friend", {hash: hash})
-        console.log(hash)
     } 
 
     return (
