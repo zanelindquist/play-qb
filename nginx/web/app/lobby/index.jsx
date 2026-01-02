@@ -24,6 +24,7 @@ import {
     ActivityIndicator,
     Avatar,
     Card,
+    Badge,
 } from "react-native-paper";
 import {
     useRouter,
@@ -47,7 +48,7 @@ import GlassyButton from "../../components/custom/GlassyButton.jsx";
 import { useBanner } from "../../utils/banners.jsx";
 import ExpandableView from "../../components/custom/ExpandableView.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
-import { detectCurseWords, generateRandomLobbyName } from "../../utils/text.js";
+import { capitalize, detectCurseWords, generateRandomLobbyName } from "../../utils/text.js";
 import CustomCategories from "../../components/entities/CustomCategories.jsx";
 
 // TODO: Make this in a config or something, or get from server
@@ -90,16 +91,21 @@ export default function LobbyScreen() {
 
     const [isReady, setIsReady] = useState(false)
 
+    const [lobbyInfo, setLobbyInfo] = useState({})
+    const [showSettings, setShowSettings] = useState(false)
     const [showCustomCategories, setShowCustomCategories] = useState(false)
     
     useEffect(() => {
         onReady(() => {
-            addEventListener("prelobby_joined", ({ player, party_members, user }) => {
-                console.log(user)
+            addEventListener("prelobby_joined", ({ player, party_members, user, lobby, currentlyActive }) => {
+                console.log(lobby)
                 setMyHash(user.hash);
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
                 }
+
+                // Set the lobby settings
+                setLobbyInfo(lobby)
             });
 
             addEventListener("prelobby_not_found", ({ player }) => {
@@ -177,9 +183,6 @@ export default function LobbyScreen() {
         };
     }, [gameMode, partySlots, socket, myHash]);
 
-    useEffect(() => {
-        console.log("MY HASH", myHash)
-    }, [myHash])
 
     const openInviteFriendModal = React.useCallback(() => {
         showAlert(
@@ -307,6 +310,18 @@ export default function LobbyScreen() {
                             style={styles.leaveButton}
                             onPress={handleLeaveParty}
                         >Leave Party</GlassyButton>
+                        <GlassyView style={styles.settingsButtonContainer}>
+                            <IconButton
+                                icon="cog"
+                                style={styles.settingsButton}
+                            />
+                            <IconButton
+                                icon={showSettings ? "chevron-up" : "chevron-down"}
+                                style={styles.settingsButton} 
+                                onPress={() => setShowSettings(!showSettings)}
+                                rippleColor={theme.onBackground}
+                            />
+                        </GlassyView>
                         <GlassyButton
                             style={styles.readyButton}
                             mode={isReady ? "filled" : "contained"}
@@ -315,9 +330,9 @@ export default function LobbyScreen() {
                     </View>
                     <ScrollView>
                     {
-                        
+                        lobbyInfo?.id || gameMode === "custom" ?
                         <ExpandableView
-                            expanded={gameMode === "custom"}
+                            expanded={gameMode === "custom" || showSettings}
                             minHeight={0}
                             // dynamicSizing={true}
                             maxHeight={800}
@@ -332,19 +347,18 @@ export default function LobbyScreen() {
                                         <GameRule
                                             name="Name"
                                             mode="text"
-                                            defaultValue={generateRandomLobbyName()}
+                                            defaultValue={lobbyInfo?.name || generateRandomLobbyName()}
                                             valueError={(text) => allowLobbyName(text) ? false : "Invalid lobby name"}
+                                            disabled={gameMode !== "custom"}
                                         />
                                         <GameRule
                                             name="Gamemode"
                                             mode="dropdown"
-                                            options={[
-                                                {title: "Solos"},
-                                                {title: "Duos"},
-                                                {title: "Trios"},
-                                                {title: "Squads"},
-                                                {title: "5v5"},
-                                            ]}
+                                            options={
+                                                GAMEMODES.map((g)=> {return {title: capitalize(g.name)}})
+                                            }
+                                            defaultValue={GAMEMODES.map((g) => g.name).indexOf(lobbyInfo?.gamemode) || 0}
+                                            disabled={gameMode !== "custom"}
                                         />
                                         <GameRule
                                             name="Category"
@@ -361,9 +375,10 @@ export default function LobbyScreen() {
                                                 {title: "Geography"},
                                                 {title: "Custom"},
                                             ]}
+                                            defaultValue={lobbyInfo?.category || 0}
                                             onChange={handleCustomCategory}
+                                            disabled={gameMode !== "custom"}
                                         />
-
                                         <ExpandableView
                                             expanded={showCustomCategories}
                                             minHeight={0}
@@ -379,15 +394,48 @@ export default function LobbyScreen() {
                                             mode="numeric"
                                             minimum={10}
                                             maximum={100}
-                                            defaultValue={20}
+                                            defaultValue={lobbyInfo?.rounds}
+                                            disabled={gameMode !== "custom"}
                                         />
                                         <GameRule
                                             name="Level"
                                             mode="numeric"
+                                            minimum={0}
+                                            maximum={3}
+                                            defaultValue={lobbyInfo?.level}
+                                            disabled={gameMode !== "custom"}
                                         />
                                         <GameRule
                                             name="Speed"
                                             mode="slider"
+                                            minimum={100}
+                                            maximum={800}
+                                            defaultValue={lobbyInfo?.speed}
+                                            disabled={gameMode !== "custom"}
+                                        />
+                                        <GameRule
+                                            name="Bonuses"
+                                            mode="switch"
+                                            defaultValue={lobbyInfo?.bonuses}
+                                            disabled={gameMode !== "custom"}
+                                        />
+                                        <GameRule
+                                            name="Allow multiple buzzes"
+                                            mode="switch"
+                                            defaultValue={lobbyInfo?.allow_multiple_buzz}
+                                            disabled={gameMode !== "custom"}
+                                        />
+                                        <GameRule
+                                            name="Allow question skips"
+                                            mode="switch"
+                                            defaultValue={lobbyInfo?.allow_question_skip}
+                                            disabled={gameMode !== "custom"}
+                                        />
+                                        <GameRule
+                                            name="Allow pauses"
+                                            mode="switch"
+                                            defaultValue={lobbyInfo?.allow_question_pause}
+                                            disabled={gameMode !== "custom"}
                                         />
                                     </View>
 
@@ -395,6 +443,10 @@ export default function LobbyScreen() {
 
                             </GlassyView>
                         </ExpandableView>
+                        :
+                        <GlassyView>
+                            <HelperText>We could not load lobby information</HelperText>
+                        </GlassyView>
                     }
                     </ScrollView>
                     <View style={styles.partyChat}>
@@ -443,6 +495,16 @@ const styles = StyleSheet.create({
     leaveButton: {
         width: 200,
         backgroundImage: theme.gradients.buttonRed
+    },
+    settingsButtonContainer: {
+        padding: 0,
+        flexDirection: "row",
+        backgroundColor: theme.background,
+        borderRadius: 999
+    },
+    settingsButton: {
+        margin: 0,
+        backgroundColor: "transparent"
     },
     gamemodes: {
         width: 200,

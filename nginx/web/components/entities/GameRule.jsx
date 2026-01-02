@@ -7,9 +7,9 @@ import {
     HelperText,
     IconButton,
     Menu,
+    Switch,
     Text,
     TextInput,
-    ToggleButton,
 } from "react-native-paper";
 import Slider from '@react-native-community/slider';
 import GlassyButton from "../custom/GlassyButton";
@@ -20,40 +20,44 @@ export default function GameRule({
     name,
     mode, // Drop down, text input, checkbox, slider, numeric
     style,
-    defaultValue,
+    disabled=false,
+    defaultValue=undefined,
     minimum=0,
     maximum=10,
     options = [],
-    valueError = () => {
-        return false;
-    },
+    valueError = null,
     onChange = null,
 }) {
     const [checkbox, setCheckbox] = useState(false);
     const [text, setText] = useState(defaultValue || "");
     const [numeric, setNumeric] = useState(defaultValue || 1);
-    const [slider, setSlider] = useState(defaultValue || 100)
+    const [slider, setSlider] = useState(defaultValue || 100);
+    const [switchOn, setSwitchOn] = useState(defaultValue);
     const [dropdown, setDropdown] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [selectedIndex, setSelectedIndex] = useState(defaultValue || 0);
 
     const [error, setError] = useState(false);
 
-    // Check for errors given by the user
+    // Trigger our change object
     useEffect(() => {
-        setError(valueError(text));
+        // Check for errors given by the user
+        if(valueError) setError(valueError(text));
         const changeEvent = {
             checkbox,
             text,
             numeric,
+            slider,
+            switch: switchOn,
             selectedOption: options.length > 0 ? options[selectedIndex].title : "",
         }
         if(onChange) onChange(changeEvent)
-    }, [checkbox, text, numeric, dropdown, selectedIndex]);
+    }, [checkbox, text, numeric, dropdown, selectedIndex, slider, switchOn]);
 
     let modeComponent = (
         <Checkbox
             status={checkbox ? "checked" : "unchecked"}
             onPress={() => setCheckbox(!checkbox)}
+            disabled={disabled}
         />
     );
 
@@ -67,6 +71,7 @@ export default function GameRule({
                         <Pressable
                             onPress={() => setDropdown(true)}
                             style={styles.dropdown}
+                            disabled={disabled}
                         >
                             <HelperText style={styles.dropdownText}>
                                 {options[selectedIndex].title}
@@ -94,13 +99,31 @@ export default function GameRule({
             modeComponent = (
                 <TextInput
                     style={styles.textInput}
+                    textColor={theme.inverseSurface}
                     value={text}
                     mode="flat"
                     onChangeText={setText}
+                    disabled={disabled}
                 />
             );
             break;
-        case "toggle":
+        case "switch":
+            modeComponent = (
+                <View
+                    style={styles.switchContainer}
+                >
+                    <Switch 
+                        value={switchOn}
+                        onValueChange={setSwitchOn}
+                        style={styles.switch}
+                        disabled={disabled}
+                        trackColor={{
+                            false: theme.onSurface,
+                            true: disabled ? theme.surfaceVariant : theme.surfaceVariant,
+                        }}
+                    />
+                </View>
+            );
             break;
         case "slider":
             modeComponent = (
@@ -108,13 +131,14 @@ export default function GameRule({
                     <Slider
                         value={slider}
                         onValueChange={setSlider}
-                        minimumValue={0}
-                        maximumValue={1000}
+                        minimumValue={minimum}
+                        maximumValue={maximum}
                         minimumTrackTintColor={theme.primary}
                         maximumTrackTintColor={theme.surfaceVariant}
                         thumbTintColor={theme.primary}
                         step={1}
                         style={styles.slider}
+                        disabled={disabled}
                     />
                 </View>
             );
@@ -126,6 +150,7 @@ export default function GameRule({
                     defaultValue={defaultValue}
                     minimum={minimum}
                     maximum={maximum}
+                    disabled={disabled}
                 />
             );
             break;
@@ -133,7 +158,7 @@ export default function GameRule({
 
     return (
         <View style={[styles.container, style]}>
-            <HelperText style={styles.name}>{name}</HelperText>
+            <Text style={styles.name}>{name}</Text>
             {modeComponent}
             {error && <HelperText style={styles.error}>{error}</HelperText>}
         </View>
@@ -145,6 +170,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     name: {
+        marginVertical: 10,
         fontWeight: 700,
         fontSize: "0.8rem",
         textShadowColor: "rgba(0,0,0,0.8)",
@@ -153,12 +179,12 @@ const styles = StyleSheet.create({
     },
     textInput: {
         width: "100%",
-        backgroundColor: theme.background,
+        backgroundColor: theme.surface,
         height: "3rem",
         borderRadius: 5
     },
     dropdown: {
-        backgroundColor: theme.background,
+        backgroundColor: theme.surface,
         padding: 10,
         borderRadius: 5,
         flexDirection: "row",
@@ -166,7 +192,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     dropdownText: {
-        color: theme.onBackground,
+        color: theme.onSurface,
         fontSize: "1rem",
     },
     iconButton: {
@@ -175,16 +201,27 @@ const styles = StyleSheet.create({
     sliderContainer: {
         padding: 10,
         borderRadius: 5,
-        backgroundColor: theme.background,
+        backgroundColor: theme.surface,
         width: "9rem",
         height: "3rem",
         justifyContent: "center",
         alignItems: "center",
     },
     slider: {
-
+        width: '100%',
+    },
+    switchContainer: {
+        width: "3rem",
+        height: "3rem",
+        borderRadius: 5,
+        backgroundColor: theme.surface,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    switch: {
 
     },
+
 
     error: {
         color: theme.static.red,

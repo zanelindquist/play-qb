@@ -9,6 +9,7 @@ import theme from "../../assets/themes/theme";
 export default function NumericInput ({
     style,
     onChange=null,
+    disabled=false,
     minimum=0,
     maximum=1000,
     defaultValue=1,
@@ -35,7 +36,8 @@ export default function NumericInput ({
                 icon={"minus"}
                 size={size + "rem"}
                 style={[styles.numericBox, styles.numericBoxLeft, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
-                onPress={() => handleChange(Math.max(minimum, numeric - 1))}    
+                onPress={() => handleChange(Math.max(minimum, numeric - 1))}
+                disabled={disabled}
             />
             <View style={[styles.numericDisplay, {width: 3 * size + "rem", height: 3 * size + "rem"}]}>
                 {
@@ -59,7 +61,8 @@ export default function NumericInput ({
                 icon={"plus"}
                 size={size + "rem"}
                 style={[styles.numericBox, styles.numericBoxRight, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
-                onPress={() => handleChange(Math.min(maximum, numeric + 1))}    
+                onPress={() => handleChange(Math.min(maximum, numeric + 1))}
+                disabled={disabled}
             />
         </View>
     )
