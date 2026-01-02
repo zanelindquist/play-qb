@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { IconButton, HelperText } from "react-native-paper";
+import { IconButton, HelperText, TextInput } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 
@@ -12,7 +12,8 @@ export default function NumericInput ({
     minimum=0,
     maximum=1000,
     defaultValue=1,
-    size=1
+    size=1,
+    allowTyping=false
 }) {
     const [numeric, setNumeric] = useState(defaultValue);
 
@@ -22,6 +23,8 @@ export default function NumericInput ({
     }, [defaultValue])
 
     function handleChange(amount) {
+        if(typeof(amount) === "string") amount = parseInt(amount)
+        if(isNaN(amount)) return
         setNumeric(amount)
         onChange(amount)
     }
@@ -35,9 +38,22 @@ export default function NumericInput ({
                 onPress={() => handleChange(Math.max(minimum, numeric - 1))}    
             />
             <View style={[styles.numericDisplay, {width: 3 * size + "rem", height: 3 * size + "rem"}]}>
-                <HelperText style={[styles.numericText, {fontSize: size + "rem"}]}>
-                    {numeric}
-                </HelperText>
+                {
+                    allowTyping ?
+                    <TextInput
+                        style={[styles.numericTextInput, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
+                        contentStyle={[styles.numericTextInputText, {fontSize: size + "rem"}]}
+                        outlineStyle={styles.numericTextOutlineStyle}
+                        keyboardType="numeric"
+                        value={defaultValue}
+                        onChangeText={(text) => handleChange(text)}
+                    />
+                    :
+                    <HelperText style={[styles.numericText, {fontSize: size + "rem"}]}>
+                        {numeric}
+                    </HelperText>
+                }
+                
             </View>
             <IconButton
                 icon={"plus"}
@@ -84,4 +100,18 @@ const styles = StyleSheet.create({
     numericText: {
         // fontSize: "1rem",
     },
+    numericTextInput: {
+        backgroundColor: "transparent",
+        // textAlign: "center",
+        padding: 0,
+        margin: 0
+    },
+    numericTextInputText: {
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+    },
+    numericTextOutlineStyle: {
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+    }
 })

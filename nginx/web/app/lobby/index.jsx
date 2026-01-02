@@ -302,7 +302,7 @@ export default function LobbyScreen() {
                         )
                     }
                     </View>
-                    <View style={styles.bottomOptions}>
+                    <View style={styles.partyOptions}>
                         <GlassyButton
                             style={styles.leaveButton}
                             onPress={handleLeaveParty}
@@ -313,10 +313,13 @@ export default function LobbyScreen() {
                             onPress={handleReadyPressed}
                         >Ready</GlassyButton>
                     </View>
+                    <ScrollView>
                     {
+                        
                         <ExpandableView
                             expanded={gameMode === "custom"}
                             minHeight={0}
+                            // dynamicSizing={true}
                             maxHeight={800}
                         >
                             <GlassyView
@@ -374,6 +377,9 @@ export default function LobbyScreen() {
                                         <GameRule
                                             name="Rounds"
                                             mode="numeric"
+                                            minimum={10}
+                                            maximum={100}
+                                            defaultValue={20}
                                         />
                                         <GameRule
                                             name="Level"
@@ -390,6 +396,7 @@ export default function LobbyScreen() {
                             </GlassyView>
                         </ExpandableView>
                     }
+                    </ScrollView>
                     <View style={styles.partyChat}>
 
                     </View>
@@ -425,7 +432,7 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         maxWidth: "19%"
     },
-    bottomOptions: {
+    partyOptions: {
         flexDirection: "row",
         justifyContent: "space-between",
         gap: 10,
