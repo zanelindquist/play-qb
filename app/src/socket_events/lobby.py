@@ -45,6 +45,16 @@ def get_party(user_hash: str) -> tuple:
         if user_hash in list(party["members"].keys()):
             return (party_id, party)
         
+def get_party_member_info(party_hash: str) -> list:
+    party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
+
+    # Set who is ready or not
+    for member in party_members:
+        member["is_leader"] = parties[party_hash].get("leader_hash") == member.get("hash")
+        member["ready"] = parties[party_hash].get("members")[member.get("hash")]
+
+    return party_members
+
 def is_in_party(user_hash: str, party_hash: str) -> bool:
     if user_hash in list(parties[party_hash]["members"].keys()):
         return True
@@ -180,11 +190,7 @@ def on_enter_lobby(data):
 
     # Give the player their information (load profiles, ect)
     player = get_player_by_email_and_lobby(user_id, lobby)
-    party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
-
-    # Set who is ready or not
-    for member in party_members:
-        member["ready"] = parties[party_hash].get("members")[member.get("hash")]
+    party_members = get_party_member_info(party_hash)
 
     set_user_online(user_id, True)
 
@@ -262,11 +268,12 @@ def on_accepted_invite(data):
     request.environ["party"] = party_hash
 
     # Get party members to send back to update UI (include ready state)
-    party_members = [get_user_by_hash(user_hash) for user_hash in party.get("members")]
-    for member in party_members:
-        member["ready"] = party.get("members").get(member.get("hash"))
+    party_members = get_party_member_info(party_hash)
 
-    emit("joined_party", {"members": party_members, "user": user}, room=f"party:{party_hash}")
+    # Get the lobby info for the new party member
+    lobby_data = get_lobby_by_alias(party.get("lobby_alias"))
+
+    emit("joined_party", {"members": party_members, "user": user, "lobby": lobby_data}, room=f"party:{party_hash}")
 
 @socketio.on("leave_party", "/lobby")
 def on_accepted_invite(data):
@@ -288,8 +295,12 @@ def on_accepted_invite(data):
     request.environ["party"] = new_party_hash
 
     # Get party members to send back to update UI (include ready state)
+    party_members = get_party_member_info(new_party_hash)
+
+    lobby_data = get_lobby_by_alias(lobby)
+
     # For new party
-    emit("member_left_party", {"user": user}, room=f"party:{new_party_hash}")
+    emit("member_left_party", {"user": user, "members": party_members, "lobby": lobby_data}, room=f"party:{new_party_hash}")
 
     # For old party
     emit("member_left_party", {"user": user}, room=f"party:{party_hash}")
@@ -317,7 +328,7 @@ def on_party_member_ready(data):
         emit("enter_game", {"lobby_alias": lobby_alias}, room=f"party:{party_hash}")
 
 @socketio.on("change_gamemode", "/lobby")
-def on_party_member_ready(data):
+def on_changed_gamemode(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
@@ -333,8 +344,25 @@ def on_party_member_ready(data):
 
     set_party_lobby_alias(party_hash, new_lobby_alias)
 
-    emit("changed_gamemode", {"lobby_alias": new_lobby_alias}, room=f"party:{party_hash}")
+    # Get lobby info
+    lobby_data = get_lobby_by_alias(new_lobby_alias)
 
+    emit("changed_gamemode", {"lobby": lobby_data}, room=f"party:{party_hash}")
+
+@socketio.on("custom_settings_changed", "/lobby")
+def on_custom_settings_changed(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+    party_hash = request.environ["party"]
+
+    user = get_user_by_email(user_id)
+
+    # Make sure the user is the party leader
+    if user.get("hash") != parties[party_hash]["leader_hash"]:
+        return;
+
+    # Simply just tell the other party members what the leader changed
+    emit("changed_custom_settings", {"settings": data.get("settings")}, room=f"party:{party_hash}")
 
 
 # Adding friends

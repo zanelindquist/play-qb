@@ -63,6 +63,9 @@ export default function PartySlot ({ style, player, isMe=false, ready, onPress =
         {
             player ?
             <>
+            {
+                player?.is_leader && <Icon style={styles.partyLeaderCrown} source={"crown"} color="#FFD700" size={20}/>
+            }
             <View style={styles.circle}>
                 <Icon source={"account-outline"} size={"3rem"} color={theme.onPrimary}/>
             </View>
@@ -93,7 +96,10 @@ const styles = StyleSheet.create({
     circle: {
         padding: 5,
         borderRadius: "50%",
-        backgroundColor: theme.primary
+        backgroundColor: theme.primary,
+    },
+    partyLeaderCrown: {
+
     },
     name: {
         fontSize: "1.2rem",
@@ -104,6 +110,6 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
     iconButton: {
-        backgroundColor: "transparent"
+        backgroundColor: "transparent",
     }
 })

@@ -17,8 +17,9 @@ import theme from "../../assets/themes/theme";
 import NumericInput from "../custom/NumericInput";
 
 export default function GameRule({
-    name,
-    mode, // Drop down, text input, checkbox, slider, numeric
+    label,
+    dataName,
+    mode, // Drop down, text input, checkbox, slider, numeric, toggle
     style,
     disabled=false,
     defaultValue=undefined,
@@ -28,30 +29,61 @@ export default function GameRule({
     valueError = null,
     onChange = null,
 }) {
-    const [checkbox, setCheckbox] = useState(false);
-    const [text, setText] = useState(defaultValue || "");
-    const [numeric, setNumeric] = useState(defaultValue || 1);
-    const [slider, setSlider] = useState(defaultValue || 100);
-    const [switchOn, setSwitchOn] = useState(defaultValue);
+    // This is so that we don't receive new props from defaultValue and then snowball it into calling the change callback
+    const [hasTriggeredEventAfterValue, setHTEADV] = useState(true)
+
+    const [checkbox, setCheckbox] = useState(defaultValue ?? false);
+    const [text, setText] = useState(defaultValue ?? "");
+    const [numeric, setNumeric] = useState(defaultValue ?? 1);
+    const [slider, setSlider] = useState(defaultValue ?? 100);
+    const [toggle, setToggle] = useState(!!defaultValue);
     const [dropdown, setDropdown] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(defaultValue || 0);
+    const [selectedIndex, setSelectedIndex] = useState(defaultValue ?? 0);
 
     const [error, setError] = useState(false);
 
+
+    // Sync internal state when defaultValue changes
+    useEffect(() => {
+        setCheckbox(!!defaultValue);
+        setText(typeof defaultValue === "string" ? defaultValue : "");
+        setNumeric(typeof defaultValue === "number" ? defaultValue : 1);
+        setSlider(typeof defaultValue === "number" ? defaultValue : 100);
+        setToggle(!!defaultValue);
+        setSelectedIndex(typeof defaultValue === "number" ? defaultValue : 0);
+        setHTEADV(false)
+    }, [defaultValue]);
+
     // Trigger our change object
     useEffect(() => {
+        // Don't call variable changes that are caused by incoming props in the defaultValue useEffect()
+        if(hasTriggeredEventAfterValue) return
         // Check for errors given by the user
         if(valueError) setError(valueError(text));
+
+        let value = null;
+
+        // Get the value based off of the mode
+        switch(mode) {
+            case "checkbox": value = checkbox; break;
+            case "text": value = text; break;
+            case "numeric": value = numeric; break;
+            case "slider": value = slider; break;
+            case "toggle": value = toggle; break;
+            case "dropdown": 
+                value = options[selectedIndex]
+            break;
+            default:
+                throw Error("<GameRule/> onChange(): unsupported mode")
+        }
+
         const changeEvent = {
-            checkbox,
-            text,
-            numeric,
-            slider,
-            switch: switchOn,
-            selectedOption: options.length > 0 ? options[selectedIndex].title : "",
+           dataName: dataName ? dataName : label.toLowerCase(),
+           mode,
+           value
         }
         if(onChange) onChange(changeEvent)
-    }, [checkbox, text, numeric, dropdown, selectedIndex, slider, switchOn]);
+    }, [checkbox, text, numeric, dropdown, selectedIndex, slider, toggle]);
 
     let modeComponent = (
         <Checkbox
@@ -74,7 +106,7 @@ export default function GameRule({
                             disabled={disabled}
                         >
                             <HelperText style={styles.dropdownText}>
-                                {options[selectedIndex].title}
+                                {options[selectedIndex]?.title}
                             </HelperText>
                             <IconButton
                                 icon={dropdown ? "chevron-up" : "chevron-down"}
@@ -85,7 +117,7 @@ export default function GameRule({
                 >
                     {options.map((o, i) => (
                         <Menu.Item
-                            title={o.title}
+                            title={o?.title}
                             onPress={() => {
                                 setSelectedIndex(i);
                                 setDropdown(false);
@@ -107,15 +139,15 @@ export default function GameRule({
                 />
             );
             break;
-        case "switch":
+        case "toggle":
             modeComponent = (
                 <View
-                    style={styles.switchContainer}
+                    style={styles.toggleContainer}
                 >
                     <Switch 
-                        value={switchOn}
-                        onValueChange={setSwitchOn}
-                        style={styles.switch}
+                        value={toggle}
+                        onValueChange={setToggle}
+                        style={styles.toggle}
                         disabled={disabled}
                         trackColor={{
                             false: theme.onSurface,
@@ -158,7 +190,7 @@ export default function GameRule({
 
     return (
         <View style={[styles.container, style]}>
-            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.label}>{label}</Text>
             {modeComponent}
             {error && <HelperText style={styles.error}>{error}</HelperText>}
         </View>
@@ -169,7 +201,7 @@ const styles = StyleSheet.create({
     container: {
         marginVertical: 10,
     },
-    name: {
+    label: {
         marginVertical: 10,
         fontWeight: 700,
         fontSize: "0.8rem",
@@ -210,7 +242,7 @@ const styles = StyleSheet.create({
     slider: {
         width: '100%',
     },
-    switchContainer: {
+    toggleContainer: {
         width: "3rem",
         height: "3rem",
         borderRadius: 5,
@@ -218,7 +250,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    switch: {
+    toggle: {
 
     },
 
