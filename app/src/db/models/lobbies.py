@@ -15,7 +15,7 @@ class Lobbies(Base, CreatedAtColumn):
     total_games = Column(Integer, default=0)
     level = Column(Integer, default=0)
     category = Column(Integer, default=0)
-    speed = Column(Integer, default=150)
+    speed = Column(Integer, default=400)
     gamemode = Column(String(10), default="solos", nullable=False)
     rounds = Column(Integer, default=20)
     bonuses = Column(Boolean, default=False)
