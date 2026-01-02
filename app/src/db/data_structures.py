@@ -37,14 +37,14 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Lobbies": {
-        "fields": ["id", "hash", "name", "total_games", "number_of_online_players"],
+        "fields": ["id", "hash", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players"],
         "relationships": {
             "games": "Games",
             "players": "Players",
         },
     },
     "Games": {
-        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "level", "category", "speed", "lobby_id", "current_question_id"],
+        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "lobby_id", "current_question_id"],
         "relationships": {
             "lobby": "Lobbies",
             "players": "Players",
