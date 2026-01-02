@@ -7,6 +7,7 @@ import GlassyView from "../custom/GlassyView";
 
 import theme from "../../assets/themes/theme";
 import GradientText from "../custom/GradientText";
+import { capitalize } from "../../utils/text";
 
 // TODO: Hover for stat tooltip
 const HOVER_MULTIPLIER = 1.1;
@@ -15,11 +16,6 @@ const ANIMATION_DURATION = 150;
 export default function GameMode ({ style, gamemode, icon="account-multiple", selected=false, onPress = () => {}}) {
     const [normalWidth, setNormalWidth] = useState(0)
     const animatedWidth = useRef(new Animated.Value(0)).current
-
-    function capitalize(text) {
-        if(!text) return "Undefined"
-        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
-    }
 
     function handleHoverIn() {
         if (normalWidth > 0) {

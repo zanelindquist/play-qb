@@ -7,6 +7,7 @@ import GlassyView from "../custom/GlassyView";
 
 import theme from "../../assets/themes/theme";
 import GradientText from "../custom/GradientText";
+import { capitalize } from "../../utils/text";
 
 // TODO: Hover for stat tooltip
 const HOVER_MULTIPLIER = 1.1;
@@ -18,11 +19,6 @@ export default function User ({ style, user, onPress = () => {}}) {
 
     const [normalHeight, setNormalHeight] = useState(0)
     const [isHovering, setIsHovering] = useState(false)
-
-    function capitalize(text) {
-        if(!text) return "Undefined"
-        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
-    }
 
     function handleHoverIn() {
         setTimeout(() => setIsHovering(true), HOVER_DELAY)

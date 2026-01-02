@@ -1,0 +1,81 @@
+import { useEffect, useState } from "react";
+import { Platform, View, StyleSheet, Pressable } from "react-native";
+import { BlurView } from "expo-blur";
+import { IconButton, HelperText } from "react-native-paper";
+import GlassyButton from "../custom/GlassyButton";
+import theme from "../../assets/themes/theme";
+
+
+export default function NumericInput ({
+    style,
+    onChange=null,
+    minimum=0,
+    maximum=1000,
+    defaultValue=1,
+    size=1
+}) {
+    const [numeric, setNumeric] = useState(defaultValue);
+
+    useEffect(() => {
+        if(onChange) onChange(numeric)
+    }, [numeric])
+
+    return (
+        <View style={[styles.numeric, style]}>
+            <IconButton
+                icon={"minus"}
+                size={size + "rem"}
+                style={[styles.numericBox, styles.numericBoxLeft, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
+                onPress={() => setNumeric(Math.max(minimum, numeric - 1))}    
+            />
+            <View style={[styles.numericDisplay, {width: 3 * size + "rem", height: 3 * size + "rem"}]}>
+                <HelperText style={[styles.numericText, {fontSize: size + "rem"}]}>
+                    {numeric}
+                </HelperText>
+            </View>
+            <IconButton
+                icon={"plus"}
+                size={size + "rem"}
+                style={[styles.numericBox, styles.numericBoxRight, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
+                onPress={() => setNumeric(Math.min(maximum, numeric + 1))}    
+            />
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    numeric: {
+        flexDirection: "row",
+        gap: 0,
+    },
+    numericBox: {
+        // width: "3rem",
+        // height: "3rem",
+        margin: 0,
+        backgroundColor: theme.background,
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 0,
+    },
+    numericBoxLeft: {
+        borderTopLeftRadius: 5,
+        borderBottomLeftRadius: 5,
+    },
+    numericBoxRight: {
+        borderTopRightRadius: 5,
+        borderBottomRightRadius: 5,
+    },
+    numericDisplay: {
+        // width: "3rem",
+        // height: "3rem",
+        backgroundColor: theme.background,
+        borderRightWidth: 1,
+        borderLeftWidth: 1,
+        borderColor: theme.surfaceContainerHighest,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    numericText: {
+        // fontSize: "1rem",
+    },
+})

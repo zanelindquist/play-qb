@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
     },
     iconStyle: {
         margin: 0,
-        padding: 0
+        padding: 0,
+        backgroundColor: "transparent"
     }
 });
 
