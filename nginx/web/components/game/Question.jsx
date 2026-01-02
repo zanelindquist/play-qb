@@ -30,6 +30,7 @@ import theme from "../../assets/themes/theme";
 import GlassyView from "../custom/GlassyView";
 import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
+import { capitalize } from "../../utils/text";
 
 const collapsedHeight = 40;
 const EXPANDED_HEIGHT = 400;
@@ -173,11 +174,6 @@ const Question = ({
         if(state !== "dead") return;
         setIsMinimized(!isMinimized)
         handleAnswerCollapsed()
-    }
-
-    function capitalize(text) {
-        if(!text) return "Undefined"
-        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
     }
 
     function handleAnswerExpanded(answerHeight) {

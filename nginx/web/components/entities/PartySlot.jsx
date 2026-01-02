@@ -7,6 +7,7 @@ import GlassyView from "../custom/GlassyView";
 
 import theme from "../../assets/themes/theme";
 import GradientText from "../custom/GradientText";
+import { capitalize } from "../../utils/text";
 
 // TODO: Hover for stat tooltip
 const HOVER_MULTIPLIER = 1.1;
@@ -18,10 +19,6 @@ export default function PartySlot ({ style, player, isMe=false, ready, onPress =
     const animatedHeight = useRef(new Animated.Value(0)).current
     const [isHovering, setIsHovering] = useState(false)
 
-    function capitalize(text) {
-        if(!text) return "Undefined"
-        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
-    }
 
     function handleHoverIn() {
         setTimeout(() => setIsHovering(true), HOVER_DELAY)
@@ -72,7 +69,7 @@ export default function PartySlot ({ style, player, isMe=false, ready, onPress =
             <HelperText style={styles.name}>{player?.firstname} {player.lastname}</HelperText>
             </>
             :
-            <IconButton icon={"plus"}/>
+            <IconButton icon={"plus"} style={styles.iconButton}/>
         }
             
         </GlassyView>
@@ -105,5 +102,8 @@ const styles = StyleSheet.create({
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    iconButton: {
+        backgroundColor: "transparent"
     }
 })

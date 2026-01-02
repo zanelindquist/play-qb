@@ -45,6 +45,10 @@ import AddFriendModal from "../../components/modals/AddFriendModal.jsx";
 import InvitedModal from "../../components/modals/InvitedModal.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx";
 import { useBanner } from "../../utils/banners.jsx";
+import ExpandableView from "../../components/custom/ExpandableView.jsx";
+import GameRule from "../../components/entities/GameRule.jsx";
+import { detectCurseWords, generateRandomLobbyName } from "../../utils/text.js";
+import CustomCategories from "../../components/entities/CustomCategories.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -85,6 +89,8 @@ export default function LobbyScreen() {
     const [enteredLobby, setEnteredLobby] = useState(false)
 
     const [isReady, setIsReady] = useState(false)
+
+    const [showCustomCategories, setShowCustomCategories] = useState(false)
     
     useEffect(() => {
         onReady(() => {
@@ -97,7 +103,7 @@ export default function LobbyScreen() {
             });
 
             addEventListener("prelobby_not_found", ({ player }) => {
-                showAlert("Lobby not found")
+                showBanner("Lobby not found")
             })
 
             addEventListener("invited", ({from_user, party_hash}) => {
@@ -118,7 +124,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("member_left_party", ({user}) => {
-                console.log(user.hash, myHash)
                 // If this user is me
                 if (user.hash === myHash) {
                     setPartySlots([])
@@ -256,6 +261,19 @@ export default function LobbyScreen() {
         })
     }
 
+    function allowLobbyName(text) {
+        if(text === "" || text.length > 40 || detectCurseWords(text)) return false
+        return !/\s/.test(text);
+    }
+
+    function handleCustomCategory(e) {
+        if(e?.selectedOption?.toLowerCase() === "custom") {
+            setShowCustomCategories(true)
+        } else {
+            setShowCustomCategories(false)
+        }
+    }
+
     return (
         <SidebarLayout>
             <View style={styles.container}>
@@ -295,6 +313,83 @@ export default function LobbyScreen() {
                             onPress={handleReadyPressed}
                         >Ready</GlassyButton>
                     </View>
+                    {
+                        <ExpandableView
+                            expanded={gameMode === "custom"}
+                            minHeight={0}
+                            maxHeight={800}
+                        >
+                            <GlassyView
+                                style={styles.customRulesContainer}
+                            
+                            >
+                                <HelperText style={styles.title}>Custom Game</HelperText>
+                                <View style={styles.customRules}>
+                                    <View style={styles.rulesColumn}>
+                                        <GameRule
+                                            name="Name"
+                                            mode="text"
+                                            defaultValue={generateRandomLobbyName()}
+                                            valueError={(text) => allowLobbyName(text) ? false : "Invalid lobby name"}
+                                        />
+                                        <GameRule
+                                            name="Gamemode"
+                                            mode="dropdown"
+                                            options={[
+                                                {title: "Solos"},
+                                                {title: "Duos"},
+                                                {title: "Trios"},
+                                                {title: "Squads"},
+                                                {title: "5v5"},
+                                            ]}
+                                        />
+                                        <GameRule
+                                            name="Category"
+                                            mode="dropdown"
+                                            options={[
+                                                {title: "Everything"},
+                                                {title: "Sciece"},
+                                                {title: "History"},
+                                                {title: "Literature"},
+                                                {title: "Social Science"},
+                                                {title: "Philosophy"},
+                                                {title: "Religion"},
+                                                {title: "Mythology"},
+                                                {title: "Geography"},
+                                                {title: "Custom"},
+                                            ]}
+                                            onChange={handleCustomCategory}
+                                        />
+
+                                        <ExpandableView
+                                            expanded={showCustomCategories}
+                                            minHeight={0}
+                                            maxHeight={400}
+                                        >
+                                            <CustomCategories/>
+                                        </ExpandableView>
+                                        
+                                    </View>
+                                    <View style={styles.rulesColumn}>
+                                        <GameRule
+                                            name="Rounds"
+                                            mode="numeric"
+                                        />
+                                        <GameRule
+                                            name="Level"
+                                            mode="numeric"
+                                        />
+                                        <GameRule
+                                            name="Speed"
+                                            mode="slider"
+                                        />
+                                    </View>
+
+                                </View>
+
+                            </GlassyView>
+                        </ExpandableView>
+                    }
                     <View style={styles.partyChat}>
 
                     </View>
@@ -310,6 +405,7 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: "row",
         gap: 10,
+        margin: 10
     },
     left: {
 
@@ -347,4 +443,21 @@ const styles = StyleSheet.create({
     gamemode: {
         width: "100%",
     },
+    customRulesContainer: {
+        height: "100%"
+    },
+    title: {
+        fontSize: "1.2rem",
+        fontWeight: "bold"
+    },
+    customRules: {
+        margin: 10,
+        flexDirection: "row",
+        gap: 10,
+        width: "100%"
+    },
+    rulesColumn: {
+        flexGrow: 1,
+        maxWidth: "49%"
+    }
 });
