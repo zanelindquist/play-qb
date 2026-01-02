@@ -159,6 +159,7 @@ export default function CustomCategories ({
                             onChange={(number) => handleCategoryToggle(key, number)}
                             minimum={0}
                             maximum={100}
+                            allowTyping={false}
                         />
                     </View>
                 )
