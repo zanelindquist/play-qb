@@ -11,6 +11,7 @@ import {
     TextInput,
     ToggleButton,
 } from "react-native-paper";
+import Slider from '@react-native-community/slider';
 import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 import NumericInput from "../custom/NumericInput";
@@ -31,6 +32,7 @@ export default function GameRule({
     const [checkbox, setCheckbox] = useState(false);
     const [text, setText] = useState(defaultValue || "");
     const [numeric, setNumeric] = useState(defaultValue || 1);
+    const [slider, setSlider] = useState(defaultValue || 100)
     const [dropdown, setDropdown] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -101,6 +103,21 @@ export default function GameRule({
         case "toggle":
             break;
         case "slider":
+            modeComponent = (
+                <View style={styles.sliderContainer}>
+                    <Slider
+                        value={slider}
+                        onValueChange={setSlider}
+                        minimumValue={0}
+                        maximumValue={1000}
+                        minimumTrackTintColor={theme.primary}
+                        maximumTrackTintColor={theme.surfaceVariant}
+                        thumbTintColor={theme.primary}
+                        step={1}
+                        style={styles.slider}
+                    />
+                </View>
+            );
             break;
         case "numeric":
             modeComponent = (
@@ -154,6 +171,19 @@ const styles = StyleSheet.create({
     },
     iconButton: {
         margin: 0,
+    },
+    sliderContainer: {
+        padding: 10,
+        borderRadius: 5,
+        backgroundColor: theme.background,
+        width: "9rem",
+        height: "3rem",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    slider: {
+
+
     },
 
     error: {
