@@ -16,9 +16,15 @@ export default function NumericInput ({
 }) {
     const [numeric, setNumeric] = useState(defaultValue);
 
-    useEffect(() => {
-        if(onChange) onChange(numeric)
-    }, [numeric])
+    // If a value is being fed to this through default value
+    useEffect(()=> {
+        setNumeric(defaultValue)
+    }, [defaultValue])
+
+    function handleChange(amount) {
+        setNumeric(amount)
+        onChange(amount)
+    }
 
     return (
         <View style={[styles.numeric, style]}>
@@ -26,7 +32,7 @@ export default function NumericInput ({
                 icon={"minus"}
                 size={size + "rem"}
                 style={[styles.numericBox, styles.numericBoxLeft, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
-                onPress={() => setNumeric(Math.max(minimum, numeric - 1))}    
+                onPress={() => handleChange(Math.max(minimum, numeric - 1))}    
             />
             <View style={[styles.numericDisplay, {width: 3 * size + "rem", height: 3 * size + "rem"}]}>
                 <HelperText style={[styles.numericText, {fontSize: size + "rem"}]}>
@@ -37,7 +43,7 @@ export default function NumericInput ({
                 icon={"plus"}
                 size={size + "rem"}
                 style={[styles.numericBox, styles.numericBoxRight, {width: 3 * size + "rem", height: 3 * size + "rem"}]}
-                onPress={() => setNumeric(Math.min(maximum, numeric + 1))}    
+                onPress={() => handleChange(Math.min(maximum, numeric + 1))}    
             />
         </View>
     )
