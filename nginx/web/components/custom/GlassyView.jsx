@@ -1,5 +1,5 @@
-import React from "react";
-import { Platform, View, StyleSheet, Pressable } from "react-native";
+import React, {useRef} from "react";
+import { Platform, View, StyleSheet, Pressable, Animated } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -9,10 +9,19 @@ export default function GlassyView({
   intensity = 60,
   tint = "light",
   gradient = null, // { colors: [...], start: {x,y}, end: {x,y} }
-  onPress
+  ...callbacks
 }) {
   const combined = [styles.glass, style];
   let component = null;
+  const width = useRef(new Animated.Value(0))
+
+  function handleHoverIn() {
+
+  }
+
+  function handleHoverOut() {
+
+  }
 
   // Native (iOS / Android)
   if (Platform.OS !== "web") {
@@ -47,7 +56,7 @@ export default function GlassyView({
       </>
   }
 
-  if(onPress) {
+  if(callbacks) {
     return (
       <Pressable
         style={
@@ -55,7 +64,7 @@ export default function GlassyView({
           [combined, styles.webFallback] :
           combined
         }
-        onPress={onPress}
+        {...callbacks}
       >
       {component}
       </Pressable>
@@ -69,6 +78,8 @@ export default function GlassyView({
           [combined, styles.webFallback] :
           combined
         }
+        onHoverIn={onHoverIn}
+        onHoverOut={onHoverOut}
       >
       {component}
       </View>

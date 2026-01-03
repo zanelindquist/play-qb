@@ -1,21 +1,45 @@
-import themeData from "./earthy.json"
-import universalThemeDate from "./universal.json"
+import themeData from "./earthy.json";
+import universalThemeDate from "./universal.json";
 
-const themeMode = "dark"
+import { MD3DarkTheme, MD3LightTheme } from "react-native-paper";
 
-let theme = {};
+const themeMode = "dark"; // "light" | "dark"
 
-// For different theme formats
+// Pick base Paper theme
+const basePaperTheme = themeMode === "dark" ? MD3DarkTheme : MD3LightTheme;
+
+let customTheme = {};
+let palettes = {};
+
+// Handle Material Theme Builder vs custom format
 if (themeData.schemes) {
-    theme = themeData.schemes[themeMode];
-    theme.palettes = themeData.palettes;
+    customTheme = themeData.schemes[themeMode];
+    palettes = themeData.palettes;
 } else {
-    theme = themeData[themeMode]?.colors
+    customTheme = themeData[themeMode]?.colors ?? {};
 }
 
-// Add constant colors
-let universal = universalThemeDate[themeMode].colors
-theme.static = universal
-theme.gradients = universalThemeDate[themeMode].gradients
+// Universal colors & gradients
+const universal = universalThemeDate[themeMode].colors;
+const gradients = universalThemeDate[themeMode].gradients;
 
-export default theme
+const theme = {
+    ...customTheme,
+
+    // Needed for some paper components
+    elevation: {
+        level0: customTheme.surface,
+        level1: customTheme.surfaceContainerLow,
+        level2: customTheme.surfaceContainer,
+        level3: customTheme.surfaceContainerHigh,
+        level4: customTheme.surfaceContainerHighest,
+        level5: customTheme.surfaceContainerHighest,
+    },
+
+    // Preserve your custom additions
+    palettes,
+    static: universal,
+    gradients,
+};
+
+export default theme;
