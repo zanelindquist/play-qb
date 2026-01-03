@@ -75,6 +75,8 @@ const GAMEMODES = [
     },
 ];
 
+const LEVELS = ["All", "Middle School", "High School", "Collegiate", "Open"]
+
 const CATEGORIES = [
     "everything",
     "science",
@@ -477,6 +479,17 @@ export default function LobbyScreen() {
                                             disabled={disableGameRules}
                                         />
                                         <GameRule
+                                            label="Level"
+                                            dataName="level"
+                                            mode="dropdown"
+                                            options={
+                                                LEVELS.map((l) => {return {title: l}})
+                                            }
+                                            defaultValue={lobbyInfo?.level || 0}
+                                            onChange={handleGameRuleChange}
+                                            disabled={disableGameRules}
+                                        />
+                                        <GameRule
                                             label="Category"
                                             dataName="category"
                                             mode="dropdown"
@@ -504,16 +517,6 @@ export default function LobbyScreen() {
                                             minimum={10}
                                             maximum={100}
                                             defaultValue={lobbyInfo?.rounds}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Level"
-                                            dataName="level"
-                                            mode="numeric"
-                                            minimum={0}
-                                            maximum={3}
-                                            defaultValue={lobbyInfo?.level}
                                             onChange={handleGameRuleChange}
                                             disabled={disableGameRules}
                                         />
