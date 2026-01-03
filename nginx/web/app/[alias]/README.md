@@ -147,3 +147,66 @@
     9. PAUSED
     10. LOADING
     11. ERROR
+
+# GAME STATE COMPONENTS
+    ## Solos
+        - UI
+            * Rows of scores
+            * Color dot for each player and name on the left
+            * Score on the right
+            * Info button for other score information when you click on the score
+        - Data Structures
+            * Scores will be managed through the game object's "teams" JSON
+                teams: {
+                    hash: {
+                        name: string,
+                        color: hex,
+                        score: number,
+                        members: {
+                            hash: {
+                                points: number,
+                                power: number,
+                                negs: number,
+                                buzzes: number,
+                                buzzes_encountered: number,
+                                early: number,
+                            } ...
+                        },
+                    }...
+                }
+            * Every time a question is given, we need to increment the number of questions a user has seen for stats
+            * Every time someone submits, we need to update their stats from the results. We also need to update buzzes_encountered, that helps with the participation rate we track for a user
+    ## Custom teams
+        - UI (for more than 2 teams)
+            * Make it like a hamburger looking thing. A colored top bar followed by individual scores and repeat
+        - Data Structures
+            * Same as solos
+    ## 5v5
+        - UI
+            * Two columns with total score on top
+            * Individual score following that
+    ## Settings
+        - UI
+            * Hidden, but with a cog drop down like in the prelobby
+            * Relatively similar to prelobby custom settings
+            * Only one column of settings
+            * Make things skinnier
+            * Add dropdowns for categories so this shit doesn't get too long
+        - Logistics
+            * Only editable to the party leader
+            * Operate through the still open lobby socket?
+            * Hit an end point that writes directly to the database so that the rules are applied immediately
+
+# GAME STATE BACKEND
+    ## Events
+        - When a user joins
+            * Add them to the scores according to the gamemode
+        - When there is a new question
+            * Update questions seen in the scores
+            * At the end of the game, these will be transfered into the stats of a user
+        - When a user submits
+            * Update their scores data and buzzes
+            * Likewise, at the end of the game this data will be inputted into their player stats
+        - When a user leaves
+            * Put their temporary scores data into their stats db object
+            * Remove this user from the stats

@@ -231,7 +231,7 @@ export default function LobbyScreen() {
                 if(gameMode === "custom") {
                     send("clients_ready", {settings: {...customSettings}})
                 } else {
-                    send("clients_ready")
+                    send("clients_ready", {})
                 }
             })
 
@@ -263,7 +263,7 @@ export default function LobbyScreen() {
             // if(socket) socket.disconnect()
             removeAllEventListeners()
         };
-    }, [gameMode, partySlots, socket, myHash, myPM]);
+    }, [gameMode, partySlots, myHash, myPM]);
 
     // Setting game rule editing
     useEffect(() => {

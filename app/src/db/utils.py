@@ -15,6 +15,7 @@ from sqlalchemy.inspection import inspect
 from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
 from .db import engine
+from .models.hash import *
 
 # Answer judging constants
 BRACKETED = re.compile(r"\[.*?\]")
@@ -287,7 +288,9 @@ def create_lobby(settings):
 
         # Make sure each lobby has a game
         game = Games(
-            lobby_id=lobby.id
+            lobby_id=lobby.id,
+            teams={},
+            rounds=[]
         )
         session.add(game)
         
@@ -310,7 +313,7 @@ def create_player(email, lobbyAlias):
         lobby = get_lobby_by_alias(lobbyAlias)
 
         if player is not None:
-            return {'message': 'Player already exists', "code": 409}
+            return player
 
         if not user or not lobby:
             return {'message': 'User or lobby not found', "code": 404}
@@ -339,7 +342,7 @@ def create_player(email, lobbyAlias):
         session.add(stats)
         session.commit()
 
-        return {'message': 'create_player(): success', "code": 200}
+        return to_dict_safe(player, rel_depths=REL_DEP["db:player"], depth=0)
     except Exception as e:
         session.rollback()
         return {'message': 'create_player(): failure', 'error': f'{e}', "code": 400}
@@ -568,7 +571,26 @@ def get_lobby_by_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_gamestate_by_lobby_alias(lobbyAlias):
+def get_game_by_hash(game_hash: str) -> dict:
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        if not game:
+            return False;
+
+        return to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def get_game_by_lobby_alias(lobbyAlias):
     session = get_session()
     try:
         # Assuming every lobby only has one game
@@ -580,12 +602,12 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
 
         if not game:
             return False;
-
+    
         return to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
 
     except Exception as e:
         session.rollback()
-        return {'message': 'get_gamestate_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'get_game_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -643,7 +665,6 @@ def get_friends_by_email(email, online=False, party=False):
             or friend.hash not in party.get("members")
         ]
 
-
 def get_users_by_query(query):
     session = get_session()
     users = session.execute(
@@ -689,7 +710,130 @@ def set_user_online(email: str, online=True):
     finally:
         session.remove()
 
-    
+def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, team_name: str):
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        modified_teams = None;
+
+        score_template = {
+            "points": 0,
+            "correct": 0,
+            "buzzes": 0,
+            "power": 0,
+            "negs": 0,
+            "buzzes_encountered": 0,
+            "early": 0
+        }
+        
+        # 1. Get the game from the hash
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        
+        # 2. Access the teams property (see the JSON in the README)
+        teams = game_dict.get("teams")
+        modified_teams = teams;
+
+        team_template = {
+            "name": team_name,
+            "color": get_hex_color(len(teams.keys())),
+            "score": 0,
+            "members": {
+
+            }
+        }
+
+        found_player = False
+        # Check and see if the player is already in a team
+        for t_hash in list(teams.keys()):
+            if player_hash in teams[t_hash]["members"].keys():
+                found_player: True
+
+        if found_player:
+            return teams
+
+        # 3. IF there is a team_hash, add the player to that, otherwise make their own team
+        if team_hash:
+            for t_hash in list(teams.keys()):
+                if t_hash == team_hash:
+                    modified_teams[t_hash]["members"][player_hash] = score_template
+        else:
+            # 4. Create a team
+            new_team_hash = generate_unique_hash()
+            modified_teams[new_team_hash] = team_template
+
+            # 5. Add the player to that team
+            modified_teams[new_team_hash]["members"][player_hash] = score_template
+
+        # 6. Set the teams in the database
+        setattr(game, "teams", modified_teams)
+
+        session.commit()
+        # 7. Return the updated teams
+        return modified_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+
+
+def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
+    """
+        1. Get the game from the hash
+        2. Access the teams property (see the JSON in the README)
+        3. Find the team that has a member with the player_hash
+        4. For every property in the diff, add the value of the diff to it
+        5. Put the modififed diff and overall object back into the teams structure
+        6. Return the updated teams
+    """
+
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        modified_teams = None;
+
+        # 1. Get the game from the hash
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        # 2. Access the teams property (see the JSON in the README)
+        teams = game_dict.get("teams")
+        modified_teams = teams;
+        # 3. Find the team that has a member with the player_hash
+        for team_hash in list(teams.keys()):
+            for team_member_hash in list(teams[team_hash].get("members").keys()):
+                if player_hash == team_member_hash:
+                    breakdown = teams[team_hash]["members"][team_member_hash]
+                    # 4. For every property in the diff, add the value of the diff to it
+                    for key in list(diff.keys()):
+                        # Make sure that this property is already in the diff (no funny business with modification)
+                        if key in list(breakdown.keys()): 
+                            breakdown[key] += diff[key];
+                    # 5. Put the modififed diff and overall object back into the teams structure
+                    modified_teams[team_hash]["members"][team_member_hash] = breakdown
+        
+        # 6. Set the teams in the database
+        setattr(game, "teams", modified_teams)
+
+        session.commit()
+        # 7. Return the updated teams
+        return modified_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # =====GAME FUNCTIONS=====

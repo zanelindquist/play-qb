@@ -146,7 +146,7 @@ def on_disconnect():
     lobby = request.environ.get("lobby")
     party_hash = request.environ.get("party")
 
-    print(f"Received disconnect form {user_id}")
+    print(f"Received disconnect from /lobby: user={user_id}")
 
     set_user_online(user_id, False)
 
@@ -354,7 +354,6 @@ def on_party_member_ready(data):
             emit("failed_lobby_creation", {"message": "Lobby with that alias already exists"}, room=f"party:{party_hash}")
             return
         emit("failed_lobby_creation", result, room=f"party:{party_hash}")
-        print(result)
         return;
 
     emit("enter_lobby", {"lobby_alias": result.get("lobby").get("name")}, room=f"party:{party_hash}")
