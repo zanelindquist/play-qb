@@ -53,7 +53,7 @@ def on_join_lobby(data):
         return;
 
     # Create lobby (if its not there)
-    create_lobby(lobby)
+    create_lobby({"name": lobby})
 
     # Create a player for this lobby (if there isnt one)
     create_player(user_id, lobby)
@@ -74,9 +74,9 @@ def on_join_lobby(data):
     
     player = get_player_by_email_and_lobby(user_id, lobby)
 
-    # Give the player just information about themselves and the game
+    lobby_data = get_lobby_by_alias(lobby)
 
-    emit("you_joined", {"player": player, "game_state": game_state})
+    emit("you_joined", {"player": player, "game_state": game_state, "lobby": lobby_data})
     
     emit("player_joined", {"player": player}, room=f"lobby:{lobby}")
 

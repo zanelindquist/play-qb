@@ -75,6 +75,19 @@ const GAMEMODES = [
     },
 ];
 
+const CATEGORIES = [
+    "everything",
+    "science",
+    "history",
+    "literature",
+    "social science",
+    "philosophy",
+    "religion",
+    "mythology",
+    "geography",
+    "custom",
+];
+
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
 
 export default function LobbyScreen() {
@@ -82,10 +95,12 @@ export default function LobbyScreen() {
     const params = useLocalSearchParams();
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
+    const gameModeFromParams =  GAMEMODES.map((g) => g.name).includes(params.mode) ? params.mode : "custom"
 
-    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady } = useSocket("lobby", params.mode || "solos");
+    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady } = useSocket("lobby", gameModeFromParams);
 
-    const [gameMode, setGameMode] = useState(params.mode || "solos");
+    // Set the game mode to what the search params indicate, with random ones being set to custom
+    const [gameMode, setGameMode] = useState(gameModeFromParams);
     const [myHash, setMyHash] = useState(undefined);
     // My party member
     const [myPM, setMyPM] = useState(null)
@@ -95,12 +110,13 @@ export default function LobbyScreen() {
     const [isReady, setIsReady] = useState(false)
 
     const [lobbyInfo, setLobbyInfo] = useState({})
+    const [playersOnline, setPlayersOnline] = useState(undefined)
     const [customSettings, setCustomSettings] = useState({})
     const [showSettings, setShowSettings] = useState(false)
     const [showCustomCategories, setShowCustomCategories] = useState(false)
     const [disableGameRules, setDisableGameRules] = useState(true)
 
-    const [randomLobbyName] = useState(() => generateRandomLobbyName());
+    const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : () => generateRandomLobbyName());
 
     
     useEffect(() => {
@@ -109,6 +125,7 @@ export default function LobbyScreen() {
                 console.log("LOBBY", lobby)
                 setMyHash(user.hash);
                 setMyPM(party_members.find((m) => m.hash === user.hash))
+                setPlayersOnline(lobby.number_of_online_players)
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
                 }
@@ -116,11 +133,12 @@ export default function LobbyScreen() {
                 // Set the lobby settings
                 setLobbyInfo(lobby)
                 // Chop away the categories that can't be mutated
-                let customSettings = {...lobby}
+                let customSettingsFromLobby = {...lobby}
                 for(let key of Object.keys(lobby)) {
-                    if(!MUTATABLE_RULES.includes(key)) delete customSettings[key]
+                    if(!MUTATABLE_RULES.includes(key)) delete customSettingsFromLobby[key]
                 }
-                setCustomSettings(customSettings)
+                customSettingsFromLobby["name"] = randomLobbyName
+                setCustomSettings((prev) => {return {...customSettingsFromLobby}})
             });
 
             addEventListener("prelobby_not_found", ({ player }) => {
@@ -191,17 +209,40 @@ export default function LobbyScreen() {
             addEventListener("changed_gamemode", ({lobby}) => {
                 setGameMode(lobby.name)
                 setLobbyInfo(lobby)
+                setPlayersOnline(lobby.number_of_online_players)
             })
 
             addEventListener("changed_custom_settings", ({settings}) => {
                 // If I am the party leader, I changed these and we don't need to update the lobby info
-                console.log("SETTINGS",settings)
                 if(myPM?.is_leader) return;
+                console.log(settings)
                 setLobbyInfo({...settings})
             })
             
-            addEventListener("enter_game", () => {
-               router.replace(`/${gameMode}`)
+            addEventListener("all_ready", () => {
+                console.log(customSettings)
+                // If we are the leader, and we are making a custom game, then we need to send the server the rules we made for the game
+                // So that the server can make a new lobby for us
+
+                // TODO: Maybe at this point put everyone into a loading screen until the enter_lobby event is received
+                if(!myPM?.is_leader) return;
+                if(gameMode === "custom") {
+                    send("clients_ready", {settings: {...customSettings}})
+                } else {
+                    send("clients_ready")
+                }
+            })
+
+            addEventListener("failed_lobby_creation", (error) => {
+                showBanner("Failled to create lobby: " + error?.message)
+            })
+
+            addEventListener("failed_lobby_join", (error) => {
+                showBanner("Failed to join lobby: "+ error?.message)
+            })
+
+            addEventListener("enter_lobby", ({lobby_alias}) => {
+                router.replace(`/${lobby_alias}`)
             })
 
             addEventListener("user_disconnected", ({user_hash})=> {
@@ -225,6 +266,10 @@ export default function LobbyScreen() {
     // Setting game rule editing
     useEffect(() => {
         setDisableGameRules(gameMode !== "custom" || !myPM?.is_leader)
+        // Make sure that when the leader switches to custom, the correct name for the lobby shows
+        if(gameMode === "custom") {
+            setCustomSettings((prev) => {return {...prev, name: randomLobbyName}})
+        }
     }, [gameMode, myPM]);
 
     const openInviteFriendModal = React.useCallback(() => {
@@ -313,7 +358,8 @@ export default function LobbyScreen() {
     }
 
     function handleGameRuleChange(e) {
-        console.log("CHANGED")
+        if(e.dataName == "name") console.log("NAME TO ", e.value)
+
         // For displaying the game rules
         if(e.dataName === "category" && e.value.title.toLowerCase() === "custom") {
             setShowCustomCategories(true)
@@ -321,21 +367,27 @@ export default function LobbyScreen() {
             setShowCustomCategories(false)
         }
 
-        if(e.value.title) e.value = e.value.title.toLowerCase()
+        if(e.value?.title) e.value = e.value.title.toLowerCase()
 
         // Update our custom categories
         setCustomSettings((prev) => {
             // Only set values that are already in the settings
-            if(!prev[e.dataName]) return prev
+            if(!MUTATABLE_RULES.includes(e.dataName)) return prev
+
             const newSettings = {
                 ...prev,
                 [e.dataName]: e.value
             }
+            if(e.dataName == "name") console.log("NEW SETTINGS", newSettings)
             // Emit an event to show other users the updates
             send("custom_settings_changed", {settings: newSettings})
             return newSettings
         })
     }
+    
+    useEffect(() => {
+        console.log("CS", customSettings?.name)
+    }, [customSettings])
 
     return (
         <SidebarLayout>
@@ -348,6 +400,7 @@ export default function LobbyScreen() {
                             style={styles.gamemode}
                             selected={gameMode == g.name}
                             onPress={() => handleGameModePress(g.name)}
+                            playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
                         />
                     ))}
                 </View>
@@ -400,14 +453,14 @@ export default function LobbyScreen() {
                             <GlassyView
                                 style={styles.customRulesContainer}
                             >
-                                <HelperText style={styles.title}>Custom Game</HelperText>
+                                <HelperText style={styles.title}>Create Custom Game</HelperText>
                                 <View style={styles.customRules}>
                                     <View style={styles.rulesColumn}>
                                         <GameRule
                                             label="Name"
                                             dataName="name"
                                             mode="text"
-                                            defaultValue={gameMode === "custom" ? randomLobbyName : lobbyInfo?.name}
+                                            defaultValue={gameMode === "custom" && myPM?.is_leader ? customSettings?.name : lobbyInfo?.name}
                                             onChange={handleGameRuleChange}
                                             valueError={(text) => allowLobbyName(text) ? false : "Invalid lobby name"}
                                             disabled={disableGameRules}
@@ -427,18 +480,9 @@ export default function LobbyScreen() {
                                             label="Category"
                                             dataName="category"
                                             mode="dropdown"
-                                            options={[
-                                                {title: "Everything"},
-                                                {title: "Sciece"},
-                                                {title: "History"},
-                                                {title: "Literature"},
-                                                {title: "Social Science"},
-                                                {title: "Philosophy"},
-                                                {title: "Religion"},
-                                                {title: "Mythology"},
-                                                {title: "Geography"},
-                                                {title: "Custom"},
-                                            ]}
+                                            options={
+                                                CATEGORIES.map((c) => {return {title: capitalize(c)}})
+                                            }
                                             defaultValue={lobbyInfo?.category || 0}
                                             onChange={handleGameRuleChange}
                                             disabled={disableGameRules}
