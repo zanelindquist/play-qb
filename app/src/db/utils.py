@@ -29,6 +29,21 @@ TRAILING_DIRECTIVES = re.compile(
 ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
 
+# Creating a lobby
+MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+CATEGORIES = [
+    "everything",
+    "science",
+    "history",
+    "literature",
+    "social science",
+    "philosophy",
+    "religion",
+    "mythology",
+    "geography",
+    "custom",
+];
+
 def normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower().strip())
 
@@ -176,6 +191,38 @@ def validate_data(data, key=False, check_email=True):
     else:
         return data
 
+# Items is a list of dicts, fields is a list of strings of the keys on those dicts, and query is what to filter by
+def search_filter(items, keys, query):
+    if not query:
+        return items
+    
+    query = query.lower()
+    
+    filtered = []
+    for item in items:
+        for key in keys:
+            value = item.get(key)
+            if value and type(value) == str:
+                value = value.lower()
+                # Filtering logic
+                # String starting with
+                if value.startswith(query):
+                    filtered.append(item)
+                    continue
+
+                # Filter by token matching
+                query_tokens = set(query.tolist())
+                value_tokens = set(query.tolist())
+
+                # Compare overlay
+                overlap = query_tokens & value_tokens
+
+                if overlap / len(value_tokens) >= 0.8:
+                    filtered.append(item)
+                    continue
+
+    return filtered
+
 
 
 # CREATING RESOURCES
@@ -212,16 +259,28 @@ def create_user(client_data, rel_depths=None, depth=1):
     finally:
         session.remove()
 
-def create_lobby(lobbyAlias):
+# Creates a game by default for this lobby
+def create_lobby(settings):
     session = get_session()
     try:
-        lobby = get_lobby_by_alias(lobbyAlias)
+        lobby = get_lobby_by_alias(settings.get("name"))
 
         if lobby:
-            return {'message': 'create_lobby(): lobby already exists', "code": 400}
+            return {'message': 'create_lobby(): lobby already exists', "code": 403}
+        
+        columns = {}
+
+        for column in MUTATABLE_RULES:
+            if settings.get(column):
+                columns[column] = settings[column]
+
+        # Translate the categories to its number code
+        # TODO: Handle custom percentages for categories
+        if columns.get("category"):
+            columns["category"] = CATEGORIES.index(columns["category"])
 
         lobby = Lobbies(
-            name=lobbyAlias
+            **columns
         )
         session.add(lobby)
         session.flush()
@@ -234,7 +293,9 @@ def create_lobby(lobbyAlias):
         
         session.commit()
 
-        return {'message': 'create_lobby(): success', "code": 200}
+        lobby_data = to_dict_safe(lobby)
+
+        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
@@ -285,6 +346,62 @@ def create_player(email, lobbyAlias):
     finally:
         session.commit()
 
+def create_friend_request_from_email_to_hash(email, hash):
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        target = get_user_by_hash(hash)
+
+        if not user or not target:
+            return {'message': 'Cannot find sender or target', "code": 404}
+        
+        if user.get("id") == target.get("id"):
+            return {'message': "Cannot send yourself a friend request", "code": 400}
+
+        # See if there is already a friend request
+        correct_direction_request = session.execute(
+            select(Friends)
+            .where(
+                and_(Friends.sender_id == user.get("id"), Friends.receiver_id == target.get("id"))
+            )
+        ).scalars().first()
+
+        if correct_direction_request:
+            if correct_direction_request.is_accepted:
+                return {'message': 'You are already friends', "code": 200}
+            return {'message': 'This user already has a pending friend request', "code": 409}
+        
+        # If the target has sent the user a friend request, then we want to make it is_accepted
+        reverse_direction_request = session.execute(
+            select(Friends)
+            .where(
+                and_(Friends.sender_id == target.get("id"), Friends.receiver_id == user.get("id"))
+            )
+        ).scalars().first()
+
+        if reverse_direction_request:
+            if reverse_direction_request.is_accepted:
+                return {'message': 'You are already friends', "code": 200}
+            setattr(reverse_direction_request, "is_accepted", True)
+            return {'message': 'Friend added', "code": 201}
+
+
+        friend_request = Friends(
+            sender_id=user.get("id"),
+            receiver_id=target.get("id")
+        )
+
+        session.add(friend_request)
+        session.commit()
+
+        return {'message': 'create_friend_request_from_email_to_hash(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+
 # RETRIEVING RESOURCES
 
 # All of thse functions must return dicts, not SQL Alchemy objects
@@ -302,6 +419,34 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
             user = session.execute(
                 select(Users)
                 .where(Users.email == email)
+                .options(
+                    joinedload(Users.player_instances),
+                )
+            ).scalars().first()
+
+        if advanced:
+            return to_dict_safe(user, gentle=True, rel_depths=[], depth=3)
+        else:
+            return to_dict_safe(user, gentle=gentle, rel_depths=rel_depths, depth=depth)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
+def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+    try:
+        session = get_session()
+        user = None
+        if not joinedloads: 
+            user = session.execute(
+                select(Users)
+                .where(Users.hash == hash)
+            ).scalars().first()
+        else:
+            user = session.execute(
+                select(Users)
+                .where(Users.hash == hash)
                 .options(
                     joinedload(Users.player_instances),
                 )
@@ -444,6 +589,109 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
     finally:
         session.commit()
 
+def get_friends_by_email(email, online=False, party=False):
+    session = get_session()
+
+    if not email:
+        raise Exception("get_friends_by_email(): No email provided")
+    
+    user = session.execute(
+        select(Users)
+        .where(Users.email == email)
+    ).scalars().first()
+
+    if not user:
+        return []
+    
+    # If we only want online users
+    if not online:
+        friends = get_user_by_email(email).get("friends")
+        # Filter by party members
+        return [
+            friend for friend in friends
+            if not party
+            or friend.get("hash") not in party.get("members")
+        ]
+    
+    friends = session.execute(
+        select(Friends)
+        .where(
+            or_(
+                Friends.sender_id == user.id,
+                Friends.receiver_id == user.id,
+            ),
+            and_(
+                Friends.is_accepted == True
+            )
+        )
+    ).scalars().all()
+
+    if online:
+        online_friends = []
+        for friend in friends:
+            # Get the other person
+            target = friend.sender
+            if friend.sender_id == user.id:
+                target = friend.receiver
+
+            if target.is_online:
+                online_friends.append(target)
+        # Filter for parties if that is present
+        return [
+            to_dict_safe(friend) for friend in online_friends
+            if not party
+            or friend.hash not in party.get("members")
+        ]
+
+
+def get_users_by_query(query):
+    session = get_session()
+    users = session.execute(
+        select(
+            Users.hash,
+            Users.firstname,
+            Users.lastname
+        )
+        .where(
+            or_(
+                func.concat(Users.firstname, " ", Users.lastname).ilike(f"%{query}%"),
+                Users.firstname.ilike(f"%{query}%"),
+                Users.lastname.ilike(f"%{query}%"),
+            )
+        )
+        .limit(20)
+    ).all()
+
+    # REL DEP is empty right now
+    return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
+
+
+# EDITING RESOURCES
+
+def set_user_online(email: str, online=True):
+    try:
+        session = get_session()
+
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        setattr(user, "is_online", online)
+
+        session.commit()
+
+        return {"message": "set_user_online(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        return {"message": "set_user_online(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
+    
+
+
 # =====GAME FUNCTIONS=====
 
 # Question checking
@@ -453,7 +701,7 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
 # In short, we prefer false positives over false negatives
 def check_question(question, guess) -> bool:
     if not question or not guess:
-        raise Exception("check_question(): no question provided")
+        raise Exception("check_question(): no question or guess provided")
 
     # Handle bonuses
     if question.get("type") == 1:
@@ -464,13 +712,6 @@ def check_question(question, guess) -> bool:
     # Tokenize answer
     answers = question.get("answers")
 
-    # Parse parts of answer
-    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
-    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word
-    if len(main_answer.split(" ")) > 4:
-        main_answer = main_answer.split(" ")[0]
-    is_name = answer_is_name(main_answer)
-
     is_correct = False
     is_prompt = False
     is_reject = False
@@ -479,6 +720,15 @@ def check_question(question, guess) -> bool:
     correct_threshold = 0.85
     prompt_threshold = 0.7
     dont_accept_threshold = 0.90
+
+        # Parse parts of answer
+    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
+    if len(main_answer.split(" ")) > 4:
+        main_answer = main_answer.split(" ")[0]
+        correct_threshold = 0.4
+        prompt_threshold = 0.3
+    is_name = answer_is_name(main_answer)
 
     # We want a very high theshold on this
     # DON'T ACCEPT
@@ -561,7 +811,7 @@ def normal_match(answer: str, guess: str, threshold=0.85):
 
     # Exact match
     if answer_norm == guess_norm:
-        return 0
+        return 1
 
     # Require most tokens to be present
     overlap = answer_tokens & guess_tokens
@@ -584,11 +834,9 @@ def answer_is_name(answer: str) -> bool:
 
     # Get rid of "Accept:"s and "[]" stuff
     answer = strip_answerline_junk(answer)
-    print("ANSWER", answer)
 
     # Reject if contains digits (except Roman numerals as last token)
     tokens = answer.split()
-    print("TOKENS", tokens)
     if any(char.isdigit() for char in answer):
         return False
 
@@ -652,6 +900,7 @@ def strip_answerline_junk(answer: str) -> str:
     return s.strip()
 
 # Game state management
+
 def player_join_lobby(email, lobbyAlias):
     session = get_session()
     try:
@@ -659,6 +908,11 @@ def player_join_lobby(email, lobbyAlias):
             select(Lobbies)
             .where(Lobbies.name == lobbyAlias)
         ).scalars().first()
+
+        lobby_games = session.execute(
+            select(Games)
+            .where(Games.lobby_id == lobby.id)
+        ).scalars().all()
 
         player = session.execute(
             select(Players)
@@ -675,7 +929,23 @@ def player_join_lobby(email, lobbyAlias):
         if not player:
             return {'message': 'player_join_lobby(): failure', 'error': f'User not found', "code": 400}
 
-        setattr(player, "lobby_id", lobby.get("id"))
+        # Set the player's lobby to this lobby
+        setattr(player, "lobby_id", lobby.id)
+
+        # TODO: If a game is non-custom and that game is full, add them to another game
+
+        game = None
+
+        # Add them to a specific game
+        if len(lobby_games) == 1:
+            game = lobby_games[0]
+        else:
+            # TODO: Handle putting the player into a seperate lobby
+            return
+
+        setattr(player, "current_game_id", game.id)
+        setattr(player, "is_online", True)
+        
 
         session.commit()
 
@@ -683,6 +953,38 @@ def player_join_lobby(email, lobbyAlias):
     except Exception as e:
         session.rollback()
         return {'message': 'player_join_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def player_disconnect_from_lobby(email, lobbyAlias):
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+
+        player = session.execute(
+            select(Players)
+            .join(Users, Players.user_id == Users.id)
+            .where(
+                Users.email == email,
+                Players.lobby_id == lobby.id
+            )
+        ).scalars().first()
+
+        if not player:
+            return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'User not found', "code": 400}
+
+        setattr(player, "current_game_id", None)
+        setattr(player, "is_online", False)
+
+        session.commit()
+
+        return {'message': 'player_disconnect_from_lobby(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 

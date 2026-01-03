@@ -13,6 +13,7 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
     const inputRef = useRef(null);
     const [isFocused, setIsFocused] = useState(false);
     const [value, setValue] = useState("")
+    const [hasSubmitted, setHasSubmitted] = useState(false)
     
     const handleChange = (e) => {
         onChange(e.nativeEvent.text)
@@ -22,11 +23,20 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
     const handleSubmit = (e) => {
         setValue("")
         onSubmit(e.nativeEvent.text)
+        setHasSubmitted(true)
     }
 
     useEffect(() => {
         if (!disabled) {
-        inputRef.current?.focus();
+            inputRef.current?.focus();
+            setHasSubmitted(false)
+        }
+        // If this becomes disabled, this means the user has submitted or the question is over
+        else {
+            // If the user has not submitted, we need to submit it for them
+            if(!hasSubmitted) onSubmit(value)
+            setHasSubmitted(true)
+            setValue("")
         }
     }, [disabled]);
 

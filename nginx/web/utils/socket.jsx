@@ -5,11 +5,15 @@ import { RedirectToSignIn } from "./redirects";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
 
-export function useSocket(lobbyAlias) {
+export function useSocket(namespace, lobbyAlias) {
     const socketRef = useRef(null);
     const listenersRef = useRef(new Map());
     const readyCallbacks = useRef([]);
     const { showAlert } = useAlert();
+
+
+    if(namespace !== "game" && namespace !== "lobby")
+        throw Error("useSocket(): Invalid namespace")
 
     useEffect(() => {
         let isMounted = true;
@@ -18,7 +22,7 @@ export function useSocket(lobbyAlias) {
             .then((token) => {
                 if (!isMounted || socketRef.current) return;
 
-                const socket = io("https://app.localhost", {
+                const socket = io(`https://app.localhost/${namespace}`, {
                     path: "/socket.io",
                     transports: ["websocket"],
                     auth: { token },
@@ -33,7 +37,11 @@ export function useSocket(lobbyAlias) {
                 });
 
                 socket.on("reconnect", () => {
-                    send("join_lobby", {lobbyAlias: lobbyAlias})
+                    if (namespace == "game")
+                        send("join_lobby", {lobbyAlias: lobbyAlias})
+                    else if (namespace == "lobby")
+                        send("enter_lobby", {lobbyAlias: lobbyAlias})
+
                 })
 
                 socket.on("failed_connection", (data) => {
@@ -81,11 +89,22 @@ export function useSocket(lobbyAlias) {
         }
     };
 
+    const removeAllEventListeners= () => {
+        for (let event of listenersRef.current.keys()) {
+            const cb = listenersRef.current.get(event);
+            if (cb && socketRef.current) {
+                socketRef.current.off(event, cb);
+                listenersRef.current.delete(event);
+            }
+        }
+    }
+
     return {
         socket: socketRef.current,
         send,
         addEventListener,
         removeEventListener,
+        removeAllEventListeners,
         onReady
     };
 }

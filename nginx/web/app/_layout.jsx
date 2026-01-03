@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import theme from "../assets/themes/theme";
 import { Platform } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
+import { BannerProvider } from "../utils/banners";
 
 if (Platform.OS === "web") {
     require("../assets/css/scrollbar.css");
@@ -27,14 +28,16 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
             <PaperProvider theme={customTheme}>
                 <AlertProvider>
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            unmountOnBlur: true,
-                            animation: "slide_from_right",
-                            animationDuration: 1000
-                        }}
-                    />
+                    <BannerProvider>
+                        <Stack
+                            screenOptions={{
+                                headerShown: false,
+                                unmountOnBlur: true,
+                                animation: "slide_from_right",
+                                animationDuration: 1000
+                            }}
+                        />
+                    </BannerProvider>
                 </AlertProvider>
             </PaperProvider>
         </GestureHandlerRootView>

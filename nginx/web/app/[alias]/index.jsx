@@ -30,13 +30,16 @@ const { width } = Dimensions.get('window');
 // TEMPORARY
 const ANSWER_MS = 5000;
 
+const SHOW_EVENTS_INCREMENTS = 20
+
 const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();
     const alias = query.alias || "";
+    const router = useRouter()
 
     const {showAlert} = useAlert();
-    const {socket, send, addEventListener, removeEventListener, onReady} = useSocket(alias);
+    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady} = useSocket("game", alias);
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
@@ -46,7 +49,10 @@ const Play = () => {
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
-    const [syncTimestamp, setSyncTimestamp] = useState(0)
+    const [synctimestamp, setSynctimestamp] = useState(0)
+
+    // Memory manamgent
+    const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
 
     // Register keybinds
     useEffect(() => {
@@ -75,64 +81,64 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-        addEventListener("you_joined", ({Player, GameState}) => {
-            setMyId(Player.id)
-            console.log(GameState)
+        addEventListener("you_joined", ({player, game_state, lobby}) => {
+            setMyId(player.id)
+            console.log("LOBBY", lobby)
         })
 
-        addEventListener("player_joined", ({Player, GameState}) => {
-            Player.eventType = "player_joined"
-            addEvent(Player)
+        addEventListener("player_joined", ({player, game_state}) => {
+            player.eventType = "player_joined"
+            addEvent(player)
         })
 
-        addEventListener("question_interrupt", ({Player, AnswerContent, Timestamp}) => {
-            setSyncTimestamp(Timestamp)
-            setBuzzer({current: Player})
+        addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
+            setSynctimestamp(timestamp)
+            setBuzzer({current: player})
             setQuestionState("interrupted")
             // For non-question events, put them second in the list
             addEvent({
                 eventType: "interrupt",
                 // Set the interrupt status for the buzzer color
                 status: questionStateRef.current == "waiting" ? "late" : "early",
-                player: Player,
-                content: AnswerContent
+                player: player,
+                content: answer_content
             })
         })
 
-        addEventListener("player_typing", ({AnswerContent}) => {
-            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("content", AnswerContent)
+        addEventListener("player_typing", ({answer_content}) => {
+            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+            setInterruptData("content", answer_content)
         })
 
-        addEventListener("question_resume", ({Player, FinalAnswer, Scores, IsCorrect, Timestamp}) => {
-            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
+        addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
             
             setBuzzer(null)
             setQuestionState("running")
-            setSyncTimestamp(Timestamp)
+            setSynctimestamp(timestamp)
         })
 
-        addEventListener("next_question", ({Player, FinalAnswer, Scores, IsCorrect, Question, Timestamp}) => {
-            // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", IsCorrect == 1 ? "Correct" : (IsCorrect == 0 ? "Prompt" : "Wrong"))
+        addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
             // Minimize the current quetsion
             minimizeCurrentQuestion()
             setBuzzer(null)
-            setSyncTimestamp(Timestamp)
-            addEvent(Question, true)
+            setSynctimestamp(timestamp)
+            addEvent(question, true)
             setQuestionState("running")
         })
 
-        addEventListener("reward_points", ({Scores}) => {
+        addEventListener("reward_points", ({scores}) => {
             
         })
 
-        addEventListener("game_paused", ({Player}) => {
+        addEventListener("game_paused", ({player}) => {
             
         })
 
-        addEventListener("game_resumed", ({Player, Timestamp}) => {
-            setSyncTimestamp(Timestamp)
+        addEventListener("game_resumed", ({player, timestamp}) => {
+            setSynctimestamp(timestamp)
         })
 
         // Mostly test listner
@@ -145,8 +151,12 @@ const Play = () => {
         
         })
 
-        return () => clearInterval(typingEmitInterval)
-    }, [])
+        return () => {
+            clearInterval(typingEmitInterval)
+            removeAllEventListeners()
+            if(socket) socket.disconnect()
+        }
+    }, [socket])
 
     // Update the ref for it to be used in the listeners
     useEffect(() => {
@@ -161,7 +171,7 @@ const Play = () => {
     function onBuzz() {
         // Can't buzz when there is already an interruption
         if(buzzer || questionState == "dead") return;
-        send("buzz", {Timestamp: Date.now()})
+        send("buzz", {timestamp: Date.now()})
     }
 
     function onTyping(text) {
@@ -170,7 +180,7 @@ const Play = () => {
 
     function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {FinalAnswer: text})
+        send("submit", {final_answer: text})
     }
 
     function onNextQuestion() {
@@ -194,7 +204,8 @@ const Play = () => {
         onTyping(text)
     }
 
-    function handleInterruptOver(questionNotFinished) {
+    function handleInterruptOver(text, questionNotFinished) {
+        console.log("interrupt over")
         setBuzzer(null)
         if(questionNotFinished) {
             // TODO: keep track of waiting time
@@ -235,7 +246,7 @@ const Play = () => {
     }
 
     function setInterruptData(field, value) {
-        // Update the typing box with the AnswerContent by setting the content of the second in list interrupt event
+        // Update the typing box with the answer_content by setting the content of the second in list interrupt event
         setAllEvents(prev => {
             return prev.map((event, index) => {
                 if (event?.eventType === "interrupt" && index === 1) {
@@ -275,13 +286,13 @@ const Play = () => {
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
-                        allEvents.map((e, i) => {
+                        allEvents.slice(0, showNumberOfEvents).map((e, i) => {
                             switch(e?.eventType) {
                                 case "question":
                                     return (
                                         <Question
                                             question={e}
-                                            timestamp={syncTimestamp}
+                                            timestamp={synctimestamp}
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}
@@ -302,8 +313,23 @@ const Play = () => {
                                 default:
 
                             }
-
                         })
+                    }
+                    {
+                        showNumberOfEvents < allEvents.length &&
+                        <View style={styles.showingContainer}>
+                            <GlassyButton
+                                mode="filled"
+                                onPress={() => {
+                                    setShowNumberOfEvents(showNumberOfEvents + SHOW_EVENTS_INCREMENTS)
+                                }}
+                            >Show more ({Math.min(showNumberOfEvents, allEvents.length)} / {allEvents.length} visible)</GlassyButton>
+                            <GlassyButton
+                                onPress={() => {
+                                    setShowNumberOfEvents(SHOW_EVENTS_INCREMENTS)
+                                }}
+                            >Hide all</GlassyButton>
+                        </View>
                     }
                     </ScrollView>
                 </View>
@@ -314,6 +340,7 @@ const Play = () => {
                     <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
                     <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
+                    <GlassyButton mode="filled" onPress={() => router.replace(`/lobby?mode=${alias}`)}>Exit</GlassyButton>
                     <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
                 </View>
 
@@ -344,6 +371,11 @@ const styles = StyleSheet.create({
     },
     question: {
         height: 300
+    },
+    showingContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 10
     },
     optionsContainer: {
         flexShrink: 1,

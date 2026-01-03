@@ -30,6 +30,7 @@ import theme from "../../assets/themes/theme";
 import GlassyView from "../custom/GlassyView";
 import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
+import { capitalize } from "../../utils/text";
 
 const collapsedHeight = 40;
 const EXPANDED_HEIGHT = 400;
@@ -175,11 +176,6 @@ const Question = ({
         handleAnswerCollapsed()
     }
 
-    function capitalize(text) {
-        if(!text) return "Undefined"
-        return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
-    }
-
     function handleAnswerExpanded(answerHeight) {
         setExpandedHeight(expandedHeight + answerHeight)
     }
@@ -187,10 +183,6 @@ const Question = ({
     function handleAnswerCollapsed() {
         setExpandedHeight(EXPANDED_HEIGHT)
     }
-
-    useEffect(()=> {
-        console.log("ExHeiht", expandedHeight)
-    }, [expandedHeight])
 
     return (
         <ExpandableView
@@ -267,7 +259,7 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                <HelperText>{question.answers.main}</HelperText>
+                {/* <HelperText>{question.answers.main}</HelperText> */}
                 {
                     state == "dead" &&
                     (

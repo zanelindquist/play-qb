@@ -1,1 +1,2 @@
-from . import events
+from . import game
+from . import lobby

@@ -60,7 +60,8 @@ def create_app(test_config=None):
     from .db.db import init_db
 
     # Register socket
-    from src.socket_events import events
+    from src.socket_events import game
+    from src.socket_events import lobby
     socketio.init_app(app)
 
     init_db()

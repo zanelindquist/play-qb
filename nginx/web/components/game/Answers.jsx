@@ -42,7 +42,6 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
                     right: 0
                 }]}
                 onLayout={(e) => {
-                    console.log("Layout")
                     mountHeight.current = e.nativeEvent.layout.height;
                 }}
             >
