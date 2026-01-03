@@ -15,8 +15,8 @@ class Games(Base, CreatedAtColumn):
     
     question_number = Column(Integer, default=0)
     game_mode = Column(Integer, default=1)
-    rounds = Column(JSON, default=[])
-    teams = Column(JSON, default=[])
+    rounds = Column(JSON, default=list, nullable=False)
+    teams = Column(JSON, default=dict, nullable=False)
 
     lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=False)
     lobby = relationship("Lobbies", back_populates="games")

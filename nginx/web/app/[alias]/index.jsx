@@ -24,6 +24,7 @@ import Question from "../../components/game/Question.jsx";
 import Interrupt from "../../components/game/Interrupt.jsx";
 import PlayerJoined from "../../components/game/PlayerJoined.jsx";
 import ExpandableView from "../../components/custom/ExpandableView.jsx";
+import { useBanner } from "../../utils/banners.jsx";
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +40,9 @@ const Play = () => {
     const router = useRouter()
 
     const {showAlert} = useAlert();
+    const {showBanner} = useBanner()
     const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady} = useSocket("game", alias);
+    const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myId, setMyId] = useState(null);
@@ -50,6 +53,9 @@ const Play = () => {
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
+
+    // Game state
+    const [gameState, setGameState] = useState({})
 
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
@@ -84,6 +90,12 @@ const Play = () => {
         addEventListener("you_joined", ({player, game_state, lobby}) => {
             setMyId(player.id)
             console.log("LOBBY", lobby)
+            console.log("GAME STATE", game_state)
+        })
+
+        addEventListener("lobby_not_found", () => {
+            showAlert("The lobby you are trying to enter does not exist")
+            router.replace("/lobby?mode=solos")
         })
 
         addEventListener("player_joined", ({player, game_state}) => {
@@ -156,7 +168,7 @@ const Play = () => {
             removeAllEventListeners()
             if(socket) socket.disconnect()
         }
-    }, [socket])
+    }, [])
 
     // Update the ref for it to be used in the listeners
     useEffect(() => {

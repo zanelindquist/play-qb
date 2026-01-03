@@ -52,31 +52,41 @@ def on_join_lobby(data):
         emit("lobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
-    # Create lobby (if its not there)
-    create_lobby({"name": lobby})
+    # Make sure the lobby exists
+    lobby_data = get_lobby_by_alias(lobby)
+    if not lobby_data:
+        emit("lobby_not_found")
+        return
+    
+    # TODO: See if the user has permission to enter this lobby (dont let people intrude on private or custom games)
 
     # Create a player for this lobby (if there isnt one)
-    create_player(user_id, lobby)
-
+    user = get_user_by_email(user_id)
+    player = create_player(user_id, lobby)
+    
     # Add player to lobby in database
     result = player_join_lobby(user_id, lobby)
-
-    print("join", result)
 
     # Send GameState to the joining player (if possible)
 
     # do we echo the requested event type back to the user
     # or do we send it in an event channel that matches
     # the data type of the returning information?
-    game_state = get_gamestate_by_lobby_alias(lobby)
+    lobby_data = get_lobby_by_alias(lobby)
+    game = get_game_by_lobby_alias(lobby)
+
+    # Determine which team this user should be in
+
+    # Add the player scores
+    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), None, f"{user.get("firstname")} {user.get("lastname")}")
+    print("TEAMS", teams)
+    # Now set game again because we jsut modififed the teams on it
+    game = get_game_by_lobby_alias(lobby)
 
     # Send PlayerInformation about the new player to existing players
     
-    player = get_player_by_email_and_lobby(user_id, lobby)
 
-    lobby_data = get_lobby_by_alias(lobby)
-
-    emit("you_joined", {"player": player, "game_state": game_state, "lobby": lobby_data})
+    emit("you_joined", {"player": player, "game_state": game, "lobby": lobby_data})
     
     emit("player_joined", {"player": player}, room=f"lobby:{lobby}")
 
@@ -128,7 +138,7 @@ def on_submit(data): # FinalAnswer
     # Logic for determining if an answer is acceptable or not
 
     # Get lobby's game's current question
-    gamestate = get_gamestate_by_lobby_alias(lobby);
+    gamestate = get_game_by_lobby_alias(lobby);
     question = gamestate.get("current_question")
     final_answer = data.get("final_answer")
     is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct

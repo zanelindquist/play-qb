@@ -61,12 +61,12 @@ export function useSocket(namespace, lobbyAlias) {
     }, [lobbyAlias]);
 
     const onReady = (callback) => {
-        if(socketRef.current?.connected) {
+        if (socketRef.current?.connected) {
             callback(socketRef.current);
-        } else {
-            readyCallbacks.current.push(callback)
+        } else if (!readyCallbacks.current.includes(callback)) {
+            readyCallbacks.current.push(callback);
         }
-    }
+    };
 
     const send = (event, data) => {
         socketRef.current?.emit(event, data);
