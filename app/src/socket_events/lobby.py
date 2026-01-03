@@ -323,9 +323,42 @@ def on_party_member_ready(data):
     emit("party_member_readied", {"ready_info": parties[party_hash]["members"]}, room=f"party:{party_hash}")
 
     if everyone_ready:
-        lobby_alias = parties[party_hash]["lobby_alias"]
+        emit("all_ready", room=f"party:{party_hash}")
 
-        emit("enter_game", {"lobby_alias": lobby_alias}, room=f"party:{party_hash}")
+@socketio.on("clients_ready", "/lobby")
+def on_party_member_ready(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+    party_hash = request.environ["party"]
+
+    user = get_user_by_email(user_id)
+
+    party_hash, party = get_party(user.get("hash"))
+
+    if user.get("hash") != party["leader_hash"]:
+        return;
+
+    # See if this is a custom and we need to create a new lobby
+    settings = data.get("settings")
+
+    if not settings:
+        emit("enter_lobby", {"lobby_alias": party["lobby_alias"]}, room=f"party:{party_hash}")
+        return
+    
+    # Create a lobby based on the settings
+    result = create_lobby(settings)
+
+    if result.get("code") >= 400:
+        # If the lobby exists, tell them that
+        if result.get("code") == 403:
+            emit("failed_lobby_creation", {"message": "Lobby with that alias already exists"}, room=f"party:{party_hash}")
+            return
+        emit("failed_lobby_creation", result, room=f"party:{party_hash}")
+        print(result)
+        return;
+
+    emit("enter_lobby", {"lobby_alias": result.get("lobby").get("name")}, room=f"party:{party_hash}")
+
 
 @socketio.on("change_gamemode", "/lobby")
 def on_changed_gamemode(data):

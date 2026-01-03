@@ -30,7 +30,7 @@ export default function GameRule({
     onChange = null,
 }) {
     // This is so that we don't receive new props from defaultValue and then snowball it into calling the change callback
-    const [hasTriggeredEventAfterValue, setHTEADV] = useState(true)
+    const [hasTriggeredEventAfterValue, setHTEADV] = useState(false)
 
     const [checkbox, setCheckbox] = useState(defaultValue ?? false);
     const [text, setText] = useState(defaultValue ?? "");
@@ -80,7 +80,7 @@ export default function GameRule({
         const changeEvent = {
            dataName: dataName ? dataName : label.toLowerCase(),
            mode,
-           value
+           value: value
         }
         if(onChange) onChange(changeEvent)
     }, [checkbox, text, numeric, dropdown, selectedIndex, slider, toggle]);

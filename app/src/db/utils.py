@@ -29,6 +29,21 @@ TRAILING_DIRECTIVES = re.compile(
 ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
 
+# Creating a lobby
+MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+CATEGORIES = [
+    "everything",
+    "science",
+    "history",
+    "literature",
+    "social science",
+    "philosophy",
+    "religion",
+    "mythology",
+    "geography",
+    "custom",
+];
+
 def normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower().strip())
 
@@ -245,16 +260,27 @@ def create_user(client_data, rel_depths=None, depth=1):
         session.remove()
 
 # Creates a game by default for this lobby
-def create_lobby(lobbyAlias):
+def create_lobby(settings):
     session = get_session()
     try:
-        lobby = get_lobby_by_alias(lobbyAlias)
+        lobby = get_lobby_by_alias(settings.get("name"))
 
         if lobby:
-            return {'message': 'create_lobby(): lobby already exists', "code": 400}
+            return {'message': 'create_lobby(): lobby already exists', "code": 403}
+        
+        columns = {}
+
+        for column in MUTATABLE_RULES:
+            if settings.get(column):
+                columns[column] = settings[column]
+
+        # Translate the categories to its number code
+        # TODO: Handle custom percentages for categories
+        if columns.get("category"):
+            columns["category"] = CATEGORIES.index(columns["category"])
 
         lobby = Lobbies(
-            name=lobbyAlias
+            **columns
         )
         session.add(lobby)
         session.flush()
@@ -267,7 +293,9 @@ def create_lobby(lobbyAlias):
         
         session.commit()
 
-        return {'message': 'create_lobby(): success', "code": 200}
+        lobby_data = to_dict_safe(lobby)
+
+        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}

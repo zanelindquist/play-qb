@@ -81,9 +81,9 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
 
-        addEventListener("you_joined", ({player, game_state}) => {
+        addEventListener("you_joined", ({player, game_state, lobby}) => {
             setMyId(player.id)
-            console.log(game_state)
+            console.log("LOBBY", lobby)
         })
 
         addEventListener("player_joined", ({player, game_state}) => {
