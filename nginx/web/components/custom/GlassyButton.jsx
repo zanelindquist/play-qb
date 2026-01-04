@@ -63,7 +63,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: "center",
         alignItems: "center"
-
     },
     webFallback: {
         backdropFilter: "blur(18px) saturate(180%)",

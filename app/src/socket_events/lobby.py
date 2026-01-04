@@ -26,9 +26,9 @@ parties = {
 
 def create_party(user_hash: str) -> str:
     # Make sure user isn't already in a party
-    has_party = get_party(user_hash)
+    has_party = get_party_by_user(user_hash)
     if has_party:
-        return has_party[0]
+        return has_party
 
     party_hash = generate_unique_hash()
 
@@ -40,10 +40,10 @@ def create_party(user_hash: str) -> str:
 
     return party_hash
 
-def get_party(user_hash: str) -> tuple:
-    for party_id, party in parties.items():
+def get_party_by_user(user_hash: str) -> tuple:
+    for party_hash, party in parties.items():
         if user_hash in list(party["members"].keys()):
-            return (party_id, party)
+            return party_hash
         
 def get_party_member_info(party_hash: str) -> list:
     party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
@@ -146,7 +146,7 @@ def on_disconnect():
     lobby = request.environ.get("lobby")
     party_hash = request.environ.get("party")
 
-    print(f"Received disconnect form {user_id}")
+    print(f"Received disconnect from /lobby: user={user_id}")
 
     set_user_online(user_id, False)
 
@@ -333,7 +333,8 @@ def on_party_member_ready(data):
 
     user = get_user_by_email(user_id)
 
-    party_hash, party = get_party(user.get("hash"))
+    party_hash = get_party_by_user(user.get("hash"))
+    party = parties[party_hash]
 
     if user.get("hash") != party["leader_hash"]:
         return;
@@ -354,7 +355,6 @@ def on_party_member_ready(data):
             emit("failed_lobby_creation", {"message": "Lobby with that alias already exists"}, room=f"party:{party_hash}")
             return
         emit("failed_lobby_creation", result, room=f"party:{party_hash}")
-        print(result)
         return;
 
     emit("enter_lobby", {"lobby_alias": result.get("lobby").get("name")}, room=f"party:{party_hash}")
