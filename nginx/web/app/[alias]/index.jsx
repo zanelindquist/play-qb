@@ -88,8 +88,6 @@ const Play = () => {
         onReady(() => {
             addEventListener("you_joined", ({player, lobby}) => {
                 setMyId(player.id)
-                setLobby(lobby)
-                console.log("LOBBY", lobby)
             })
 
             addEventListener("lobby_not_found", () => {
@@ -97,9 +95,12 @@ const Play = () => {
                 router.replace("/lobby?mode=solos")
             })
 
-            addEventListener("player_joined", ({player, game_state}) => {
+            addEventListener("player_joined", ({player, game_state, lobby}) => {
                 player.eventType = "player_joined"
                 addEvent(player)
+                // For updating the scores and stuff
+                setLobby(lobby)
+                console.log("LOBBY", lobby)
             })
 
             addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
@@ -155,6 +156,16 @@ const Play = () => {
             // Mostly test listner
             addEventListener("chat_message", (data) => {
                 console.log("message!")
+            })
+
+            // I don't think this works lol
+            addEventListener("you_disconnected", ({stats, total_stats}) => {
+                showAlert("View your stats here: " + stats.correct)
+            })
+
+            addEventListener("player_disconnected", ({lobby, user}) => {
+                addEvent()
+                setLobby(lobby)
             })
 
             // Now that the listners are registered, we are ready to join the lobby
@@ -282,6 +293,11 @@ const Play = () => {
         })
     }
 
+    function handleExit() {
+        if(socket) socket.disconnect()
+        router.replace(`/lobby?mode=${alias}`)
+    }
+
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -349,7 +365,7 @@ const Play = () => {
                     <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
                     <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
-                    <GlassyButton mode="filled" onPress={() => router.replace(`/lobby?mode=${alias}`)}>Exit</GlassyButton>
+                    <GlassyButton mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }

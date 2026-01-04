@@ -756,11 +756,12 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, t
         score_template = {
             "points": 0,
             "correct": 0,
-            "buzzes": 0,
             "power": 0,
             "negs": 0,
+            "buzzes": 0,
             "buzzes_encountered": 0,
-            "early": 0
+            "early": 0,
+            "bonuses": 0
         }
         
         # 1. Get the game from the hash
@@ -783,7 +784,7 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, t
         # Check and see if the player is already in a team
         for t_hash in list(teams.keys()):
             if player_hash in teams[t_hash]["members"].keys():
-                found_player: True
+                found_player = True
 
         if found_player:
             return teams
@@ -807,10 +808,7 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, t
             modified_teams[new_team_hash] = team_template
 
             # 5. Add the player to that team
-            modified_teams[new_team_hash]["members"][player_hash] = score_template
-
-        print("MOD TEAMS", modified_teams)
-        
+            modified_teams[new_team_hash]["members"][player_hash] = score_template        
 
         # 6. Set the teams in the database
         setattr(game, "teams", modified_teams)
@@ -877,6 +875,40 @@ def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
     finally:
         session.commit()
 
+def write_player_stats(player_hash: str, stats: dict) -> dict:
+    session = get_session()
+    try:
+        player = session.execute(
+            select(Players)
+            .where(Players.hash == player_hash)
+            .options(
+                joinedload(Players.stats)
+            )
+        ).scalars().first()
+
+        all_stats = {};
+
+        for key in list(stats.keys()):
+            all_stats[key] = 0
+            # Forget it if there is no change
+            if stats[key] == 0:
+                continue
+            new_total = getattr(player.stats, key) + stats.get(key)
+            all_stats[key] = new_total
+            setattr(player.stats, key, new_total)
+
+        session.commit()
+
+        return all_stats
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'write_player_stats(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+# DELETING RESOURCES
+
 def reset_game_scores(game_hash: str) -> bool:
     session = get_session()
     try:
@@ -897,6 +929,46 @@ def reset_game_scores(game_hash: str) -> bool:
         return {'message': 'reset_game_scores(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def remove_player_game_scores(game_hash: str, player_hash: str):
+    if not game_hash or not player_hash:
+        raise Exception("remove_player_game_scores(): arguments undefined")
+    
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        teams = game_dict.get("teams")
+        modified_teams = teams
+
+        stats = None
+
+        # Find the player stats based on the hash
+        for team_hash in list(teams.keys()):
+            if player_hash in list(teams[team_hash]["members"].keys()):
+                stats = dict(teams[team_hash]["members"][player_hash])
+                del modified_teams[team_hash]["members"][player_hash]
+
+                # If there are no more players on this team, delete the team
+                if len(list(modified_teams[team_hash]["members"].keys())) == 0:
+                    del modified_teams[team_hash]
+
+        setattr(game, "teams", modified_teams)
+        flag_modified(game, "teams")
+        session.commit()
+
+        return stats
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 
 # =====GAME FUNCTIONS=====
 
