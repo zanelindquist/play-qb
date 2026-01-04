@@ -34,7 +34,7 @@ export default function PlayerScores ({
                     <Text style={[styles.teamName, {backgroundColor: team.color}]}>{team.name}</Text>
                     {
                         Object.entries(team.members).map(([playerHash, player], playerIndex) => 
-                            <PlayerLine player={{name: player.player.firstname + " " + player.player.lastname, score: player.score, color: team.color}} style={styles.playerLine} key={playerIndex}/>
+                            <PlayerLine player={{name: player.player.firstname + " " + player.player.lastname, score: player.points, color: team.color}} style={styles.playerLine} key={playerIndex}/>
                         )
                     }
                 </View>

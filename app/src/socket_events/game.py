@@ -80,7 +80,7 @@ def on_join_lobby(data):
 
     # Add the player scores
     # TODO: put users in the same party
-    party_hash, party = get_party(user.get("hash"))
+    party_hash = get_party_by_user(user.get("hash"))
     teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=party_hash)
     # Now set game again because we just modififed the teams on it
     lobby_data = get_lobby_by_alias(lobby)
@@ -90,9 +90,9 @@ def on_join_lobby(data):
 
     # Send PlayerInformation about the new player to existing players
     
-    emit("you_joined", {"player": player, "lobby": lobby_data})
+    emit("you_joined", {"player": player})
     
-    emit("player_joined", {"player": player}, room=f"lobby:{lobby}")
+    emit("player_joined", {"player": player, "lobby": lobby_data}, room=f"lobby:{lobby}")
 
 # When a player buzzes
 @socketio.on("buzz", namespace="/game")
@@ -214,11 +214,29 @@ def on_game_pause(): # Empty
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
-    user_id = request.environ.get("user_id")
-    lobby = request.environ.get("lobby")
+    user_id = request.environ["user_id"]
+    lobby = request.environ["lobby"]
 
     print(f"Received disconnect form {user_id}")
 
+    user = get_user_by_email(user_id)
+
+    # Remove the player scores from the game object
+    player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={"current_game": 0})
+
+    # Add the scores to the user's stats
+    stats = remove_player_game_scores(player.get("current_game").get("hash"), player.get("hash"))
+
+    total_stats = write_player_stats(player.get("hash"), stats)
+
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # TODO: Handle lobbies with multiple games
+    lobby_data["games"][0]["teams"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
+
+    # Give them their stats before they are disconnected
+    emit("you_disconnected", {"stats": stats, "total_stats": total_stats})
+
     result = player_disconnect_from_lobby(user_id, lobby)
 
-    emit("player_disconnected", room=f"lobby:{lobby}")
+    emit("player_disconnected", {"lobby": lobby_data, "user": user}, room=f"lobby:{lobby}")
