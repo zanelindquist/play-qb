@@ -124,7 +124,14 @@ const Play = () => {
 
             addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
                 setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-                
+                if(scores) {
+                    setLobby((prev) => {
+                        let changed = prev;
+                        // TODO: Adjust for multiple games
+                        changed.games[0].teams = scores
+                        return changed
+                    })
+                }
                 setBuzzer(null)
                 setQuestionState("running")
                 setSynctimestamp(timestamp)
@@ -139,6 +146,14 @@ const Play = () => {
                 setSynctimestamp(timestamp)
                 addEvent(question, true)
                 setQuestionState("running")
+                if(scores) {
+                    setLobby((prev) => {
+                        let changed = prev;
+                        // TODO: Adjust for multiple games
+                        changed.games[0].teams = scores
+                        return changed
+                    })
+                }
             })
 
             addEventListener("reward_points", ({scores}) => {

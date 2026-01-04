@@ -10,7 +10,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Stats": {
-        "fields": ["id", "hash", "points", "corrects", "power", "negs", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz"],
+        "fields": ["id", "hash", "points", "corrects", "power", "incorrect", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz"],
         "relationships": {
             "player": "Players",
         },

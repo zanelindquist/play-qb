@@ -5,6 +5,7 @@ import { HelperText, Text } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import GlassyView from "../custom/GlassyView";
 import PlayerLine from "./PlayerLine";
+import theme from "../../assets/themes/theme";
 
 export default function PlayerScores ({
     teams,
@@ -21,20 +22,21 @@ export default function PlayerScores ({
         }
         </GlassyView >
     )
-    Object.entries(teams).map(([teamHash, team], teamIndex) => {
-        Object.entries(team.members).map(([playerHash, player], playerIndex) => {
-            console.log("HASH", playerHash)
-        })
-    })
+
     if (gameMode === "duos") return (
         <GlassyView style={[style, styles.verticalTeamsContainer]}>
         {
-            Object.entries(teams).map(([teamHash, team], teamIndex) => 
+            Object.entries(teams).sort(([, aTeam], [, bTeam]) => bTeam.score - aTeam.score).map(([teamHash, team], teamIndex) => 
                 <View style={styles.team}>
-                    <Text style={[styles.teamName, {backgroundColor: team.color}]}>{team.name}</Text>
+                    <View style={[styles.teamTitle, {backgroundColor: team.color}, teamIndex == 0 && {paddingTop: 10}]}>
+                        <Text style={[styles.teamName]}>{team.name}</Text>
+                        <View style={[styles.circle, {backgroundColor: theme.surface}]}>
+                            <Text style={styles.score}>{team.score}</Text>
+                        </View>
+                    </View>
                     {
                         Object.entries(team.members).map(([playerHash, player], playerIndex) => 
-                            <PlayerLine player={{name: player.player.firstname + " " + player.player.lastname, score: player.points, color: team.color}} style={styles.playerLine} key={playerIndex}/>
+                            <PlayerLine player={{name: player.player.firstname + " " + player.player.lastname, score: player.points, color: "transparent"}} style={styles.playerLine} key={playerIndex}/>
                         )
                     }
                 </View>
@@ -63,14 +65,30 @@ const styles = StyleSheet.create({
         gap: 5,
         paddingBottom: 10,
     },
-    teamName: {
-        paddingVertical: 5,
+    teamTitle: {
+        padding: 5,
         marginBottom: 5,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    circle: {
+        width: "3rem",
+        height: "1.5rem",
+        borderRadius: 999,
+        justifyContent: "center",
+        alignItems: "center"
+    },
+    score: {
+        fontSize: "1.1rem"
+    },
+    teamName: {
         textAlign: "center",
         fontSize: "1.2rem",
         fontWeight: "bold",
     },
     playerLine: {
-        paddingHorizontal: 5
+        paddingHorizontal: 5,
+        paddingLeft: 10
     }
 })

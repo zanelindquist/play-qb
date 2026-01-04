@@ -712,8 +712,8 @@ def get_users_by_query(query):
 def attatch_players_to_teams(teams: dict):
     mutated_teams = teams
 
-    for team_hash in list(teams.keys()):
-        for player_hash in list(teams[team_hash]["members"].keys()):
+    for team_hash, team in teams.items():
+        for player_hash, player in team["members"].items():
             player = get_user_from_player_hash(player_hash)
             mutated_teams[team_hash]["members"][player_hash]["player"] = player
 
@@ -743,7 +743,7 @@ def set_user_online(email: str, online=True):
     finally:
         session.remove()
 
-def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, team_name=None):
+def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = None, team_name: str = None):
     session = get_session()
     try:
         game = session.execute(
@@ -757,11 +757,12 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, t
             "points": 0,
             "correct": 0,
             "power": 0,
-            "negs": 0,
+            "incorrect": 0,
             "buzzes": 0,
             "buzzes_encountered": 0,
             "early": 0,
-            "bonuses": 0
+            "bonuses": 0,
+            "questions_encountered": 0
         }
         
         # 1. Get the game from the hash
@@ -863,6 +864,7 @@ def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
         
         # 6. Set the teams in the database
         setattr(game, "teams", modified_teams)
+        flag_modified(game, "teams")
 
         session.commit()
         # 7. Return the updated teams
@@ -875,9 +877,55 @@ def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
     finally:
         session.commit()
 
+def increment_score_attribute(game_hash: str, key: str, player_hash: str = None, amount: int = 1):
+    print(key, player_hash)
+    if not game_hash or not key:
+        raise Exception("increment_score_attribute(): insufficient arguments")
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        teams = game_dict.get("teams")
+        mutated_teams = teams
+
+        for team_hash, team in teams.items():
+            # If this is about points, then we need to increment the team score
+            for p_hash, player in team["members"].items():
+                # If there is no player_hash, then we want to do it for all of the members
+                # Increment buzzes
+                if player_hash:
+                    if p_hash == player_hash:
+                        # Specific to just the player/team
+                        if key == "points":
+                            mutated_teams[team_hash]["score"] += amount
+                        mutated_teams[team_hash]["members"][p_hash][key] += amount
+                        break
+                else:
+                    mutated_teams[team_hash]["members"][p_hash][key] += amount
+
+        # 6. Set the teams in the database
+        setattr(game, "teams", mutated_teams)
+        flag_modified(game, "teams")
+
+        session.commit()
+        # 7. Return the updated teams
+        return mutated_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'increment_score_attribute(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 def write_player_stats(player_hash: str, stats: dict) -> dict:
     session = get_session()
     try:
+        print("STATS", stats)
         player = session.execute(
             select(Players)
             .where(Players.hash == player_hash)

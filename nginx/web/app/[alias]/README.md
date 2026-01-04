@@ -166,7 +166,7 @@
                             hash: {
                                 points: number,
                                 power: number,
-                                negs: number,
+                                incorrect: number,
                                 buzzes: number,
                                 buzzes_encountered: number,
                                 early: number,
