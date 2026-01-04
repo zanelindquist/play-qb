@@ -55,7 +55,7 @@ const Play = () => {
     const [synctimestamp, setSynctimestamp] = useState(0)
 
     // Game state
-    const [gameState, setGameState] = useState({})
+    const [lobby, setLobby] = useState(null)
 
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
@@ -86,81 +86,79 @@ const Play = () => {
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
-
-        addEventListener("you_joined", ({player, game_state, lobby}) => {
-            setMyId(player.id)
-            console.log("LOBBY", lobby)
-            console.log("GAME STATE", game_state)
-        })
-
-        addEventListener("lobby_not_found", () => {
-            showAlert("The lobby you are trying to enter does not exist")
-            router.replace("/lobby?mode=solos")
-        })
-
-        addEventListener("player_joined", ({player, game_state}) => {
-            player.eventType = "player_joined"
-            addEvent(player)
-        })
-
-        addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
-            setSynctimestamp(timestamp)
-            setBuzzer({current: player})
-            setQuestionState("interrupted")
-            // For non-question events, put them second in the list
-            addEvent({
-                eventType: "interrupt",
-                // Set the interrupt status for the buzzer color
-                status: questionStateRef.current == "waiting" ? "late" : "early",
-                player: player,
-                content: answer_content
+            addEventListener("you_joined", ({player, lobby}) => {
+                setMyId(player.id)
+                setLobby(lobby)
+                console.log("LOBBY", lobby)
             })
-        })
 
-        addEventListener("player_typing", ({answer_content}) => {
-            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-            setInterruptData("content", answer_content)
-        })
+            addEventListener("lobby_not_found", () => {
+                showAlert("The lobby you are trying to enter does not exist")
+                router.replace("/lobby?mode=solos")
+            })
 
-        addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
-            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-            
-            setBuzzer(null)
-            setQuestionState("running")
-            setSynctimestamp(timestamp)
-        })
+            addEventListener("player_joined", ({player, game_state}) => {
+                player.eventType = "player_joined"
+                addEvent(player)
+            })
 
-        addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
-            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-            // Minimize the current quetsion
-            minimizeCurrentQuestion()
-            setBuzzer(null)
-            setSynctimestamp(timestamp)
-            addEvent(question, true)
-            setQuestionState("running")
-        })
+            addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
+                setSynctimestamp(timestamp)
+                setBuzzer({current: player})
+                setQuestionState("interrupted")
+                // For non-question events, put them second in the list
+                addEvent({
+                    eventType: "interrupt",
+                    // Set the interrupt status for the buzzer color
+                    status: questionStateRef.current == "waiting" ? "late" : "early",
+                    player: player,
+                    content: answer_content
+                })
+            })
 
-        addEventListener("reward_points", ({scores}) => {
-            
-        })
+            addEventListener("player_typing", ({answer_content}) => {
+                // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+                setInterruptData("content", answer_content)
+            })
 
-        addEventListener("game_paused", ({player}) => {
-            
-        })
+            addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
+                
+                setBuzzer(null)
+                setQuestionState("running")
+                setSynctimestamp(timestamp)
+            })
 
-        addEventListener("game_resumed", ({player, timestamp}) => {
-            setSynctimestamp(timestamp)
-        })
+            addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+                // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
+                // Minimize the current quetsion
+                minimizeCurrentQuestion()
+                setBuzzer(null)
+                setSynctimestamp(timestamp)
+                addEvent(question, true)
+                setQuestionState("running")
+            })
 
-        // Mostly test listner
-        addEventListener("chat_message", (data) => {
-            console.log("message!")
-        })
+            addEventListener("reward_points", ({scores}) => {
+                
+            })
 
-        // Now that the listners are registered, we are ready to join the lobby
-        send("join_lobby", { lobbyAlias: alias });
-        
+            addEventListener("game_paused", ({player}) => {
+                
+            })
+
+            addEventListener("game_resumed", ({player, timestamp}) => {
+                setSynctimestamp(timestamp)
+            })
+
+            // Mostly test listner
+            addEventListener("chat_message", (data) => {
+                console.log("message!")
+            })
+
+            // Now that the listners are registered, we are ready to join the lobby
+            send("join_lobby", { lobbyAlias: alias });
         })
 
         return () => {
@@ -217,7 +215,6 @@ const Play = () => {
     }
 
     function handleInterruptOver(text, questionNotFinished) {
-        console.log("interrupt over")
         setBuzzer(null)
         if(questionNotFinished) {
             // TODO: keep track of waiting time
@@ -353,7 +350,12 @@ const Play = () => {
                     <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
                     <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
                     <GlassyButton mode="filled" onPress={() => router.replace(`/lobby?mode=${alias}`)}>Exit</GlassyButton>
-                    <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
+                    {
+                        // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
+                    }
+                    {
+                        lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode} />
+                    }
                 </View>
 
             </View>
@@ -367,9 +369,7 @@ const styles = StyleSheet.create({
         display: "flex",
         flexDirection: "row",
         gap: 10,
-        flexGrow: 1,
 
-        width: "100%"
     },
     gameContent: {
         margin: 10,

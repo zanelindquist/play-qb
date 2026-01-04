@@ -124,7 +124,6 @@ export default function LobbyScreen() {
     useEffect(() => {
         onReady(() => {
             addEventListener("prelobby_joined", ({ player, party_members, user, lobby, currentlyActive }) => {
-                console.log("LOBBY", lobby)
                 setMyHash(user.hash);
                 setMyPM(party_members.find((m) => m.hash === user.hash))
                 setPlayersOnline(lobby.number_of_online_players)
@@ -217,12 +216,10 @@ export default function LobbyScreen() {
             addEventListener("changed_custom_settings", ({settings}) => {
                 // If I am the party leader, I changed these and we don't need to update the lobby info
                 if(myPM?.is_leader) return;
-                console.log(settings)
                 setLobbyInfo({...settings})
             })
             
             addEventListener("all_ready", () => {
-                console.log(customSettings)
                 // If we are the leader, and we are making a custom game, then we need to send the server the rules we made for the game
                 // So that the server can make a new lobby for us
 
@@ -360,8 +357,6 @@ export default function LobbyScreen() {
     }
 
     function handleGameRuleChange(e) {
-        if(e.dataName == "name") console.log("NAME TO ", e.value)
-
         // For displaying the game rules
         if(e.dataName === "category" && e.value.title.toLowerCase() === "custom") {
             setShowCustomCategories(true)
@@ -380,16 +375,11 @@ export default function LobbyScreen() {
                 ...prev,
                 [e.dataName]: e.value
             }
-            if(e.dataName == "name") console.log("NEW SETTINGS", newSettings)
             // Emit an event to show other users the updates
             send("custom_settings_changed", {settings: newSettings})
             return newSettings
         })
     }
-    
-    useEffect(() => {
-        console.log("CS", customSettings?.name)
-    }, [customSettings])
 
     return (
         <SidebarLayout>

@@ -11,6 +11,7 @@ from difflib import SequenceMatcher
 
 from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
 from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
@@ -465,6 +466,28 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
     finally:
         session.remove()
 
+def get_user_from_player_hash(player_hash: str) -> dict:
+    try:
+        session = get_session()
+
+        user = (
+            session.execute(
+                select(Users)
+                .join(Users.player_instances)
+                .where(Players.hash == player_hash)
+                .options(joinedload(Users.player_instances))
+            )
+            .scalars()
+            .first()
+        )
+
+        return to_dict_safe(user, depth=0)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
 def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1):
     session = get_session()
 
@@ -686,6 +709,16 @@ def get_users_by_query(query):
     # REL DEP is empty right now
     return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
 
+def attatch_players_to_teams(teams: dict):
+    mutated_teams = teams
+
+    for team_hash in list(teams.keys()):
+        for player_hash in list(teams[team_hash]["members"].keys()):
+            player = get_user_from_player_hash(player_hash)
+            mutated_teams[team_hash]["members"][player_hash]["player"] = player
+
+    return mutated_teams
+
 
 # EDITING RESOURCES
 
@@ -710,7 +743,7 @@ def set_user_online(email: str, online=True):
     finally:
         session.remove()
 
-def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, team_name: str):
+def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash=None, team_name=None):
     session = get_session()
     try:
         game = session.execute(
@@ -738,7 +771,7 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, t
         modified_teams = teams;
 
         team_template = {
-            "name": team_name,
+            "name": team_name if team_name else f"Team {len(teams.keys()) + 1}",
             "color": get_hex_color(len(teams.keys())),
             "score": 0,
             "members": {
@@ -757,9 +790,17 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, t
 
         # 3. IF there is a team_hash, add the player to that, otherwise make their own team
         if team_hash:
+            # If we are passed a team hash, but there isn't one, lets set the team with this hash
+            found_team = False
             for t_hash in list(teams.keys()):
                 if t_hash == team_hash:
                     modified_teams[t_hash]["members"][player_hash] = score_template
+                    found_team = True
+
+            if not found_team:
+                modified_teams[team_hash] = team_template
+
+                modified_teams[team_hash]["members"][player_hash] = score_template
         else:
             # 4. Create a team
             new_team_hash = generate_unique_hash()
@@ -768,9 +809,12 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, t
             # 5. Add the player to that team
             modified_teams[new_team_hash]["members"][player_hash] = score_template
 
+        print("MOD TEAMS", modified_teams)
+        
+
         # 6. Set the teams in the database
         setattr(game, "teams", modified_teams)
-
+        flag_modified(game, "teams")
         session.commit()
         # 7. Return the updated teams
         return modified_teams
@@ -781,8 +825,6 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash: str, t
         return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
-
-
 
 def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
     """
@@ -831,10 +873,30 @@ def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
 
     except Exception as e:
         session.rollback()
-        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'set_game_scores(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
+def reset_game_scores(game_hash: str) -> bool:
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        setattr(game, "teams", {})
+
+        session.commit()
+
+        return {'message': 'reset_game_scores(): success', "code": 200}
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'reset_game_scores(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 # =====GAME FUNCTIONS=====
 
