@@ -22,7 +22,8 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: "row",
         gap: 5,
-        alignItems: "center"
+        alignItems: "center",
+        justifyContent: "space-between"
     },
     name: {
         flexShrink: 1,

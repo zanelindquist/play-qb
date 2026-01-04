@@ -76,12 +76,16 @@ def on_join_lobby(data):
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
 
+    request.environ["game_hash"] = game.get("hash")
+
     # Determine which team this user should be in
 
     # Add the player scores
     # TODO: put users in the same party
     party_hash = get_party_by_user(user.get("hash"))
-    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=party_hash)
+    # Team name (if its solos, we want it to be their name)
+    team_name = user.get("firstname") + " " + user.get("lastname") if lobby_data.get("gamemode") == "solos" else None
+    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=party_hash, team_name=team_name)
     # Now set game again because we just modififed the teams on it
     lobby_data = get_lobby_by_alias(lobby)
 
@@ -99,12 +103,22 @@ def on_join_lobby(data):
 def on_buzz(data): # Timestamp, AnswerContent
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
+    game_hash = request.environ["game_hash"]
 
     if not lobby:
         emit("reconnect")
         return
 
+    # Increment buzzes_encountered for everyone
+    result = increment_score_attribute(game_hash, "buzzes_encountered")    
+
     player = get_player_by_email_and_lobby(user_id, lobby)
+
+    # Increment buzzes for just the user
+    increment_score_attribute(game_hash, "buzzes", player_hash=player.get("hash"))
+    # TODO: Increment for early buzzes
+
+    # TODO: Ajust average time to buzz
 
     # Broadcast that a player has buzzed
     emit(
@@ -138,6 +152,7 @@ def on_typing(data): # AnswerContent
 def on_submit(data): # FinalAnswer
     lobby = request.environ["lobby"]
     user_id = request.environ["user_id"]
+    game_hash = request.environ["game_hash"]
 
     # Logic for determining if an answer is acceptable or not
 
@@ -147,12 +162,17 @@ def on_submit(data): # FinalAnswer
     final_answer = data.get("final_answer")
     is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
     # IsCorrect= math.floor(random.random() * 2) - 1
-    scores = False
     player = get_player_by_email_and_lobby(user_id, lobby)
 
-    data = {"player": player, "final_answer": final_answer, "scores": scores, "is_correct": is_correct, "timestamp": get_timestamp()}
+    data = {"player": player, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
 
     if is_correct == 1:
+        increment_score_attribute(game_hash, "correct", player_hash=player.get("hash"))
+        # TODO: Adjust for power
+        increment_score_attribute(game_hash, "points", player_hash=player.get("hash"), amount=10)
+        
+        lobby_data = get_lobby_by_alias(lobby)
+        data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is true
         # Get question according to game settings
         new_question = get_random_question(confidence_threshold=0)
@@ -165,11 +185,17 @@ def on_submit(data): # FinalAnswer
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
             "question_interrupt",
-            {"player": player, "answer_content": "", "timestamp": get_timestamp()},
+            {"player": player, "answer_content": final_answer, "timestamp": get_timestamp()},
             room=f"lobby:{lobby}"
         )
         
     elif is_correct == -1:
+        increment_score_attribute(game_hash, "incorrect", player_hash=player.get("hash"))
+        # TODO: Only do neg if the question is not over
+        increment_score_attribute(game_hash, "points", player_hash=player.get("hash"), amount=5)
+        
+        lobby_data = get_lobby_by_alias(lobby)
+        data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
 
@@ -179,12 +205,16 @@ def on_submit(data): # FinalAnswer
 def on_next_question(data):
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
+    game_hash = request.environ["game_hash"]
 
     if not lobby:
         emit("reconnect")
         return
 
-    # See if player has authority to skip question
+    # TODO: See if player has authority to skip question
+
+    # Increment buzzes_encountered
+    result = increment_score_attribute(game_hash, "questions_encountered")
 
     # Get question ACCORDING TO LOBBY SETTINGS
     question = get_random_question(type=0)
@@ -228,6 +258,8 @@ def on_disconnect():
     stats = remove_player_game_scores(player.get("current_game").get("hash"), player.get("hash"))
 
     total_stats = write_player_stats(player.get("hash"), stats)
+
+    print("TOTAL STATS", total_stats)
 
     lobby_data = get_lobby_by_alias(lobby)
 
