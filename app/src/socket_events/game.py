@@ -11,6 +11,7 @@ import time
 
 from src.db.utils import *
 from .constructor import socketio
+from .lobby import *
 
 def get_timestamp():
     return int(time.time() * 1000)
@@ -78,15 +79,18 @@ def on_join_lobby(data):
     # Determine which team this user should be in
 
     # Add the player scores
-    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), None, f"{user.get("firstname")} {user.get("lastname")}")
-    print("TEAMS", teams)
-    # Now set game again because we jsut modififed the teams on it
-    game = get_game_by_lobby_alias(lobby)
+    # TODO: put users in the same party
+    party_hash, party = get_party(user.get("hash"))
+    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=party_hash)
+    # Now set game again because we just modififed the teams on it
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # TODO: Handle lobbies with multiple games
+    lobby_data["games"][0]["teams"] = attatch_players_to_teams(teams)
 
     # Send PlayerInformation about the new player to existing players
     
-
-    emit("you_joined", {"player": player, "game_state": game, "lobby": lobby_data})
+    emit("you_joined", {"player": player, "lobby": lobby_data})
     
     emit("player_joined", {"player": player}, room=f"lobby:{lobby}")
 
