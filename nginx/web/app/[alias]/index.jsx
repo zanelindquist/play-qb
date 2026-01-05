@@ -25,8 +25,12 @@ import Interrupt from "../../components/game/Interrupt.jsx";
 import PlayerJoined from "../../components/game/PlayerJoined.jsx";
 import ExpandableView from "../../components/custom/ExpandableView.jsx";
 import { useBanner } from "../../utils/banners.jsx";
+import theme from "../../assets/themes/theme.js";
+import GameSettings from "../../components/entities/GameSettings.jsx";
+import ShowSettings from "../../components/custom/ShowSettings.jsx";
 
 const { width } = Dimensions.get('window');
+const MOBILE_THRESHOLD = 600
 
 // TEMPORARY
 const ANSWER_MS = 5000;
@@ -56,7 +60,8 @@ const Play = () => {
 
     // Game state
     const [lobby, setLobby] = useState(null)
-
+    const [showSettings, setShowSettings] = useState(false)
+    
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
 
@@ -313,6 +318,10 @@ const Play = () => {
         router.replace(`/lobby?mode=${alias}`)
     }
 
+    function handleGameRuleChange(rules) {
+        console.log(rules)
+    }
+
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -374,19 +383,27 @@ const Play = () => {
                     </ScrollView>
                 </View>
                 <View style={styles.optionsContainer}>
-                    <View style={styles.scorebox}>
-
-                    </View>
-                    <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
-                    <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
-                    <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
-                    <GlassyButton mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
+                    <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }
                     {
                         lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode} />
                     }
+                    <ShowSettings
+                        onChange={setShowSettings}
+                    />
+                    <GameSettings
+                        expanded={showSettings}
+                        columns={1}
+                        defaultInfo={lobby}
+                        disabled={false}
+                        nameDisabled={true}
+                        title={"Game Rules"}
+                        onGameRuleChange={handleGameRuleChange}
+                    />
                 </View>
 
             </View>
@@ -400,13 +417,13 @@ const styles = StyleSheet.create({
         display: "flex",
         flexDirection: "row",
         gap: 10,
-
     },
     gameContent: {
         margin: 10,
         flexGrow: 1,
-        width: "80%",
-        flexDirection: "column"
+        flexShrink: 1,
+        flexDirection: "column",
+        width: "100%"
     },
     questions: {
         marginTop: 10,
@@ -425,10 +442,20 @@ const styles = StyleSheet.create({
         position: "relative",
         right: 0,
         flexDirection: "column",
-        gap: 10
+        gap: 10,
+        minWidth: 250,
     },
     scorebox: {
-        width: 200
+        // width: 300
+    },
+    buzzButton: {
+        // backgroundImage: theme.gradients.buttonWhite
+    },
+    exitButton: {
+        backgroundImage: theme.gradients.buttonRed
+    },
+    nextButton: {
+        backgroundImage: theme.gradients.buttonBlue
     }
 })
 

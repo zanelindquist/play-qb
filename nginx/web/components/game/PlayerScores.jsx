@@ -23,7 +23,8 @@ export default function PlayerScores ({
         </GlassyView >
     )
 
-    if (gameMode === "duos") return (
+    // Duos/trios/squads is the default fallback mode
+    return (
         <GlassyView style={[style, styles.verticalTeamsContainer]}>
         {
             Object.entries(teams).sort(([, aTeam], [, bTeam]) => bTeam.score - aTeam.score).map(([teamHash, team], teamIndex) => 
@@ -44,10 +45,6 @@ export default function PlayerScores ({
         }
         </GlassyView >
     )
-
-    return (
-        <HelperText>Unsuported mode given</HelperText>
-    )
 }
 
 const styles = StyleSheet.create({
@@ -58,6 +55,10 @@ const styles = StyleSheet.create({
     verticalTeamsContainer: {
         flexDirection: "column",
         gap: 5,
+        padding: 0,
+    },
+    fivesTeamsContainer: {
+        flexDirection: "row",
         padding: 0,
     },
     team: {
@@ -90,5 +91,6 @@ const styles = StyleSheet.create({
     playerLine: {
         paddingHorizontal: 5,
         paddingLeft: 10
-    }
+    },
+
 })
