@@ -50,6 +50,8 @@ import ExpandableView from "../../components/custom/ExpandableView.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import { capitalize, detectCurseWords, generateRandomLobbyName } from "../../utils/text.js";
 import CustomCategories from "../../components/entities/CustomCategories.jsx";
+import ShowSettings from "../../components/custom/ShowSettings.jsx";
+import GameSettings from "../../components/entities/GameSettings.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -64,7 +66,7 @@ const GAMEMODES = [
         icon: "account-multiple",
     },
     {
-        name: "fives",
+        name: "5v5",
         description: "Full quiz bowl game against other players online.",
         icon: "account-group",
     },
@@ -226,6 +228,7 @@ export default function LobbyScreen() {
                 // TODO: Maybe at this point put everyone into a loading screen until the enter_lobby event is received
                 if(!myPM?.is_leader) return;
                 if(gameMode === "custom") {
+                    console.log(customSettings)
                     send("clients_ready", {settings: {...customSettings}})
                 } else {
                     send("clients_ready", {})
@@ -233,6 +236,7 @@ export default function LobbyScreen() {
             })
 
             addEventListener("failed_lobby_creation", (error) => {
+                console.log(error)
                 showBanner("Failled to create lobby: " + error?.message)
             })
 
@@ -253,7 +257,7 @@ export default function LobbyScreen() {
                 send("enter_lobby", { lobbyAlias: gameMode });
                 setEnteredLobby(true)
             }
-        });
+        }, []);
 
         // useEffect() cleanup
         return () => {
@@ -266,10 +270,14 @@ export default function LobbyScreen() {
     useEffect(() => {
         setDisableGameRules(gameMode !== "custom" || !myPM?.is_leader)
         // Make sure that when the leader switches to custom, the correct name for the lobby shows
-        if(gameMode === "custom") {
-            setCustomSettings((prev) => {return {...prev, name: randomLobbyName}})
+        if(gameMode === "custom" && myPM?.is_leader) {
+            setLobbyInfo((prev) => {return {...prev, name: randomLobbyName}})
         }
     }, [gameMode, myPM]);
+
+    useEffect(() => {
+        console.log("LOBBY INFO", lobbyInfo)
+    }, [lobbyInfo])
 
     const openInviteFriendModal = React.useCallback(() => {
         showAlert(
@@ -294,13 +302,8 @@ export default function LobbyScreen() {
         );
     })
     
-
     function handleGameModePress(mode) {
         send("change_gamemode", {lobby_alias: mode})
-    }
-
-    function handlePartySlotPressed() {
-        openInviteFriendModal()
     }
 
     function handleAcceptInvite(hash) {
@@ -351,34 +354,10 @@ export default function LobbyScreen() {
         })
     }
 
-    function allowLobbyName(text) {
-        if(text === "" || text.length > 40 || detectCurseWords(text)) return false
-        return !/\s/.test(text);
-    }
-
-    function handleGameRuleChange(e) {
-        // For displaying the game rules
-        if(e.dataName === "category" && e.value.title.toLowerCase() === "custom") {
-            setShowCustomCategories(true)
-        } else {
-            setShowCustomCategories(false)
-        }
-
-        if(e.value?.title) e.value = e.value.title.toLowerCase()
-
-        // Update our custom categories
-        setCustomSettings((prev) => {
-            // Only set values that are already in the settings
-            if(!MUTATABLE_RULES.includes(e.dataName)) return prev
-
-            const newSettings = {
-                ...prev,
-                [e.dataName]: e.value
-            }
-            // Emit an event to show other users the updates
-            send("custom_settings_changed", {settings: newSettings})
-            return newSettings
-        })
+    function handleGameRuleChange(settings) {
+        // If we don't have our lobby yet, we don't want the GameSettings mounts to change anything
+        if(!lobbyInfo?.name) return
+        send("custom_settings_changed", {settings})
     }
 
     return (
@@ -403,7 +382,7 @@ export default function LobbyScreen() {
                             <PartySlot
                                 player={user}
                                 style={styles.partySlot}
-                                onPress={handlePartySlotPressed}
+                                onPress={openInviteFriendModal}
                                 isMe={user?.hash == myHash}
                                 ready={user?.ready}
                             />
@@ -415,18 +394,9 @@ export default function LobbyScreen() {
                             style={styles.leaveButton}
                             onPress={handleLeaveParty}
                         >Leave Party</GlassyButton>
-                        <GlassyView style={styles.settingsButtonContainer}>
-                            <IconButton
-                                icon="cog"
-                                style={styles.settingsButton}
-                            />
-                            <IconButton
-                                icon={showSettings ? "chevron-up" : "chevron-down"}
-                                style={styles.settingsButton} 
-                                onPress={() => setShowSettings(!showSettings)}
-                                rippleColor={theme.onBackground}
-                            />
-                        </GlassyView>
+                        <ShowSettings 
+                            onChange={setShowSettings}
+                        />
                         <GlassyButton
                             style={styles.readyButton}
                             mode={isReady ? "filled" : "contained"}
@@ -434,135 +404,16 @@ export default function LobbyScreen() {
                         >Ready</GlassyButton>
                     </View>
                     <ScrollView>
-                    {
-                        lobbyInfo?.name || gameMode === "custom" ?
-                        <ExpandableView
-                            expanded={gameMode === "custom" || showSettings}
-                            minHeight={0}
-                            // dynamicSizing={true}
-                            maxHeight={800}
-                        >
-                            <GlassyView
-                                style={styles.customRulesContainer}
-                            >
-                                <HelperText style={styles.title}>Create Custom Game</HelperText>
-                                <View style={styles.customRules}>
-                                    <View style={styles.rulesColumn}>
-                                        <GameRule
-                                            label="Name"
-                                            dataName="name"
-                                            mode="text"
-                                            defaultValue={gameMode === "custom" && myPM?.is_leader ? customSettings?.name : lobbyInfo?.name}
-                                            onChange={handleGameRuleChange}
-                                            valueError={(text) => allowLobbyName(text) ? false : "Invalid lobby name"}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Gamemode"
-                                            dataName="gamemode"
-                                            mode="dropdown"
-                                            options={
-                                                GAMEMODES.map((g)=> {return {title: capitalize(g.name)}})
-                                            }
-                                            defaultValue={GAMEMODES.map((g) => g.name).indexOf(lobbyInfo?.gamemode) || 0}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Level"
-                                            dataName="level"
-                                            mode="dropdown"
-                                            options={
-                                                LEVELS.map((l) => {return {title: l}})
-                                            }
-                                            defaultValue={lobbyInfo?.level || 0}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Category"
-                                            dataName="category"
-                                            mode="dropdown"
-                                            options={
-                                                CATEGORIES.map((c) => {return {title: capitalize(c)}})
-                                            }
-                                            defaultValue={lobbyInfo?.category || 0}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <ExpandableView
-                                            expanded={showCustomCategories}
-                                            minHeight={0}
-                                            maxHeight={400}
-                                        >
-                                            <CustomCategories/>
-                                        </ExpandableView>
-                                        
-                                    </View>
-                                    <View style={styles.rulesColumn}>
-                                        <GameRule
-                                            label="Rounds"
-                                            dataName="rounds"
-                                            mode="numeric"
-                                            minimum={10}
-                                            maximum={100}
-                                            defaultValue={lobbyInfo?.rounds}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Speed"
-                                            dataName="speed"
-                                            mode="slider"
-                                            minimum={100}
-                                            maximum={800}
-                                            defaultValue={lobbyInfo?.speed}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Bonuses"
-                                            dataName="bonuses"
-                                            mode="toggle"
-                                            defaultValue={lobbyInfo?.bonuses}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Allow multiple buzzes"
-                                            dataName="allow_multiple_buzz"
-                                            mode="toggle"
-                                            defaultValue={lobbyInfo?.allow_multiple_buzz}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Allow question skips"
-                                            dataName="allow_question_skip"
-                                            mode="toggle"
-                                            defaultValue={lobbyInfo?.allow_question_skip}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                        <GameRule
-                                            label="Allow pauses"
-                                            dataName="allow_question_pause"
-                                            mode="toggle"
-                                            defaultValue={lobbyInfo?.allow_question_pause}
-                                            onChange={handleGameRuleChange}
-                                            disabled={disableGameRules}
-                                        />
-                                    </View>
-
-                                </View>
-
-                            </GlassyView>
-                        </ExpandableView>
-                        :
-                        <GlassyView>
-                            <HelperText>We could not load lobby information</HelperText>
-                        </GlassyView>
-                    }
+                    <GameSettings 
+                        expanded={gameMode === "custom" || showSettings}
+                        gameMode={gameMode}
+                        disabled={gameMode !== "custom" || !myPM?.is_leader}
+                        defaultInfo={lobbyInfo}
+                        columns={2}
+                        onGameRuleChange={handleGameRuleChange}
+                        dynamicSizing={false}
+                        maxHeight={850}
+                    />
                     </ScrollView>
                     <View style={styles.partyChat}>
 
