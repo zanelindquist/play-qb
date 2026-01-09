@@ -709,6 +709,22 @@ def get_users_by_query(query):
     # REL DEP is empty right now
     return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
 
+def get_lobbies_by_query(query):
+    session = get_session()
+    lobbies = session.execute(
+        select(Lobbies)
+        .where(
+            # TODO: Filter by the private/joinable field when we make that
+            or_(
+                Lobbies.name.ilike(f"%{query}%"),
+            )
+        )
+        .limit(10)
+    ).scalars().all()
+
+    return [to_dict_safe(lobby, rel_depths=REL_DEP["db:lobby_info"]) for lobby in lobbies]
+
+
 def attatch_players_to_teams(teams: dict):
     mutated_teams = teams
 

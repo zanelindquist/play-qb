@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Table, ForeignKey, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, Table, ForeignKey, Integer, String, DateTime, Date, Boolean, select, func
 from sqlalchemy.types import JSON
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
+from .players import Players
 
 class Lobbies(Base, CreatedAtColumn):
     __tablename__ = 'lobbies'
@@ -26,13 +28,20 @@ class Lobbies(Base, CreatedAtColumn):
     games = relationship("Games", back_populates="lobby")
     players = relationship("Players", back_populates="lobby")
 
-    @property
+    @hybrid_property
     def number_of_online_players(self):
-        online_players = 0;
-        for player in self.players:
-            if player.is_online:
-                online_players += 1;
-        return online_players
+        return sum(1 for p in self.players if p.is_online)
+
+    @number_of_online_players.expression
+    def number_of_online_players(cls):
+        return (
+            select(func.count(Players.id))
+            .where(
+                Players.lobby_id == cls.id,
+                Players.is_online.is_(True)
+            )
+            .scalar_subquery()
+        )
 
     def __repr__(self):
         return f"<Lobby(id={self.id} name={self.name})>"

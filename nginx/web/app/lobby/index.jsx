@@ -52,6 +52,7 @@ import { capitalize, detectCurseWords, generateRandomLobbyName } from "../../uti
 import CustomCategories from "../../components/entities/CustomCategories.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import GameSettings from "../../components/entities/GameSettings.jsx";
+import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -97,6 +98,8 @@ export default function LobbyScreen() {
     const [enteredLobby, setEnteredLobby] = useState(false)
 
     const [isReady, setIsReady] = useState(false)
+    const [isCreateCustom, setIsCreateCustom] = useState(true)
+    const [searchedLobbies, setSearchedLobbies] = useState([])
 
     const [lobbyInfo, setLobbyInfo] = useState({})
     const [initialLobbyInfo, setInitialLobbyInfo] = useState({})
@@ -246,6 +249,11 @@ export default function LobbyScreen() {
                 leaveParty(user_hash)
             })
 
+            addEventListener("lobbies_found", ({lobbies}) => {
+                console.log(lobbies)
+                setSearchedLobbies(lobbies)
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
                 send("enter_lobby", { lobbyAlias: gameMode });
@@ -359,6 +367,18 @@ export default function LobbyScreen() {
         send("custom_settings_changed", {settings})
     }
 
+    function handleCustomLobbySearch(search) {
+        send("search_lobbies", {query: search})
+        console.log(search)
+    }
+
+    function handleSelectCustom(lobby) {
+        // Don't let them do this if they're not the party leader
+        if(!myPM?.is_leader) {
+            showBanner("You are not the party leader")
+        }
+    }
+
     return (
         <SidebarLayout>
             <View style={styles.container}>
@@ -409,17 +429,46 @@ export default function LobbyScreen() {
                             onPress={handleReadyPressed}
                         >Ready</GlassyButton>
                     </View>
-                    <ScrollView>
-                    <GameSettings 
-                        expanded={gameMode === "custom" || showSettings}
-                        gameMode={gameMode}
-                        disabled={gameMode !== "custom" || !myPM?.is_leader}
-                        defaultInfo={lobbyInfo}
-                        columns={2}
-                        onGameRuleChange={handleGameRuleChange}
-                        dynamicSizing={false}
-                        maxHeight={850}
-                    />
+                    {
+                        gameMode === "custom" &&
+                        <View style={styles.partyOptions}>
+                            <GlassyButton
+                                style={styles.readyButton}
+                                mode={isCreateCustom ? "filled" : "contained"}
+                                onPress={() => setIsCreateCustom(true)}
+                            >Create Custom</GlassyButton>
+                            <GlassyButton
+                                style={styles.readyButton}
+                                mode={!isCreateCustom ? "filled" : "contained"}
+                                onPress={() => setIsCreateCustom(false)}
+                            >Join Custom</GlassyButton>
+                        </View>
+                    }
+                    <ScrollView
+                        contentContainerStyle={styles.customsContainer}
+                    >
+                        {
+                            /* Selecting a custom lobby */
+                            <JoinCustomLobby
+                                expanded={gameMode === "custom" && !isCreateCustom}
+                                cooldownMs={200}
+                                onChangeText={handleCustomLobbySearch}
+                                onSelect={handleSelectCustom}
+                                lobbies={searchedLobbies}
+                            />
+                        }
+                        {/* Creating a custom lobby */}
+                        <GameSettings
+                            title={gameMode === "custom" && isCreateCustom ? "Create Custom Game" : "Game Settings"}
+                            expanded={(gameMode === "custom" && isCreateCustom) || showSettings}
+                            gameMode={gameMode}
+                            disabled={gameMode !== "custom" || !isCreateCustom || !myPM?.is_leader}
+                            defaultInfo={lobbyInfo}
+                            columns={2}
+                            onGameRuleChange={handleGameRuleChange}
+                            dynamicSizing={false}
+                            maxHeight={850}
+                        />
                     </ScrollView>
                     <View style={styles.partyChat}>
 
@@ -486,6 +535,9 @@ const styles = StyleSheet.create({
     },
     gamemode: {
         width: "100%",
+    },
+    customsContainer: {
+        gap: 10
     },
     customRulesContainer: {
         height: "100%"

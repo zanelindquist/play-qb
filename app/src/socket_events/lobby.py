@@ -431,3 +431,22 @@ def on_add_friend(data):
     result = create_friend_request_from_email_to_hash(user_id, hash)
 
     emit("added_friend", result)
+
+
+# Finding lobbies
+
+@socketio.on("search_lobbies", "/lobby")
+def on_search_users(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    query = data.get("query")
+    if not query:
+        emit("lobbies_found", {"users": []})
+        return
+
+    lobbies = get_lobbies_by_query(query)
+
+    emit("lobbies_found", {"lobbies": lobbies})
+
+

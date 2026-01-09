@@ -79,8 +79,8 @@ const styles = StyleSheet.create({
         fontSize: "1rem",
         letterSpacing: 0,
         textAlign: "center",
-        textShadowColor: "black",
-        textShadowOffset: 2,
-        textShadowRadius: 1
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     }
 })
