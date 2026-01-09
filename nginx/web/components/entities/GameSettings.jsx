@@ -61,6 +61,7 @@ export default function GameSettings({
     disabled,
     columns=2,
     nameDisabled,
+    useGlassyView=true,
     ...props
 }) {
     if(!defaultInfo) {
@@ -253,6 +254,24 @@ export default function GameSettings({
         2: [[name, gamemode, level, category], [rounds, speed, bonuses, amb, aqs, aqp]]
     }
 
+
+    const content = (
+        <>
+            <HelperText style={styles.title}>{title}</HelperText>
+            <View style={styles.customRules}>
+                {
+                    columnArrangement[columns].map((column) => 
+                        <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]}>
+                            {
+                                column.map((component) => component)
+                            }
+                        </View>
+                    )
+                }
+            </View>
+        </>
+    )
+
     return (
         <ExpandableView
             expanded={expanded}
@@ -260,20 +279,17 @@ export default function GameSettings({
             dynamicSizing={true}
             {...props}
         >
-            <GlassyView style={styles.customRulesContainer}>
-                <HelperText style={styles.title}>{title}</HelperText>
-                <View style={styles.customRules}>
-                    {
-                        columnArrangement[columns].map((column) => 
-                            <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]}>
-                                {
-                                    column.map((component) => component)
-                                }
-                            </View>
-                        )
-                    }
+            {
+                useGlassyView ?
+                <GlassyView style={styles.customRulesContainer}>
+                    {content}
+                </GlassyView>
+                :
+                <View style={styles.customRulesContainer}>
+                    {content}
                 </View>
-            </GlassyView>
+            }
+
         </ExpandableView>
     );
 }
@@ -286,6 +302,9 @@ const styles = StyleSheet.create({
     title: {
         fontSize: "1.2rem",
         fontWeight: "bold",
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     customRules: {
         margin: 10,
