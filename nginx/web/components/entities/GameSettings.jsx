@@ -137,7 +137,11 @@ export default function GameSettings({
             defaultValue={
                 GAMEMODES.map((g) => g.name).indexOf(
                     defaultInfo?.gamemode
-                ) || 0
+                ) < 0 
+                ? 0 : 
+                GAMEMODES.map((g) => g.name).indexOf(
+                    defaultInfo?.gamemode
+                )
             }
             onChange={handleGameRuleChange}
             disabled={disabled}

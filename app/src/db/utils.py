@@ -955,6 +955,35 @@ def write_player_stats(player_hash: str, stats: dict) -> dict:
     finally:
         session.commit()
 
+def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+        
+        columns = {}
+
+        for column in MUTATABLE_RULES:
+            if settings.get(column):
+                # Translate the categories to its number code
+                # TODO: Handle custom percentages for categories
+                if settings.get("category"):
+                    settings["category"] = CATEGORIES.index(columns["category"])
+                setattr(lobby, column, settings[column])
+        
+        session.commit()
+
+        lobby_data = to_dict_safe(lobby)
+
+        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 # DELETING RESOURCES
 
 def reset_game_scores(game_hash: str) -> bool:

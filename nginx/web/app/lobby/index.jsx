@@ -77,21 +77,6 @@ const GAMEMODES = [
     },
 ];
 
-const LEVELS = ["All", "Middle School", "High School", "Collegiate", "Open"]
-
-const CATEGORIES = [
-    "everything",
-    "science",
-    "history",
-    "literature",
-    "social science",
-    "philosophy",
-    "religion",
-    "mythology",
-    "geography",
-    "custom",
-];
-
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
 
 export default function LobbyScreen() {
@@ -114,13 +99,14 @@ export default function LobbyScreen() {
     const [isReady, setIsReady] = useState(false)
 
     const [lobbyInfo, setLobbyInfo] = useState({})
+    const [initialLobbyInfo, setInitialLobbyInfo] = useState({})
     const [playersOnline, setPlayersOnline] = useState(undefined)
     const [customSettings, setCustomSettings] = useState({})
     const [showSettings, setShowSettings] = useState(false)
     const [showCustomCategories, setShowCustomCategories] = useState(false)
     const [disableGameRules, setDisableGameRules] = useState(true)
 
-    const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : () => generateRandomLobbyName());
+    const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : generateRandomLobbyName);
 
     
     useEffect(() => {
@@ -133,15 +119,18 @@ export default function LobbyScreen() {
                     joinParty(party_members[i])
                 }
 
+                console.log("PRELOBBY JOINED")
+
                 // Set the lobby settings
                 setLobbyInfo(lobby)
+                setInitialLobbyInfo(lobby)
                 // Chop away the categories that can't be mutated
                 let customSettingsFromLobby = {...lobby}
                 for(let key of Object.keys(lobby)) {
                     if(!MUTATABLE_RULES.includes(key)) delete customSettingsFromLobby[key]
                 }
-                customSettingsFromLobby["name"] = randomLobbyName
-                setCustomSettings((prev) => {return {...customSettingsFromLobby}})
+                // customSettingsFromLobby["name"] = randomLobbyName
+                setCustomSettings(customSettingsFromLobby)
             });
 
             addEventListener("prelobby_not_found", ({ player }) => {
@@ -210,15 +199,21 @@ export default function LobbyScreen() {
             })
 
             addEventListener("changed_gamemode", ({lobby}) => {
-                setGameMode(lobby.name)
+                setGameMode(GAMEMODES.map((g) => g.name.toLowerCase()).includes(lobby.name) ? lobby.name : "custom")
                 setLobbyInfo(lobby)
                 setPlayersOnline(lobby.number_of_online_players)
             })
 
             addEventListener("changed_custom_settings", ({settings}) => {
+                console.log("SETTINGS", settings)
                 // If I am the party leader, I changed these and we don't need to update the lobby info
-                if(myPM?.is_leader) return;
-                setLobbyInfo({...settings})
+                if(myPM?.is_leader) {
+                    // If we are the leader, we want to set custom settings
+                    setCustomSettings((prev) => {return {...prev, ...settings}})
+                } else {
+                    // Otherwise, we want to just show lobby info
+                    setLobbyInfo((prev) => {return {...prev, ...settings}})
+                }
             })
             
             addEventListener("all_ready", () => {
@@ -228,7 +223,6 @@ export default function LobbyScreen() {
                 // TODO: Maybe at this point put everyone into a loading screen until the enter_lobby event is received
                 if(!myPM?.is_leader) return;
                 if(gameMode === "custom") {
-                    console.log(customSettings)
                     send("clients_ready", {settings: {...customSettings}})
                 } else {
                     send("clients_ready", {})
@@ -266,18 +260,15 @@ export default function LobbyScreen() {
         };
     }, [gameMode, partySlots, myHash, myPM]);
 
+    useEffect(() => {
+        console.log("CUSTOM INFO", customSettings)
+    }, [customSettings])
+
     // Setting game rule editing
     useEffect(() => {
         setDisableGameRules(gameMode !== "custom" || !myPM?.is_leader)
-        // Make sure that when the leader switches to custom, the correct name for the lobby shows
-        if(gameMode === "custom" && myPM?.is_leader) {
-            setLobbyInfo((prev) => {return {...prev, name: randomLobbyName}})
-        }
+        // setLobbyInfo((prev) => {return {...prev, name: randomLobbyName}})
     }, [gameMode, myPM]);
-
-    useEffect(() => {
-        console.log("LOBBY INFO", lobbyInfo)
-    }, [lobbyInfo])
 
     const openInviteFriendModal = React.useCallback(() => {
         showAlert(
@@ -357,6 +348,14 @@ export default function LobbyScreen() {
     function handleGameRuleChange(settings) {
         // If we don't have our lobby yet, we don't want the GameSettings mounts to change anything
         if(!lobbyInfo?.name) return
+        // Set our lobby info since we are the party leader and we can't do it in the event listener because that will create a feedback loop
+        setLobbyInfo((prev) => {
+            let newInfo = prev
+            return {
+                ...newInfo,
+                ...settings
+            }
+        })
         send("custom_settings_changed", {settings})
     }
 
@@ -364,7 +363,8 @@ export default function LobbyScreen() {
         <SidebarLayout>
             <View style={styles.container}>
                 <View style={styles.gamemodes}>
-                    {GAMEMODES.map((g, i) => (
+                    {
+                        GAMEMODES.map((g, i) => (
                         <GameMode
                             gamemode={g}
                             icon={g.icon}
@@ -378,6 +378,7 @@ export default function LobbyScreen() {
                 <View style={styles.right}>
                     <View style={styles.partySlots}>
                     {
+                        partySlots.length > 0 ?
                         partySlots.map((user, i) => 
                             <PartySlot
                                 player={user}
@@ -386,7 +387,12 @@ export default function LobbyScreen() {
                                 isMe={user?.hash == myHash}
                                 ready={user?.ready}
                             />
-                        )
+                        ) :
+                        <GlassyView
+                            style={styles.noPartySlots}
+                        >
+                            <HelperText>Could not connect to server</HelperText>
+                        </GlassyView>
                     }
                     </View>
                     <View style={styles.partyOptions}>
@@ -440,6 +446,9 @@ const styles = StyleSheet.create({
         marginLeft: 30,
         flexDirection: "column",
         gap: 20
+    },
+    noPartySlots: {
+        width: "100%"
     },
     partySlots: {
         flexDirection: "row",

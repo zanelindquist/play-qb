@@ -37,6 +37,8 @@ const ANSWER_MS = 5000;
 
 const SHOW_EVENTS_INCREMENTS = 20
 
+const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5']
+
 const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();
@@ -171,6 +173,10 @@ const Play = () => {
 
             addEventListener("game_resumed", ({player, timestamp}) => {
                 setSynctimestamp(timestamp)
+            })
+
+            addEventListener("changed_game_settings", ({lobby}) => {
+                setLobby(lobby)
             })
 
             // Mostly test listner
@@ -319,7 +325,7 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        console.log(rules)
+        console.log("RULES", rules)
     }
 
 
@@ -399,7 +405,7 @@ const Play = () => {
                         expanded={showSettings}
                         columns={1}
                         defaultInfo={lobby}
-                        disabled={false}
+                        disabled={RESERVED_GAMEMODES.includes(alias)}
                         nameDisabled={true}
                         title={"Game Rules"}
                         onGameRuleChange={handleGameRuleChange}

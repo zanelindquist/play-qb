@@ -373,12 +373,15 @@ def on_changed_gamemode(data):
     if user.get("hash") != parties[party_hash]["leader_hash"]:
         return;
 
+    # Get lobby info
     new_lobby_alias = data.get("lobby_alias")
 
-    set_party_lobby_alias(party_hash, new_lobby_alias)
-
-    # Get lobby info
     lobby_data = get_lobby_by_alias(new_lobby_alias)
+
+    if new_lobby_alias == "custom":
+        lobby_data["name"] = generate_random_lobby_name()
+
+    set_party_lobby_alias(party_hash, new_lobby_alias)
 
     emit("changed_gamemode", {"lobby": lobby_data}, room=f"party:{party_hash}")
 
