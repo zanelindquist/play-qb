@@ -199,6 +199,30 @@ def on_submit(data): # FinalAnswer
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
 
+@socketio.on("change_game_settings", "/game")
+def on_change_game_settings(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["lobby"]
+    user = get_user_by_email(user_id)
+
+    settings = data.get("settings")
+
+    if not settings:
+        emit("changed_game_settings_failure", {"message": "No settings provided", "code": 400})
+        return;
+
+    # TODO: see if the user can edit the settings
+
+    # Change lobby settings
+    result = set_lobby_settings(data.get("settings"))
+
+    if result.get("code") >= 400:
+        emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
+        return;
+
+    
+    emit("changed_game_settings", {"lobby": result.get("lobby")}, room=f"lobby:{lobby}")
+
 # PAUSING AND PLAYING THE GAME
 
 @socketio.on("next_question", namespace="/game")
