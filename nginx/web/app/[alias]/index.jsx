@@ -328,12 +328,14 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
+        // If there isn't myPlayer, we haven't actually loaded in yet, and this is from the mounting
+        if(!myPlayer) return
         // console.log("RULES", rules)
         // We can only change the rules if we are the creator of this lobby
         if(myPlayer?.user?.id !== lobby?.creator_id) return
         console.log(rules)
         // Race condition on render, fix
-        // send("change_game_settings", {settings: rules})
+        send("change_game_settings", {settings: rules})
     }
 
     // useEffect(() => {

@@ -1,14 +1,20 @@
-import { Image, View, StyleSheet } from "react-native";
+import { Image, View, StyleSheet, Pressable } from "react-native";
 import { Text } from "react-native-paper";
 import Svg, { Defs, LinearGradient, Stop, Rect, Path } from "react-native-svg";
 import theme from "@/assets/themes/theme";
+import { useRouter } from "expo-router";
 
 export default function Logo({ width, height, text = false, image = true }) {
     const start = theme.primary;
     const end = theme.secondary;
 
+    const router = useRouter()
+
     return (
-        <View style={styles.container}>
+        <Pressable
+            style={styles.container}
+            onPress={() => router.replace("/")}    
+        >
             {/* <Svg width={128} height={128} viewBox="0 0 128 128">
                 <Defs>
                     <LinearGradient
@@ -47,7 +53,7 @@ export default function Logo({ width, height, text = false, image = true }) {
                 resizeMode="contain"
             />}
             {text && <Text style={styles.text}>PlayQB</Text>}
-        </View>
+        </Pressable>
     );
 }
 
