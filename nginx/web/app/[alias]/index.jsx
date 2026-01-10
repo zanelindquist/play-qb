@@ -48,7 +48,7 @@ const Play = () => {
 
     const {showAlert} = useAlert();
     const {showBanner} = useBanner()
-    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady} = useSocket("game", alias);
+    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect} = useSocket("game", alias);
     const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
@@ -103,7 +103,12 @@ const Play = () => {
                 router.replace("/lobby?mode=solos")
             })
 
+            addEventListener("join_lobby_failed", ({error}) => {
+                showBanner("Failed to join lobby: " + error.message.toLowerCase())
+            })
+
             addEventListener("player_joined", ({player, game_state, lobby}) => {
+                console.log("JOINED", lobby)
                 player.eventType = "player_joined"
                 addEvent(player)
                 // For updating the scores and stuff
@@ -196,7 +201,7 @@ const Play = () => {
                 addEvent(user)
                 setLobby({...lobby})
             })
-            console.log(alias)
+
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
         })
@@ -204,7 +209,7 @@ const Play = () => {
         return () => {
             clearInterval(typingEmitInterval)
             removeAllEventListeners()
-            if(socket) socket.disconnect()
+            disconnect()
         }
     }, [])
 
@@ -333,9 +338,9 @@ const Play = () => {
         // console.log("RULES", rules)
         // We can only change the rules if we are the creator of this lobby
         if(myPlayer?.user?.id !== lobby?.creator_id) return
-        console.log(rules)
+        console.log("RULES", rules)
         // Race condition on render, fix
-        send("change_game_settings", {settings: rules})
+        // send("change_game_settings", {settings: rules})
     }
 
     // useEffect(() => {

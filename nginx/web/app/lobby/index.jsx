@@ -88,7 +88,7 @@ export default function LobbyScreen() {
     const {showBanner} = useBanner()
     const gameModeFromParams =  GAMEMODES.map((g) => g.name).includes(params.mode) ? params.mode : "custom"
 
-    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady } = useSocket("lobby", gameModeFromParams);
+    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect } = useSocket("lobby", gameModeFromParams);
 
     // Set the game mode to what the search params indicate, with random ones being set to custom
     const [gameMode, setGameMode] = useState(gameModeFromParams);
@@ -267,6 +267,7 @@ export default function LobbyScreen() {
 
         // useEffect() cleanup
         return () => {
+            // We want to keep contact with the lobby socket
             // if(socket) socket.disconnect()
             removeAllEventListeners()
         };

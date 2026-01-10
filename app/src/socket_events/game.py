@@ -64,7 +64,6 @@ def connect(auth):
 def on_join_lobby(data):
     user_id = request.environ["user_id"]
     lobby = data.get("lobbyAlias")
-    print("LOBBY ALIAS", lobby)
     request.environ["lobby"] = lobby
     join_room(f"lobby:{lobby}")
 
@@ -104,6 +103,12 @@ def on_join_lobby(data):
     # Add the player scores
     # TODO: put users in the same party
     party_hash = get_party_by_user(user.get("hash"))
+
+    # If there is no party hash, then the user connected directly to the game without going through the lobby.
+    # I will allow it because its easy, but we have to make a new party
+    if not party_hash:
+        party_hash = create_party(user.get("hash"))
+
     # Team name (if its solos, we want it to be their name)
     team_name = user.get("firstname") + " " + user.get("lastname") if gamemode == "solos" else None
     # Don't put partied users on the same team if its solos or the number excedes the mode
@@ -307,7 +312,7 @@ def on_disconnect():
     user_id = request.environ["user_id"]
     lobby = request.environ.get("lobby")
 
-    print(f"Received disconnect form {user_id}")
+    print(f"Received disconnect from /game {user_id}")
 
     user = get_user_by_email(user_id)
 
