@@ -57,7 +57,7 @@
         "gradients": {
             "button": "linear-gradient(135deg, rgba(76, 102, 43, 0.7), rgba(88, 98, 73, 0.7))",
             "buttonRed": "linear-gradient(135deg,rgba(181, 65, 65, 0.73),rgba(186, 67, 67, 0.93))",
-            "buttonWhite": "linear-gradient(135deg, rgba(150, 245, 245, 0.3), rgba(200, 235, 235, 0.5))",
+            "buttonWhite": "linear-gradient(135deg, rgba(150, 150, 150, 0.4), rgba(255, 235, 235, 0.5))",
             "buttonBlue": "linear-gradient(135deg, rgba(96, 165, 250, 0.7), rgba(59, 130, 246, 0.8))",
             "buttonRoyal": "linear-gradient(135deg, rgba(136, 65, 181, 0.73), rgba(67, 87, 186, 0.93))",
             "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",

@@ -808,7 +808,6 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = N
 
         # 3. IF there is a team_hash, add the player to that, otherwise make their own team
         if team_hash:
-            print("TEAM HASH", team_hash)
             # If we are passed a team hash, but there isn't one, lets set the team with this hash
             found_team = False
             for t_hash in list(teams.keys()):

@@ -25,6 +25,8 @@ class Users(Base, CreatedAtColumn):
     sent_requests = relationship("Friends", back_populates="sender", foreign_keys="Friends.sender_id")
     received_requests = relationship("Friends", back_populates="receiver", foreign_keys="Friends.receiver_id")
 
+    created_lobbies = relationship("Lobbies", back_populates="creator")
+
     @property
     def friends(self):
         """Return accepted friends as a list of Users"""

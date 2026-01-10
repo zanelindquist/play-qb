@@ -28,6 +28,7 @@ import { useBanner } from "../../utils/banners.jsx";
 import theme from "../../assets/themes/theme.js";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
+import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -51,7 +52,7 @@ const Play = () => {
     const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
-    const [myId, setMyId] = useState(null);
+    const [myPlayer, setMyPlayer] = useState(null);
 
     // New question stuff
     const [allEvents, setAllEvents] = useState([]);
@@ -94,7 +95,7 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
             addEventListener("you_joined", ({player, lobby}) => {
-                setMyId(player.id)
+                setMyPlayer(player)
             })
 
             addEventListener("lobby_not_found", () => {
@@ -106,8 +107,7 @@ const Play = () => {
                 player.eventType = "player_joined"
                 addEvent(player)
                 // For updating the scores and stuff
-                setLobby(lobby)
-                console.log("LOBBY", lobby)
+                setLobby({...lobby})
             })
 
             addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
@@ -176,7 +176,9 @@ const Play = () => {
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
-                setLobby(lobby)
+                // If we are the one who made these chagnes, return
+                if(myPlayer?.user?.id === lobby?.creator_id) return
+                setLobby({...lobby})
             })
 
             // Mostly test listner
@@ -190,10 +192,11 @@ const Play = () => {
             })
 
             addEventListener("player_disconnected", ({lobby, user}) => {
-                addEvent()
-                setLobby(lobby)
+                user.eventType = "player_disconnected"
+                addEvent(user)
+                setLobby({...lobby})
             })
-
+            console.log(alias)
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
         })
@@ -326,7 +329,15 @@ const Play = () => {
 
     function handleGameRuleChange(rules) {
         // console.log("RULES", rules)
+        // We can only change the rules if we are the creator of this lobby
+        if(myPlayer?.user?.id !== lobby?.creator_id) return
+        console.log(rules)
+        send("change_game_settings", {settings: rules})
     }
+
+    // useEffect(() => {
+    //     console.log("PLAYER< LOBBY", myPlayer, lobby)
+    // }, [myPlayer, lobby])
 
 
     return (
@@ -336,7 +347,7 @@ const Play = () => {
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == myId)}
+                        disabled={!(buzzer && buzzer?.current?.id == myPlayer?.id)}
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
@@ -364,6 +375,10 @@ const Play = () => {
                                 case "player_joined":
                                     return (
                                         <PlayerJoined event={e} key={`pj:${i}`}/>
+                                    )
+                                case "player_disconnected":
+                                    return (
+                                        <PlayerDisconnected event={e} key={`pd:${i}`}/>
                                     )
                                 default:
 
@@ -396,7 +411,7 @@ const Play = () => {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }
                     {
-                        lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode} />
+                        lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
                     }
                     <ShowSettings
                         onChange={setShowSettings}
@@ -405,7 +420,8 @@ const Play = () => {
                         expanded={showSettings}
                         columns={1}
                         defaultInfo={lobby}
-                        disabled={RESERVED_GAMEMODES.includes(alias)}
+                        // TODO: Determine who can edit lobbies while they are in them
+                        disabled={myPlayer?.user?.id !== lobby?.creator_id}
                         nameDisabled={true}
                         title={"Game Rules"}
                         onGameRuleChange={handleGameRuleChange}
