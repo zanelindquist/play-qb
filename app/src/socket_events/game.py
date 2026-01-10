@@ -16,6 +16,24 @@ from .lobby import *
 def get_timestamp():
     return int(time.time() * 1000)
 
+GAMEMODES = {
+    "solos": {
+        "size": 1,
+    },
+    "duos": {
+        "size": 2,
+    },
+    "trios": {
+        "size": 3,
+    },
+    "squads": {
+        "size": 4,
+    },
+    "5v5": {
+        "size": 5,
+    },
+}
+
 # ===== INCOMMING EVENT HANDLERS =====
 
 # On connect we will need to get the auth token of the user so that we can know their identity
@@ -85,7 +103,17 @@ def on_join_lobby(data):
     party_hash = get_party_by_user(user.get("hash"))
     # Team name (if its solos, we want it to be their name)
     team_name = user.get("firstname") + " " + user.get("lastname") if lobby_data.get("gamemode") == "solos" else None
-    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=party_hash, team_name=team_name)
+    # Don't put partied users on the same team if its solos or the number excedes the mode
+    party_member_hashes = sorted(list(parties[party_hash]["members"].keys()))
+    party_size = len(party_member_hashes)
+    if not lobby_data.get("gamemode") or not GAMEMODES.get(lobby_data.get("gamemode")):
+        # TODO: Tell them error joining
+        print("ERROR WITH PARTIES")
+        return;
+    team_size = GAMEMODES.get(lobby_data.get("gamemode")).get("size")
+    my_party_number = party_member_hashes.index(user.get("hash"))
+    team_hash = f"{party_hash}-{math.floor(my_party_number / team_size)}"
+    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=team_hash, team_name=team_name)
     # Now set game again because we just modififed the teams on it
     lobby_data = get_lobby_by_alias(lobby)
 
@@ -282,8 +310,6 @@ def on_disconnect():
     stats = remove_player_game_scores(player.get("current_game").get("hash"), player.get("hash"))
 
     total_stats = write_player_stats(player.get("hash"), stats)
-
-    print("TOTAL STATS", total_stats)
 
     lobby_data = get_lobby_by_alias(lobby)
 

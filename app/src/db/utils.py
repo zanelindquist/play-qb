@@ -808,6 +808,7 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = N
 
         # 3. IF there is a team_hash, add the player to that, otherwise make their own team
         if team_hash:
+            print("TEAM HASH", team_hash)
             # If we are passed a team hash, but there isn't one, lets set the team with this hash
             found_team = False
             for t_hash in list(teams.keys()):
@@ -941,7 +942,6 @@ def increment_score_attribute(game_hash: str, key: str, player_hash: str = None,
 def write_player_stats(player_hash: str, stats: dict) -> dict:
     session = get_session()
     try:
-        print("STATS", stats)
         player = session.execute(
             select(Players)
             .where(Players.hash == player_hash)

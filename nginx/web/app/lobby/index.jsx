@@ -166,15 +166,16 @@ export default function LobbyScreen() {
             })
 
             addEventListener("member_left_party", ({user, members, lobby}) => {
+                console.log(members)
                 // Set my party member now that its changed
                 setMyPM(members.find((m) => m.hash === myHash))
+                // Redisplay the new data
+                setPartySlots([])
+                for(let i = 0; i < members.length; i++) {
+                    joinParty(members[i])
+                }
                 // If this user is me
                 if (user.hash === myHash && members && lobby) {
-                    setPartySlots([])
-                    // Redisplay the new party data (I will be the leader now)
-                    for(let i = 0; i < members.length; i++) {
-                        joinParty(members[i])
-                    }
                     // Update the lobby info
                     setLobbyInfo(lobby)
 

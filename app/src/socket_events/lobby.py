@@ -40,14 +40,13 @@ def create_party(user_hash: str) -> str:
 
     return party_hash
 
-def get_party_by_user(user_hash: str) -> tuple:
+def get_party_by_user(user_hash: str) -> str:
     for party_hash, party in parties.items():
         if user_hash in list(party["members"].keys()):
             return party_hash
         
 def get_party_member_info(party_hash: str) -> list:
     party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
-
     # Set who is ready or not
     for member in party_members:
         member["is_leader"] = parties[party_hash].get("leader_hash") == member.get("hash")
@@ -276,7 +275,7 @@ def on_accepted_invite(data):
     emit("joined_party", {"members": party_members, "user": user, "lobby": lobby_data}, room=f"party:{party_hash}")
 
 @socketio.on("leave_party", "/lobby")
-def on_accepted_invite(data):
+def on_leave_party(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
@@ -295,15 +294,16 @@ def on_accepted_invite(data):
     request.environ["party"] = new_party_hash
 
     # Get party members to send back to update UI (include ready state)
-    party_members = get_party_member_info(new_party_hash)
+    new_party_members = get_party_member_info(new_party_hash)
+    old_party_members = get_party_member_info(party_hash)
 
     lobby_data = get_lobby_by_alias(lobby)
 
     # For new party
-    emit("member_left_party", {"user": user, "members": party_members, "lobby": lobby_data}, room=f"party:{new_party_hash}")
+    emit("member_left_party", {"user": user, "members": new_party_members, "lobby": lobby_data}, room=f"party:{new_party_hash}")
 
     # For old party
-    emit("member_left_party", {"user": user}, room=f"party:{party_hash}")
+    emit("member_left_party", {"user": user, "members": old_party_members}, room=f"party:{party_hash}")
 
 
 
