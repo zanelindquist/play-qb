@@ -64,6 +64,7 @@ def connect(auth):
 def on_join_lobby(data):
     user_id = request.environ["user_id"]
     lobby = data.get("lobbyAlias")
+    print("LOBBY ALIAS", lobby)
     request.environ["lobby"] = lobby
     join_room(f"lobby:{lobby}")
 
@@ -94,6 +95,8 @@ def on_join_lobby(data):
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
 
+    gamemode = lobby_data.get("gamemode").lower()
+
     request.environ["game_hash"] = game.get("hash")
 
     # Determine which team this user should be in
@@ -102,15 +105,14 @@ def on_join_lobby(data):
     # TODO: put users in the same party
     party_hash = get_party_by_user(user.get("hash"))
     # Team name (if its solos, we want it to be their name)
-    team_name = user.get("firstname") + " " + user.get("lastname") if lobby_data.get("gamemode") == "solos" else None
+    team_name = user.get("firstname") + " " + user.get("lastname") if gamemode == "solos" else None
     # Don't put partied users on the same team if its solos or the number excedes the mode
     party_member_hashes = sorted(list(parties[party_hash]["members"].keys()))
     party_size = len(party_member_hashes)
-    if not lobby_data.get("gamemode") or not GAMEMODES.get(lobby_data.get("gamemode")):
+    if not gamemode or not GAMEMODES.get(gamemode):
         # TODO: Tell them error joining
-        print("ERROR WITH PARTIES")
         return;
-    team_size = GAMEMODES.get(lobby_data.get("gamemode")).get("size")
+    team_size = GAMEMODES.get(gamemode).get("size")
     my_party_number = party_member_hashes.index(user.get("hash"))
     team_hash = f"{party_hash}-{math.floor(my_party_number / team_size)}"
     teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=team_hash, team_name=team_name)
@@ -235,6 +237,9 @@ def on_change_game_settings(data):
 
     settings = data.get("settings")
 
+    if not lobby:
+        return;
+
     if not settings:
         emit("changed_game_settings_failure", {"message": "No settings provided", "code": 400})
         return;
@@ -242,12 +247,11 @@ def on_change_game_settings(data):
     # TODO: see if the user can edit the settings
 
     # Change lobby settings
-    result = set_lobby_settings(data.get("settings"))
+    result = set_lobby_settings(lobby, settings)
 
     if result.get("code") >= 400:
         emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
         return;
-
     
     emit("changed_game_settings", {"lobby": result.get("lobby")}, room=f"lobby:{lobby}")
 
@@ -297,7 +301,7 @@ def on_game_pause(): # Empty
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
     user_id = request.environ["user_id"]
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
 
     print(f"Received disconnect form {user_id}")
 

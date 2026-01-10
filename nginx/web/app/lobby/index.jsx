@@ -122,8 +122,6 @@ export default function LobbyScreen() {
                     joinParty(party_members[i])
                 }
 
-                console.log("PRELOBBY JOINED")
-
                 // Set the lobby settings
                 setLobbyInfo(lobby)
                 setInitialLobbyInfo(lobby)
@@ -166,7 +164,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("member_left_party", ({user, members, lobby}) => {
-                console.log(members)
                 // Set my party member now that its changed
                 setMyPM(members.find((m) => m.hash === myHash))
                 // Redisplay the new data
@@ -209,7 +206,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("changed_custom_settings", ({settings}) => {
-                console.log("SETTINGS", settings)
                 // If I am the party leader, I changed these and we don't need to update the lobby info
                 if(myPM?.is_leader) {
                     // If we are the leader, we want to set custom settings
@@ -229,8 +225,9 @@ export default function LobbyScreen() {
                 // For making a new lobby
                 if(gameMode === "custom" && isCreateCustom) {
                     send("clients_ready", {settings: {...customSettings}})
+                } else if (gameMode === "custom" && !isCreateCustom) {
+                    send("clients_ready", {lobby_alias: customSettings.name})
                 } else {
-                    console.log("LOBBY NAME", lobbyInfo.name)
                     send("clients_ready", {})
                 }
             })
@@ -253,7 +250,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("lobbies_found", ({lobbies}) => {
-                console.log(lobbies)
                 setSearchedLobbies(lobbies)
             })
 
@@ -269,10 +265,10 @@ export default function LobbyScreen() {
             // if(socket) socket.disconnect()
             removeAllEventListeners()
         };
-    }, [gameMode, partySlots, myHash, myPM]);
+    }, [gameMode, partySlots, myHash, myPM, customSettings]);
 
     useEffect(() => {
-        console.log("CUSTOM INFO", customSettings)
+        // console.log("CUSTOM INFO", customSettings)
     }, [customSettings])
 
     // Setting game rule editing
@@ -372,10 +368,10 @@ export default function LobbyScreen() {
 
     function handleCustomLobbySearch(search) {
         send("search_lobbies", {query: search})
-        console.log(search)
     }
 
     function handleSelectCustom(lobby) {
+        if(!lobby) return
         // Don't let them do this if they're not the party leader
         if(!myPM?.is_leader) {
             showBanner("You are not the party leader")
@@ -444,12 +440,12 @@ export default function LobbyScreen() {
                         gameMode === "custom" &&
                         <View style={styles.partyOptions}>
                             <GlassyButton
-                                style={styles.readyButton}
+                                style={[styles.readyButton, isCreateCustom && {backgroundImage: theme.gradients.buttonWhite}]}
                                 mode={isCreateCustom ? "filled" : "contained"}
                                 onPress={() => setIsCreateCustom(true)}
                             >Create Custom</GlassyButton>
                             <GlassyButton
-                                style={styles.readyButton}
+                                style={[styles.readyButton, !isCreateCustom && {backgroundImage: theme.gradients.buttonWhite}]}
                                 mode={!isCreateCustom ? "filled" : "contained"}
                                 onPress={() => setIsCreateCustom(false)}
                             >Join Custom</GlassyButton>

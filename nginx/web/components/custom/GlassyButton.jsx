@@ -1,4 +1,4 @@
-import React from "react";
+import {useState} from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
 import { Text } from "react-native-paper";
@@ -9,8 +9,11 @@ export default function GlassyButton({
     style,
     onPress,
     mode,
-    textStyle
+    textStyle,
+    ...prev
 }) {
+    const [hovered, setHovered] = useState(false)
+
     let combined = [
         mode == "filled" ? styles.filled : {},
         styles.glass,
@@ -25,7 +28,7 @@ export default function GlassyButton({
     // native blur
     if (Platform.OS !== "web") {
         return (
-        <BlurView intensity={intensity} tint={tint} style={combined}>
+        <BlurView intensity={intensity} tint={tint} style={combined} {...prev}>
             <Text style={combinedText}>{children}</Text>
         </BlurView>
         );
@@ -33,8 +36,13 @@ export default function GlassyButton({
 
     // web fallback
     return (
-        <Pressable onPress={onPress}>
-            <View style={[combined, styles.webFallback]}>
+        <Pressable
+            onPress={onPress}
+            onHoverIn={() => setHovered(true)}
+            onHoverOut={()=> setHovered(false)}
+            {...prev}
+        >
+            <View style={[combined, styles.webFallback, hovered && styles.hover]}>
                 <Text style={combinedText}>{children}</Text>
             </View>
         </Pressable>
@@ -63,6 +71,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: "center",
         alignItems: "center"
+    },
+    hover: {
+        backgroundColor: "rgba(255,255,255,0.4)",
     },
     webFallback: {
         backdropFilter: "blur(18px) saturate(180%)",

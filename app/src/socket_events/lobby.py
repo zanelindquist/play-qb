@@ -46,6 +46,8 @@ def get_party_by_user(user_hash: str) -> str:
             return party_hash
         
 def get_party_member_info(party_hash: str) -> list:
+    if not parties.get(party_hash):
+        return []
     party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
     # Set who is ready or not
     for member in party_members:
@@ -342,8 +344,11 @@ def on_party_member_ready(data):
     # See if this is a custom and we need to create a new lobby
     settings = data.get("settings")
 
+    lobby_alias = data.get("lobby_alias")
+
+    # If there are settings, it is creating a lobby, if there is lobby_alias, its joining a custom, otherwise, use the party
     if not settings:
-        emit("enter_lobby", {"lobby_alias": party["lobby_alias"]}, room=f"party:{party_hash}")
+        emit("enter_lobby", {"lobby_alias": lobby_alias if lobby_alias else party["lobby_alias"]}, room=f"party:{party_hash}")
         return
     
     # Create a lobby based on the settings

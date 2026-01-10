@@ -6,7 +6,8 @@ SERIALIZATION_CONFIG = {
         ],
         "relationships": {
             "player_instances": "Players",
-            "friends": "Users"
+            "friends": "Users",
+            "created_lobbies": "Lobbies"
         },
     },
     "Stats": {
@@ -37,10 +38,11 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Lobbies": {
-        "fields": ["id", "hash", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players"],
+        "fields": ["id", "hash", "creator_id", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players"],
         "relationships": {
             "games": "Games",
             "players": "Players",
+            "creator": "Users"
         },
     },
     "Games": {

@@ -21,11 +21,13 @@ export default function JoinCustomLobby ({
     onSelect=null,
     cooldownMs = 0
 }) {
-    const [selectedLobby, setSelectedLobby] = useState(-1) 
+    const [selectedLobby, setSelectedLobby] = useState(-1)
+    const [hasConfirmedLobby, setHasConfirmedLobby] = useState(false)
     const cooldownRef = useRef(null)
 
     function handleSearchChange(e) {
         setSelectedLobby(-1)
+        setHasConfirmedLobby(false)
         const value = e.value
 
         if (cooldownRef.current) {
@@ -40,7 +42,10 @@ export default function JoinCustomLobby ({
     }
 
     function handleSelectPressed() {
-        if(onSelect) onSelect(lobbies[selectedLobby])
+        if(onSelect) {
+            onSelect(lobbies[selectedLobby])
+            setHasConfirmedLobby(true)
+        }
     }
 
     return (
@@ -104,8 +109,9 @@ export default function JoinCustomLobby ({
                 </View>
                 <GlassyButton
                     style={styles.joinButton}
-                    mode="filled"
+                    mode={ selectedLobby >= 0 && hasConfirmedLobby ? "filled" : "contained"}
                     onPress={handleSelectPressed}
+
                 >Select</GlassyButton>
             </GlassyView>
         </ExpandableView>

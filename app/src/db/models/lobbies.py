@@ -25,6 +25,9 @@ class Lobbies(Base, CreatedAtColumn):
     allow_question_skip = Column(Boolean, default=True)
     allow_question_pause = Column(Boolean, default=True)
 
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    creator = relationship("Users", back_populates="created_lobbies")
+
     games = relationship("Games", back_populates="lobby")
     players = relationship("Players", back_populates="lobby")
 
