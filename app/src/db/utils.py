@@ -894,7 +894,6 @@ def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
         session.commit()
 
 def increment_score_attribute(game_hash: str, key: str, player_hash: str = None, amount: int = 1):
-    print(key, player_hash)
     if not game_hash or not key:
         raise Exception("increment_score_attribute(): insufficient arguments")
     session = get_session()
@@ -1374,9 +1373,6 @@ def set_question_to_game(question, lobbyAlias):
         setattr(game, "current_question_id", question.get("id"))
 
         session.commit()
-
-        print("UPDATING GAME with new question", question.get("id"))
-
 
         return {'message': 'set_question_to_game(): success', "code": 200}
     except Exception as e:
