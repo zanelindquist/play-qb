@@ -53,6 +53,7 @@ import CustomCategories from "../../components/entities/CustomCategories.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
+import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -439,18 +440,9 @@ export default function LobbyScreen() {
                     </View>
                     {
                         gameMode === "custom" &&
-                        <View style={styles.partyOptions}>
-                            <GlassyButton
-                                style={[styles.readyButton, isCreateCustom && {backgroundImage: theme.gradients.buttonWhite}]}
-                                mode={isCreateCustom ? "filled" : "contained"}
-                                onPress={() => setIsCreateCustom(true)}
-                            >Create Custom</GlassyButton>
-                            <GlassyButton
-                                style={[styles.readyButton, !isCreateCustom && {backgroundImage: theme.gradients.buttonWhite}]}
-                                mode={!isCreateCustom ? "filled" : "contained"}
-                                onPress={() => setIsCreateCustom(false)}
-                            >Join Custom</GlassyButton>
-                        </View>
+                        <LabeledToggle
+                            onChange={(isFirst)=> setIsCreateCustom(isFirst)}
+                        />
                     }
                     <ScrollView
                         contentContainerStyle={styles.customsContainer}
