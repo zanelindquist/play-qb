@@ -332,7 +332,8 @@ const Play = () => {
         // We can only change the rules if we are the creator of this lobby
         if(myPlayer?.user?.id !== lobby?.creator_id) return
         console.log(rules)
-        send("change_game_settings", {settings: rules})
+        // Race condition on render, fix
+        // send("change_game_settings", {settings: rules})
     }
 
     // useEffect(() => {
