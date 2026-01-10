@@ -232,8 +232,12 @@ def on_submit(data): # FinalAnswer
 @socketio.on("change_game_settings", "/game")
 def on_change_game_settings(data):
     user_id = request.environ["user_id"]
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
     user = get_user_by_email(user_id)
+
+    # Early request from the front end from race condition, not intentional, but we have to guard against it
+    if not lobby:
+        return;
 
     settings = data.get("settings")
 

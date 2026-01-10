@@ -22,12 +22,15 @@ export default function JoinCustomLobby ({
     cooldownMs = 0
 }) {
     const [selectedLobby, setSelectedLobby] = useState(-1)
-    const [hasConfirmedLobby, setHasConfirmedLobby] = useState(false)
     const cooldownRef = useRef(null)
+
+    useEffect(() => {
+        // If we are passed a default value, its a lobby name, and then we want to select the first one
+        if(defaultValue && lobbies.length === 1) setSelectedLobby(0)
+    }, [lobbies])
 
     function handleSearchChange(e) {
         setSelectedLobby(-1)
-        setHasConfirmedLobby(false)
         const value = e.value
 
         if (cooldownRef.current) {
@@ -41,10 +44,12 @@ export default function JoinCustomLobby ({
         }
     }
 
-    function handleSelectPressed() {
+    function handleSelectPressed(i) {
+        // If nothing changed, return
+        if(selectedLobby === i) return;
+        setSelectedLobby(i)
         if(onSelect) {
-            onSelect(lobbies[selectedLobby])
-            setHasConfirmedLobby(true)
+            onSelect(lobbies[i])
         }
     }
 
@@ -73,7 +78,7 @@ export default function JoinCustomLobby ({
                                 lobbies.map((lobby, i) => 
                                     <Pressable
                                         style={[styles.lobbyContainer, i === 0 && {borderWidth: 0}, selectedLobby === i && styles.selectedLobby]}
-                                        onPress={() => setSelectedLobby(i)}
+                                        onPress={() => handleSelectPressed(i)}
                                     >
                                         <HelperText style={styles.lobbyAlias}>{lobby.name}</HelperText>
                                         <View style={styles.playersOnlineContainer}>
@@ -107,12 +112,6 @@ export default function JoinCustomLobby ({
 
                     </View>
                 </View>
-                <GlassyButton
-                    style={styles.joinButton}
-                    mode={ selectedLobby >= 0 && hasConfirmedLobby ? "filled" : "contained"}
-                    onPress={handleSelectPressed}
-
-                >Select</GlassyButton>
             </GlassyView>
         </ExpandableView>
     )

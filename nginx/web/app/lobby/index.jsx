@@ -95,11 +95,12 @@ export default function LobbyScreen() {
     const [myHash, setMyHash] = useState(undefined);
     // My party member
     const [myPM, setMyPM] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
     const [partySlots, setPartySlots] = useState([])
     const [enteredLobby, setEnteredLobby] = useState(false)
 
     const [isReady, setIsReady] = useState(false)
-    const [isCreateCustom, setIsCreateCustom] = useState(true)
+    const [isCreateCustom, setIsCreateCustom] = useState(false)
     const [searchedLobbies, setSearchedLobbies] = useState([])
 
     const [lobbyInfo, setLobbyInfo] = useState({})
@@ -116,6 +117,7 @@ export default function LobbyScreen() {
     useEffect(() => {
         onReady(() => {
             addEventListener("prelobby_joined", ({ player, party_members, user, lobby, currentlyActive }) => {
+                setIsLoading(false)
                 setMyHash(user.hash);
                 setMyPM(party_members.find((m) => m.hash === user.hash))
                 setPlayersOnline(lobby.number_of_online_players)
@@ -123,7 +125,6 @@ export default function LobbyScreen() {
                     joinParty(party_members[i])
                 }
 
-                console.log("LOBBY JOIN", lobby)
                 // Set the lobby settings
                 setLobbyInfo(lobby)
                 setInitialLobbyInfo(lobby)
@@ -237,10 +238,12 @@ export default function LobbyScreen() {
             addEventListener("failed_lobby_creation", (error) => {
                 console.log(error)
                 showBanner("Failled to create lobby: " + error?.message)
+                setIsReady(false)
             })
 
             addEventListener("failed_lobby_join", (error) => {
                 showBanner("Failed to join lobby: "+ error?.message)
+                setIsReady(false)
             })
 
             addEventListener("enter_lobby", ({lobby_alias}) => {
@@ -389,7 +392,7 @@ export default function LobbyScreen() {
     }
 
     return (
-        <SidebarLayout>
+        <SidebarLayout >
             <View style={styles.container}>
                 <View style={styles.gamemodes}>
                     {
@@ -417,11 +420,10 @@ export default function LobbyScreen() {
                                 ready={user?.ready}
                             />
                         ) :
-                        <GlassyView
-                            style={styles.noPartySlots}
-                        >
-                            <HelperText>Could not connect to server</HelperText>
-                        </GlassyView>
+                        <ActivityIndicator
+                            style={styles.partyLoading}
+                            size={50}
+                        />
                     }
                     </View>
                     <View style={styles.partyOptions}>
@@ -441,7 +443,9 @@ export default function LobbyScreen() {
                     {
                         gameMode === "custom" &&
                         <LabeledToggle
-                            onChange={(isFirst)=> setIsCreateCustom(isFirst)}
+                            onChange={(isFirst) => setIsCreateCustom(!isFirst)}
+                            label1="Join Custom"
+                            label2="Create Custom"
                         />
                     }
                     <ScrollView
@@ -452,6 +456,7 @@ export default function LobbyScreen() {
                             <JoinCustomLobby
                                 expanded={gameMode === "custom" && !isCreateCustom}
                                 cooldownMs={200}
+                                defaultValue={ !GAMEMODES.map((g) => g.name.toLowerCase()).includes(params.mode) ? params.mode : null}
                                 onChangeText={handleCustomLobbySearch}
                                 onSelect={handleSelectCustom}
                                 lobbies={searchedLobbies}
@@ -498,6 +503,11 @@ const styles = StyleSheet.create({
     },
     noPartySlots: {
         width: "100%"
+    },
+    partyLoading: {
+        width: "100%",
+        height: 300,
+        justifyContent: "flex-start"
     },
     partySlots: {
         flexDirection: "row",

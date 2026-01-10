@@ -14,7 +14,8 @@ import {
     IconButton,
     Title,
     Button,
-    HelperText
+    HelperText,
+    ActivityIndicator
 } from "react-native-paper";
 import Video from 'react-native-video';
 import { useWindowDimensions } from "react-native";
@@ -40,7 +41,7 @@ let isWide = width >= 768; // Adjust breakpoint as needed
 
 const contentPadding = 16;
 
-const SidebarLayout = ({ children, style }) => {
+const SidebarLayout = ({ children, style, isLoading }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
@@ -78,41 +79,6 @@ const SidebarLayout = ({ children, style }) => {
         inputRange: [0, 1],
         outputRange: [-300, 0], // Slide drawer from left (-300) to 0
     });
-
-    function handleSignOut() {
-        showAlert(({ close }) => (
-            <View>
-                <Title style={styles.confirmTitle}>
-                    Are you sure you would like to logout?
-                </Title>
-                <View style={styles.confirmButtonContainer}>
-                    <Button
-                        mode="outlined"
-                        onPress={() => {
-                            removeAccessToken();
-                            close();
-                            showAlert("Successfully logged out");
-                            router.replace("/signin");
-                        }}
-                        style={styles.confirmButton}
-                    >
-                        Yes
-                    </Button>
-                    <Button
-                        mode="contained"
-                        onPress={() => {
-                            close();
-                        }}
-                        style={styles.confirmButton}
-                    >
-                        No
-                    </Button>
-                </View>
-            </View>
-        ));
-
-        // In the future we might want to ask the server something when we log out
-    }
 
     return (
         <View style={styles.root}>
@@ -177,7 +143,11 @@ const SidebarLayout = ({ children, style }) => {
                 style={[styles.scroll, {paddingTop: navBarHeight}]}
                 contentContainerStyle={styles.scrollContent}
             >
-                {children}
+                {
+                    isLoading ? 
+                    <ActivityIndicator /> :
+                    children
+                }
             </ScrollView>
         </View>
     );

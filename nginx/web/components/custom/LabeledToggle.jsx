@@ -13,8 +13,8 @@ import ExpandableView from "../custom/ExpandableView";
 export default function LabeledToggle ({
     style,
     onChange=null,
-    label1="Create Custom",
-    label2="Join Custom"
+    label1="Option A",
+    label2="Option B"
 }) {
     const [isFirst, setIsFirst] = useState(true)
 
