@@ -225,9 +225,11 @@ export default function LobbyScreen() {
 
                 // TODO: Maybe at this point put everyone into a loading screen until the enter_lobby event is received
                 if(!myPM?.is_leader) return;
-                if(gameMode === "custom") {
+                // For making a new lobby
+                if(gameMode === "custom" && isCreateCustom) {
                     send("clients_ready", {settings: {...customSettings}})
                 } else {
+                    console.log("LOBBY NAME", lobbyInfo.name)
                     send("clients_ready", {})
                 }
             })
@@ -376,6 +378,14 @@ export default function LobbyScreen() {
         // Don't let them do this if they're not the party leader
         if(!myPM?.is_leader) {
             showBanner("You are not the party leader")
+        } else {
+            setLobbyInfo(lobby)
+            setCustomSettings(lobby)
+            // Update this for everyone else
+            send("custom_settings_changed", {settings: lobby})
+            // Set the custom gamemode as this new lobby alias to register it with the party on the backend
+            send("change_gamemode", {lobby_alias: lobby.name})
+            showBanner("Lobby selected")
         }
     }
 

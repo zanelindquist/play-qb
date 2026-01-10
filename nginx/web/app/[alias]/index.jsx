@@ -325,7 +325,7 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        console.log("RULES", rules)
+        // console.log("RULES", rules)
     }
 
 
