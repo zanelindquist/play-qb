@@ -122,6 +122,7 @@ export default function LobbyScreen() {
                     joinParty(party_members[i])
                 }
 
+                console.log("LOBBY JOIN", lobby)
                 // Set the lobby settings
                 setLobbyInfo(lobby)
                 setInitialLobbyInfo(lobby)
@@ -255,7 +256,7 @@ export default function LobbyScreen() {
 
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
-                send("enter_lobby", { lobbyAlias: gameMode });
+                send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
                 setEnteredLobby(true)
             }
         }, []);
