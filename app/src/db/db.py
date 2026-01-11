@@ -26,7 +26,7 @@ db_url = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
 
 print(db_url)
 
-engine = create_engine(db_url, echo=True)
+engine = create_engine(db_url)
 
 def init_db():
     try:
