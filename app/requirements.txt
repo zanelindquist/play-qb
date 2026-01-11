@@ -9,3 +9,5 @@ redis
 flask_bcrypt
 mysql-connector-python
 apscheduler
+google-auth
+google-auth-oauthlib

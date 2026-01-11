@@ -22,12 +22,13 @@ import { useAlert } from '../../utils/alerts.jsx';
 
 import GlassyView from "../../components/custom/GlassyView.jsx"
 import Video from 'react-native-video';
-
+import { useGoogleAuth } from '../../utils/googleAuth.js';
 
 const { width, height } = Dimensions.get("window")
 
 export default function SignInScreen() {
     const {showAlert} = useAlert()
+    const {promptAsync, disabled} = useGoogleAuth()
 
     // States
     const [email, setEmail] = React.useState("");
@@ -162,7 +163,8 @@ export default function SignInScreen() {
                     mode="outlined"
                     contentStyle={styles.googleButton}
                     rippleColor={theme.primary}
-                    onPress={() => {}}
+                    onPress={() => promptAsync()}
+                    disabled={disabled}
                 >
                     <Image
                         source={require("../../assets/images/google_logo.png")}
