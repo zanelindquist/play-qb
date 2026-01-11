@@ -7,18 +7,21 @@ import {
   Animated,
   StyleSheet,
   Dimensions,
-  Image
+  Image,
+  Pressable
 } from 'react-native';
 
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { Button, TextInput, HelperText, Text, useTheme, Divider, Icon, Card, Menu } from 'react-native-paper';
 
-import theme from "../_layout.jsx"
+import theme from '../../assets/themes/theme.js';
 import { getAccessToken, saveAccessToken } from "../../utils/encryption.js"
 import { signIn, getProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
-
 import { useAlert } from '../../utils/alerts.jsx';
+
+import GlassyView from "../../components/custom/GlassyView.jsx"
+import Video from 'react-native-video';
 
 
 const { width, height } = Dimensions.get("window")
@@ -36,7 +39,6 @@ export default function SignInScreen() {
     })
 
     // Dependency Variables
-    const { colors } = useTheme()
     const router = useRouter();
 
     const isMobile = width < 680;
@@ -93,108 +95,167 @@ export default function SignInScreen() {
     }
 
   return ( 
-    <ScrollView>
-    <View style={{display: "flex", flexDirection: "row", height: "100vh", backgroundColor: colors.background}}>
-        {/*Left background and image container*/}
-        <View style={{flex: 1, backgroundColor: isMobile ? "" : colors.secondaryContainer}}>
-            <View style={{padding: "20px", flex: 1, alignContent: "center", justifyContent: 'center'}}>
-                {
-                // If we are on mobile, we dont want the left hand display
-                !isMobile &&
-                <Image
-                    source={require("../../assets/images/steig-black.png")}
-                    style={{display: "inline", width: "50%", height: "50%", position: "relative", left: "25%"}}
-                    resizeMode='contain'>
-                    
-                </Image>
-                }
-            </View>
-
+    <View style={styles.container}>
+        <View style={styles.bg} >                
+            <Video
+                source={{uri: "/videos/Earth.mp4"}}
+                style={[StyleSheet.absoluteFill]}
+                muted
+                repeat
+                resizeMode="cover"
+            />
         </View>
-        {/*Login container container*/}
-        <View style={{ flex: 2, alignItems: "center", justifyContent: "center", padding: "20px" }}>
-
-            <View style={{ justifyContent: "center", rowGap: "10px" }}>
-                <View >
-                    {
-                        isMobile &&
-                        <Image
-                            source={require("../../assets/images/steig-black.png")}
-                            style={{display: "inline", maxWidth: "100px", maxHeight: "100px", margin: "20px", alignSelf: "center"}}
-                            resizeMode='contain'>
-                        </Image>
-                    }
-                    <Text variant="headlineSmall">
-                        Please sign in
-                    </Text>
-                </View>
-                <TextInput
-                    label="Email"
-                    value={email}
-                    mode='outlined'
-                    onChangeText={text => setEmail(text)}
-                />
-                <HelperText type="error" visible={!!HTVisibleStates.email}>
-                    {HTVisibleStates.email}
-                </HelperText>
-                <TextInput
-                    label="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={secureTextEntry}
-                    mode="outlined"
-                    right={
+        <GlassyView style={styles.loginContainer}>
+            <View>
+                {
+                    isMobile &&
+                    <Image
+                        source={require("../../assets/images/steig-black.png")}
+                        style={styles.mobileImage}
+                        resizeMode='contain'>
+                    </Image>
+                }
+                <Text style={styles.textShadow} variant="headlineSmall">
+                    Please sign in
+                </Text>
+            </View>
+            <TextInput
+                label="Email"
+                value={email}
+                mode='outlined'
+                onChangeText={text => setEmail(text)}
+                style={styles.textInput}
+            />
+            <HelperText type="error" visible={!!HTVisibleStates.email}>
+                {HTVisibleStates.email}
+            </HelperText>
+            <TextInput
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={secureTextEntry}
+                mode="outlined"
+                right={
                     <TextInput.Icon
                         icon={secureTextEntry ? "eye-off" : "eye"}
                         onPress={() => setSecureTextEntry(!secureTextEntry)}
                     />
-                    }
-                />
-                <HelperText type="error" visible={!!HTVisibleStates.password}>
-                    {HTVisibleStates.password}
-                </HelperText>
+                }
+            />
+            <HelperText type="error" visible={!!HTVisibleStates.password}>
+                {HTVisibleStates.password}
+            </HelperText>
+            
+            <Text style={[styles.linkText, styles.textShadow]}>
+                Don't have an account yet?
+                <Pressable
+                    style={styles.linkButton}
+                    onPress={() => router.push("/signup")}>
+                    Sign up
+                </Pressable>
+            </Text>
 
-                <View style={{alignSelf: "baseline"}}>
-                    <Text style={{display: "inline"}}>
-                        Don't have an account yet?
-                        <Button
-                            style={{margin: "0px"}}
-                            onPress={() => router.replace("/signup")}>
-                            Sign up
-                        </Button>
-                    </Text>
-                </View>
+            <Divider style={styles.dividerBottom}/>  
 
-                <Divider style={{marginBottom: "10px"}}/>  
-
+            <View style={styles.buttonRow}>
                 <Button
                     mode="outlined"
-                    rippleColor="#FF000020">
-                    <View style={{display:"flex", flexDirection: "row", justifyContent: "baseline"}}>
-                        <Icon source="google" style={{display: "inline"}}></Icon>
-                        <Text style={{display: "inline"}}>Sign in with Google</Text>
-                    </View>
+                    contentStyle={styles.googleButton}
+                    rippleColor={theme.primary}
+                    onPress={() => {}}
+                >
+                    <Image
+                        source={require("../../assets/images/google_logo.png")}
+                        style={styles.googleIcon}
+                    />
+                    <HelperText style={[styles.googleText, styles.textShadow]}>Sign in with Google</HelperText>
                 </Button>
-
-                <Divider style={{marginTop: "10px", marginBottom: "10px"}}/>
-
-                <View style={{display: "flex", flexDirection: "row", columnGap: "10px"}}>
-                    <Button
-                            mode="contained"
-                            rippleColor="#FF000020"
-                            onPress={() => submit()}
-                            style={{flex: 1}}
-                        >
-                            Sign in
-                    </Button>
-                </View>
-
+                <Button
+                    mode="contained"
+                    rippleColor={theme.primary}
+                    onPress={submit}
+                    style={styles.submitButton}
+                >
+                    Sign in
+                </Button>
             </View>
-        </View>
-        {/*Right Container to center login */}
-        <View style={{flex: 1}}>
-        </View>
+        </GlassyView>
     </View>
-    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        width: "100vw",
+        backgroundColor: theme.background
+    },
+    bg: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "black",
+    },
+    loginContainer: {
+        alignItems: "center",
+        justifyContent: "center",
+        justifyContent: "center",
+        gap: 10,
+        padding: 20,
+    },
+    mobileImage: {
+        display: "inline",
+        maxWidth: 100,
+        maxHeight: 100,
+        margin: 100,
+        alignSelf: "center"
+    },
+    textShadow: {
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    textInput: {
+        width: "100%"
+    },
+    linkText: {
+        display: "inline"
+    },
+    linkButton: {
+        marginLeft: 10,
+        color: theme.primary
+    },
+    dividerBottom: {
+        marginBottom: 10
+    },
+    googleButton: {
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 10,
+    },
+    googleIcon: {
+        height: 16,
+        width: 16,
+    },
+    googleText: {
+        fontSize: "0.8rem"
+    },
+    dividerBoth: {
+        marginTop: 10,
+        marginBottom: 10
+    },
+    buttonRow: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+        width: "100%"
+    },
+    submitButton: {
+        width: "100%"
+    },
+    rightContainer: {
+        flex: 1
+    }
+});
