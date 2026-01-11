@@ -79,7 +79,7 @@ const GAMEMODES = [
     },
 ];
 
-const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
 
 export default function LobbyScreen() {
     const router = useRouter();
@@ -227,7 +227,9 @@ export default function LobbyScreen() {
                 if(!myPM?.is_leader) return;
                 // For making a new lobby
                 if(gameMode === "custom" && isCreateCustom) {
-                    send("clients_ready", {settings: {...customSettings}})
+                    console.log(myPM)
+                    console.log({...customSettings, creator_id: myPM.id})
+                    send("clients_ready", {settings: {...customSettings, creator_id: myPM.id}})
                 } else if (gameMode === "custom" && !isCreateCustom) {
                     send("clients_ready", {lobby_alias: customSettings.name})
                 } else {

@@ -32,7 +32,7 @@ ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
 
 # Creating a lobby
-MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause", "public", "creator_id"]
 CATEGORIES = [
     "everything",
     "science",
@@ -709,21 +709,44 @@ def get_users_by_query(query):
     # REL DEP is empty right now
     return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
 
-def get_lobbies_by_query(query):
+def get_lobbies_by_query(query: str, user_id: int = None, public: bool = False) -> list:
     session = get_session()
+
+    print("LOBBIES BY QUERY", user_id, public)
+
+    if not query:
+        return []
+
+    and_conditions = [
+        Lobbies.name.ilike(f"%{query}%")
+    ]
+
+    or_conditions = []
+
+    # creator can see their own
+    if user_id is not None:
+        or_conditions.append(Lobbies.creator_id == user_id)
+
+    # public lobbies are visible
+    if public:
+        or_conditions.append(Lobbies.public == True)
+
+    # If no visibility rules, return nothing
+    if not or_conditions:
+        return []
+
     lobbies = session.execute(
         select(Lobbies)
         .where(
-            # TODO: Filter by the private/joinable field when we make that
-            or_(
-                Lobbies.name.ilike(f"%{query}%"),
+            and_(
+                *and_conditions,
+                or_(*or_conditions)
             )
         )
         .limit(10)
     ).scalars().all()
 
     return [to_dict_safe(lobby, rel_depths=REL_DEP["db:lobby_info"]) for lobby in lobbies]
-
 
 def attatch_players_to_teams(teams: dict):
     mutated_teams = teams

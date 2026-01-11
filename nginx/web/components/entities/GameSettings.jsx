@@ -48,7 +48,7 @@ const CATEGORIES = [
     "custom",
 ];
 
-const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+const MUTATABLE_RULES = ["name", "public", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
 
 
 
@@ -208,6 +208,16 @@ export default function GameSettings({
             disabled={disabled}
         />
     )
+    let pub = (
+        <GameRule
+            label="Public"
+            dataName="public"
+            mode="toggle"
+            defaultValue={defaultInfo?.public}
+            onChange={handleGameRuleChange}
+            disabled={disabled}
+        />
+    )
     let bonuses = (
         <GameRule
             label="Bonuses"
@@ -250,8 +260,8 @@ export default function GameSettings({
     )
 
     const columnArrangement = {
-        1: [[name, gamemode, level, category, rounds, speed, bonuses, amb, aqs, aqp]],
-        2: [[name, gamemode, level, category], [rounds, speed, bonuses, amb, aqs, aqp]]
+        1: [[name, gamemode, level, category, rounds, speed, pub, bonuses, amb, aqs, aqp]],
+        2: [[name, gamemode, level, category], [rounds, speed, pub, bonuses, amb, aqs, aqp]]
     }
 
 
