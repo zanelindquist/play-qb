@@ -3,11 +3,13 @@ import os
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
-# from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.socket_events.constructor import socketio
 
-from datetime import timedelta
+from datetime import timedelta, datetime
+
+from src.db.utils import delete_inactive_lobbies
 
 jwt = JWTManager()
 
@@ -67,5 +69,13 @@ def create_app(test_config=None):
     init_db()
 
     # TODO: Delete lobbies that have been inactive for more than a week
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        delete_inactive_lobbies,
+        'interval',
+        minutes=1440,
+        next_run_time=datetime.now()
+    ) # Every day
+    scheduler.start()
 
     return app

@@ -6,11 +6,12 @@ SERIALIZATION_CONFIG = {
         ],
         "relationships": {
             "player_instances": "Players",
-            "friends": "Users"
+            "friends": "Users",
+            "created_lobbies": "Lobbies"
         },
     },
     "Stats": {
-        "fields": ["id", "hash", "points", "corrects", "power", "negs", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz"],
+        "fields": ["id", "hash", "points", "corrects", "power", "incorrect", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz"],
         "relationships": {
             "player": "Players",
         },
@@ -37,10 +38,11 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Lobbies": {
-        "fields": ["id", "hash", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players"],
+        "fields": ["id", "hash", "creator_id", "public", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players"],
         "relationships": {
             "games": "Games",
             "players": "Players",
+            "creator": "Users"
         },
     },
     "Games": {
@@ -56,6 +58,7 @@ SERIALIZATION_CONFIG = {
 RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:player": {"user": 0, "lobby": 0, "stats": 0},
     "db:lobby": {"players": 0, "games": 0},
+    "db:lobby_info": {},
     "db:game": {"current_question": 0},
     "db:users": {}
 }

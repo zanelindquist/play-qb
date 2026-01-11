@@ -44,12 +44,13 @@ const Question = ({
     onInterruptOver,
     onFinish,
     onDeath,
+    speed = 400,
     style,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    SPEED = 400,
     MS_FOR_ANSWER = 5000,
 }) => {
+    console.log(speed)
     // Text variables
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);
@@ -67,7 +68,7 @@ const Question = ({
     const [msLeftInWaiting, setMsLeftInWaiting] = useState(MS_UNTIL_DEAD)
 
     // Reading constants
-    const charsPerMinute = SPEED * 6;
+    const charsPerMinute = speed * 6;
     const msPerChar = 60_000 / charsPerMinute; // ms per char
 
     // Status bar

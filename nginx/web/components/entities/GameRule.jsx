@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     textInput: {
         width: "100%",
         backgroundColor: theme.surface,
-        height: "3rem",
+        height: 50,
         borderRadius: 5
     },
     dropdown: {

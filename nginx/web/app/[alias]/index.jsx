@@ -24,13 +24,21 @@ import Question from "../../components/game/Question.jsx";
 import Interrupt from "../../components/game/Interrupt.jsx";
 import PlayerJoined from "../../components/game/PlayerJoined.jsx";
 import ExpandableView from "../../components/custom/ExpandableView.jsx";
+import { useBanner } from "../../utils/banners.jsx";
+import theme from "../../assets/themes/theme.js";
+import GameSettings from "../../components/entities/GameSettings.jsx";
+import ShowSettings from "../../components/custom/ShowSettings.jsx";
+import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
 
 const { width } = Dimensions.get('window');
+const MOBILE_THRESHOLD = 600
 
 // TEMPORARY
 const ANSWER_MS = 5000;
 
 const SHOW_EVENTS_INCREMENTS = 20
+
+const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5']
 
 const Play = () => {
     // Get the lobby alias
@@ -39,10 +47,12 @@ const Play = () => {
     const router = useRouter()
 
     const {showAlert} = useAlert();
-    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady} = useSocket("game", alias);
+    const {showBanner} = useBanner()
+    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect} = useSocket("game", alias);
+    const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
-    const [myId, setMyId] = useState(null);
+    const [myPlayer, setMyPlayer] = useState(null);
 
     // New question stuff
     const [allEvents, setAllEvents] = useState([]);
@@ -51,8 +61,13 @@ const Play = () => {
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
 
+    // Game state
+    const [lobby, setLobby] = useState(null)
+    const [showSettings, setShowSettings] = useState(false)
+    
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
+    const rateLimitRef = useRef(null)
 
     // Register keybinds
     useEffect(() => {
@@ -80,83 +95,126 @@ const Play = () => {
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
-
-        addEventListener("you_joined", ({player, game_state, lobby}) => {
-            setMyId(player.id)
-            console.log("LOBBY", lobby)
-        })
-
-        addEventListener("player_joined", ({player, game_state}) => {
-            player.eventType = "player_joined"
-            addEvent(player)
-        })
-
-        addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
-            setSynctimestamp(timestamp)
-            setBuzzer({current: player})
-            setQuestionState("interrupted")
-            // For non-question events, put them second in the list
-            addEvent({
-                eventType: "interrupt",
-                // Set the interrupt status for the buzzer color
-                status: questionStateRef.current == "waiting" ? "late" : "early",
-                player: player,
-                content: answer_content
+            addEventListener("you_joined", ({player, lobby}) => {
+                setMyPlayer(player)
             })
-        })
 
-        addEventListener("player_typing", ({answer_content}) => {
-            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-            setInterruptData("content", answer_content)
-        })
+            addEventListener("lobby_not_found", () => {
+                showAlert("The lobby you are trying to enter does not exist")
+                router.replace("/lobby?mode=solos")
+            })
 
-        addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
-            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-            
-            setBuzzer(null)
-            setQuestionState("running")
-            setSynctimestamp(timestamp)
-        })
+            addEventListener("join_lobby_failed", ({error}) => {
+                showBanner("Failed to join lobby: " + error.message.toLowerCase())
+            })
 
-        addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
-            // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-            setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-            // Minimize the current quetsion
-            minimizeCurrentQuestion()
-            setBuzzer(null)
-            setSynctimestamp(timestamp)
-            addEvent(question, true)
-            setQuestionState("running")
-        })
+            addEventListener("player_joined", ({player, game_state, lobby}) => {
+                console.log("JOINED", lobby)
+                player.eventType = "player_joined"
+                addEvent(player)
+                // For updating the scores and stuff
+                setLobby({...lobby})
+            })
 
-        addEventListener("reward_points", ({scores}) => {
-            
-        })
+            addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
+                setSynctimestamp(timestamp)
+                setBuzzer({current: player})
+                setQuestionState("interrupted")
+                // For non-question events, put them second in the list
+                addEvent({
+                    eventType: "interrupt",
+                    // Set the interrupt status for the buzzer color
+                    status: questionStateRef.current == "waiting" ? "late" : "early",
+                    player: player,
+                    content: answer_content
+                })
+            })
 
-        addEventListener("game_paused", ({player}) => {
-            
-        })
+            addEventListener("player_typing", ({answer_content}) => {
+                // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+                setInterruptData("content", answer_content)
+            })
 
-        addEventListener("game_resumed", ({player, timestamp}) => {
-            setSynctimestamp(timestamp)
-        })
+            addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
+                if(scores) {
+                    setLobby((prev) => {
+                        let changed = prev;
+                        // TODO: Adjust for multiple games
+                        changed.games[0].teams = scores
+                        return changed
+                    })
+                }
+                setBuzzer(null)
+                setQuestionState("running")
+                setSynctimestamp(timestamp)
+            })
 
-        // Mostly test listner
-        addEventListener("chat_message", (data) => {
-            console.log("message!")
-        })
+            addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+                // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
+                // Minimize the current quetsion
+                minimizeCurrentQuestion()
+                setBuzzer(null)
+                setSynctimestamp(timestamp)
+                addEvent(question, true)
+                setQuestionState("running")
+                if(scores) {
+                    setLobby((prev) => {
+                        let changed = prev;
+                        // TODO: Adjust for multiple games
+                        changed.games[0].teams = scores
+                        return changed
+                    })
+                }
+            })
 
-        // Now that the listners are registered, we are ready to join the lobby
-        send("join_lobby", { lobbyAlias: alias });
-        
+            addEventListener("reward_points", ({scores}) => {
+                
+            })
+
+            addEventListener("game_paused", ({player}) => {
+                
+            })
+
+            addEventListener("game_resumed", ({player, timestamp}) => {
+                setSynctimestamp(timestamp)
+            })
+
+            addEventListener("changed_game_settings", ({lobby}) => {
+                console.log("CHANGED SET", lobby.public)
+                // If we are the one who made these chagnes, return
+                if(myPlayer?.user?.id === lobby?.creator_id) return
+                console.log("Public", lobby.public)
+                setLobby({...lobby})
+            })
+
+            // Mostly test listner
+            addEventListener("chat_message", (data) => {
+                console.log("message!")
+            })
+
+            // I don't think this works lol
+            addEventListener("you_disconnected", ({stats, total_stats}) => {
+                showAlert("View your stats here: " + stats.correct)
+            })
+
+            addEventListener("player_disconnected", ({lobby, user}) => {
+                user.eventType = "player_disconnected"
+                addEvent(user)
+                setLobby({...lobby})
+            })
+
+            // Now that the listners are registered, we are ready to join the lobby
+            send("join_lobby", { lobbyAlias: alias });
         })
 
         return () => {
             clearInterval(typingEmitInterval)
             removeAllEventListeners()
-            if(socket) socket.disconnect()
+            disconnect()
         }
-    }, [socket])
+    }, [])
 
     // Update the ref for it to be used in the listeners
     useEffect(() => {
@@ -205,7 +263,6 @@ const Play = () => {
     }
 
     function handleInterruptOver(text, questionNotFinished) {
-        console.log("interrupt over")
         setBuzzer(null)
         if(questionNotFinished) {
             // TODO: keep track of waiting time
@@ -273,6 +330,35 @@ const Play = () => {
         })
     }
 
+    function handleExit() {
+        if(socket) socket.disconnect()
+        router.replace(`/lobby?mode=${alias}`)
+    }
+
+    function handleGameRuleChange(rules) {
+        if (!myPlayer) return
+        if (myPlayer?.user?.id !== lobby?.creator_id) return
+
+        if (rateLimitRef.current) {
+            clearTimeout(rateLimitRef.current)
+        }
+
+        rateLimitRef.current = setTimeout(() => {
+            console.log(rules.public)
+            send("change_game_settings", { settings: rules })
+        }, 20)
+
+        return () => {
+            if (rateLimitRef.current) {
+                clearTimeout(rateLimitRef.current)
+            }
+        }
+    }
+
+    // useEffect(() => {
+    //     console.log("PLAYER< LOBBY", myPlayer, lobby)
+    // }, [myPlayer, lobby])
+
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -281,7 +367,7 @@ const Play = () => {
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == myId)}
+                        disabled={!(buzzer && buzzer?.current?.id == myPlayer?.id)}
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
@@ -293,6 +379,7 @@ const Play = () => {
                                         <Question
                                             question={e}
                                             timestamp={synctimestamp}
+                                            speed={lobby?.speed}
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}
@@ -309,6 +396,10 @@ const Play = () => {
                                 case "player_joined":
                                     return (
                                         <PlayerJoined event={e} key={`pj:${i}`}/>
+                                    )
+                                case "player_disconnected":
+                                    return (
+                                        <PlayerDisconnected event={e} key={`pd:${i}`}/>
                                     )
                                 default:
 
@@ -334,14 +425,28 @@ const Play = () => {
                     </ScrollView>
                 </View>
                 <View style={styles.optionsContainer}>
-                    <View style={styles.scorebox}>
-
-                    </View>
-                    <GlassyButton mode="filled" onPress={onBuzz}>Buzz</GlassyButton>
-                    <GlassyButton mode="filled" onPress={onNextQuestion}>Next</GlassyButton>
-                    <GlassyButton mode="filled" onPress={testSocket}>Send message</GlassyButton>
-                    <GlassyButton mode="filled" onPress={() => router.replace(`/lobby?mode=${alias}`)}>Exit</GlassyButton>
-                    <PlayerScores players={[{name: "zane", score: 100}, {name: "bjorn", score: 67}]} />
+                    <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
+                    <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    {
+                        // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
+                    }
+                    {
+                        lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                    }
+                    <ShowSettings
+                        onChange={setShowSettings}
+                    />
+                    <GameSettings
+                        expanded={showSettings}
+                        columns={1}
+                        defaultInfo={lobby}
+                        // TODO: Determine who can edit lobbies while they are in them
+                        disabled={myPlayer?.user?.id !== lobby?.creator_id}
+                        nameDisabled={true}
+                        title={"Game Rules"}
+                        onGameRuleChange={handleGameRuleChange}
+                    />
                 </View>
 
             </View>
@@ -355,15 +460,13 @@ const styles = StyleSheet.create({
         display: "flex",
         flexDirection: "row",
         gap: 10,
-        flexGrow: 1,
-
-        width: "100%"
     },
     gameContent: {
         margin: 10,
         flexGrow: 1,
-        width: "80%",
-        flexDirection: "column"
+        flexShrink: 1,
+        flexDirection: "column",
+        width: "100%"
     },
     questions: {
         marginTop: 10,
@@ -382,10 +485,20 @@ const styles = StyleSheet.create({
         position: "relative",
         right: 0,
         flexDirection: "column",
-        gap: 10
+        gap: 10,
+        minWidth: 250,
     },
     scorebox: {
-        width: 200
+        // width: 300
+    },
+    buzzButton: {
+        // backgroundImage: theme.gradients.buttonWhite
+    },
+    exitButton: {
+        backgroundImage: theme.gradients.buttonRed
+    },
+    nextButton: {
+        backgroundImage: theme.gradients.buttonBlue
     }
 })
 

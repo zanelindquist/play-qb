@@ -26,9 +26,9 @@ parties = {
 
 def create_party(user_hash: str) -> str:
     # Make sure user isn't already in a party
-    has_party = get_party(user_hash)
+    has_party = get_party_by_user(user_hash)
     if has_party:
-        return has_party[0]
+        return has_party
 
     party_hash = generate_unique_hash()
 
@@ -40,14 +40,15 @@ def create_party(user_hash: str) -> str:
 
     return party_hash
 
-def get_party(user_hash: str) -> tuple:
-    for party_id, party in parties.items():
+def get_party_by_user(user_hash: str) -> str:
+    for party_hash, party in parties.items():
         if user_hash in list(party["members"].keys()):
-            return (party_id, party)
+            return party_hash
         
 def get_party_member_info(party_hash: str) -> list:
+    if not parties.get(party_hash):
+        return []
     party_members = [get_user_by_hash(hash) for hash in list(parties[party_hash].get("members").keys())]
-
     # Set who is ready or not
     for member in party_members:
         member["is_leader"] = parties[party_hash].get("leader_hash") == member.get("hash")
@@ -146,7 +147,7 @@ def on_disconnect():
     lobby = request.environ.get("lobby")
     party_hash = request.environ.get("party")
 
-    print(f"Received disconnect form {user_id}")
+    print(f"Received disconnect from /lobby: user={user_id}")
 
     set_user_online(user_id, False)
 
@@ -276,7 +277,7 @@ def on_accepted_invite(data):
     emit("joined_party", {"members": party_members, "user": user, "lobby": lobby_data}, room=f"party:{party_hash}")
 
 @socketio.on("leave_party", "/lobby")
-def on_accepted_invite(data):
+def on_leave_party(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
@@ -295,15 +296,16 @@ def on_accepted_invite(data):
     request.environ["party"] = new_party_hash
 
     # Get party members to send back to update UI (include ready state)
-    party_members = get_party_member_info(new_party_hash)
+    new_party_members = get_party_member_info(new_party_hash)
+    old_party_members = get_party_member_info(party_hash)
 
     lobby_data = get_lobby_by_alias(lobby)
 
     # For new party
-    emit("member_left_party", {"user": user, "members": party_members, "lobby": lobby_data}, room=f"party:{new_party_hash}")
+    emit("member_left_party", {"user": user, "members": new_party_members, "lobby": lobby_data}, room=f"party:{new_party_hash}")
 
     # For old party
-    emit("member_left_party", {"user": user}, room=f"party:{party_hash}")
+    emit("member_left_party", {"user": user, "members": old_party_members}, room=f"party:{party_hash}")
 
 
 
@@ -333,7 +335,8 @@ def on_party_member_ready(data):
 
     user = get_user_by_email(user_id)
 
-    party_hash, party = get_party(user.get("hash"))
+    party_hash = get_party_by_user(user.get("hash"))
+    party = parties[party_hash]
 
     if user.get("hash") != party["leader_hash"]:
         return;
@@ -341,8 +344,11 @@ def on_party_member_ready(data):
     # See if this is a custom and we need to create a new lobby
     settings = data.get("settings")
 
+    lobby_alias = data.get("lobby_alias")
+
+    # If there are settings, it is creating a lobby, if there is lobby_alias, its joining a custom, otherwise, use the party
     if not settings:
-        emit("enter_lobby", {"lobby_alias": party["lobby_alias"]}, room=f"party:{party_hash}")
+        emit("enter_lobby", {"lobby_alias": lobby_alias if lobby_alias else party["lobby_alias"]}, room=f"party:{party_hash}")
         return
     
     # Create a lobby based on the settings
@@ -354,7 +360,6 @@ def on_party_member_ready(data):
             emit("failed_lobby_creation", {"message": "Lobby with that alias already exists"}, room=f"party:{party_hash}")
             return
         emit("failed_lobby_creation", result, room=f"party:{party_hash}")
-        print(result)
         return;
 
     emit("enter_lobby", {"lobby_alias": result.get("lobby").get("name")}, room=f"party:{party_hash}")
@@ -373,12 +378,15 @@ def on_changed_gamemode(data):
     if user.get("hash") != parties[party_hash]["leader_hash"]:
         return;
 
+    # Get lobby info
     new_lobby_alias = data.get("lobby_alias")
 
-    set_party_lobby_alias(party_hash, new_lobby_alias)
-
-    # Get lobby info
     lobby_data = get_lobby_by_alias(new_lobby_alias)
+
+    if new_lobby_alias == "custom":
+        lobby_data["name"] = generate_random_lobby_name()
+
+    set_party_lobby_alias(party_hash, new_lobby_alias)
 
     emit("changed_gamemode", {"lobby": lobby_data}, room=f"party:{party_hash}")
 
@@ -428,3 +436,24 @@ def on_add_friend(data):
     result = create_friend_request_from_email_to_hash(user_id, hash)
 
     emit("added_friend", result)
+
+
+# Finding lobbies
+
+@socketio.on("search_lobbies", "/lobby")
+def on_search_users(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    user = get_user_by_email(user_id)
+
+    query = data.get("query")
+    if not query:
+        emit("lobbies_found", {"lobbies": []})
+        return
+
+    lobbies = get_lobbies_by_query(query, user_id=user.get("id"), public=True)
+
+    emit("lobbies_found", {"lobbies": lobbies})
+
+

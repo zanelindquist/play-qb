@@ -9,12 +9,14 @@ import random
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
+from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
 from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
 from .db import engine
+from .models.hash import *
 
 # Answer judging constants
 BRACKETED = re.compile(r"\[.*?\]")
@@ -30,7 +32,7 @@ ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
 
 # Creating a lobby
-MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "public", "creator_id"]
 CATEGORIES = [
     "everything",
     "science",
@@ -43,6 +45,10 @@ CATEGORIES = [
     "geography",
     "custom",
 ];
+PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
+
+# Cleaning up database
+LOBBY_DELETE_DAYS = 0
 
 def normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower().strip())
@@ -287,7 +293,9 @@ def create_lobby(settings):
 
         # Make sure each lobby has a game
         game = Games(
-            lobby_id=lobby.id
+            lobby_id=lobby.id,
+            teams={},
+            rounds=[]
         )
         session.add(game)
         
@@ -310,7 +318,7 @@ def create_player(email, lobbyAlias):
         lobby = get_lobby_by_alias(lobbyAlias)
 
         if player is not None:
-            return {'message': 'Player already exists', "code": 409}
+            return player
 
         if not user or not lobby:
             return {'message': 'User or lobby not found', "code": 404}
@@ -339,7 +347,7 @@ def create_player(email, lobbyAlias):
         session.add(stats)
         session.commit()
 
-        return {'message': 'create_player(): success', "code": 200}
+        return to_dict_safe(player, rel_depths=REL_DEP["db:player"], depth=0)
     except Exception as e:
         session.rollback()
         return {'message': 'create_player(): failure', 'error': f'{e}', "code": 400}
@@ -462,6 +470,28 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
     finally:
         session.remove()
 
+def get_user_from_player_hash(player_hash: str) -> dict:
+    try:
+        session = get_session()
+
+        user = (
+            session.execute(
+                select(Users)
+                .join(Users.player_instances)
+                .where(Players.hash == player_hash)
+                .options(joinedload(Users.player_instances))
+            )
+            .scalars()
+            .first()
+        )
+
+        return to_dict_safe(user, depth=0)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
 def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1):
     session = get_session()
 
@@ -568,7 +598,26 @@ def get_lobby_by_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_gamestate_by_lobby_alias(lobbyAlias):
+def get_game_by_hash(game_hash: str) -> dict:
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        if not game:
+            return False;
+
+        return to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def get_game_by_lobby_alias(lobbyAlias):
     session = get_session()
     try:
         # Assuming every lobby only has one game
@@ -580,12 +629,12 @@ def get_gamestate_by_lobby_alias(lobbyAlias):
 
         if not game:
             return False;
-
+    
         return to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
 
     except Exception as e:
         session.rollback()
-        return {'message': 'get_gamestate_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'get_game_by_lobby_alias(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -643,7 +692,6 @@ def get_friends_by_email(email, online=False, party=False):
             or friend.hash not in party.get("members")
         ]
 
-
 def get_users_by_query(query):
     session = get_session()
     users = session.execute(
@@ -664,6 +712,53 @@ def get_users_by_query(query):
 
     # REL DEP is empty right now
     return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
+
+def get_lobbies_by_query(query: str, user_id: int = None, public: bool = False) -> list:
+    session = get_session()
+
+    if not query:
+        return []
+
+    and_conditions = [
+        Lobbies.name.ilike(f"%{query}%")
+    ]
+
+    or_conditions = []
+
+    # creator can see their own
+    if user_id is not None:
+        or_conditions.append(Lobbies.creator_id == user_id)
+
+    # public lobbies are visible
+    if public:
+        or_conditions.append(Lobbies.public == True)
+
+    # If no visibility rules, return nothing
+    if not or_conditions:
+        return []
+
+    lobbies = session.execute(
+        select(Lobbies)
+        .where(
+            and_(
+                *and_conditions,
+                or_(*or_conditions)
+            )
+        )
+        .limit(10)
+    ).scalars().all()
+
+    return [to_dict_safe(lobby, rel_depths=REL_DEP["db:lobby_info"]) for lobby in lobbies]
+
+def attatch_players_to_teams(teams: dict):
+    mutated_teams = teams
+
+    for team_hash, team in teams.items():
+        for player_hash, player in team["members"].items():
+            player = get_user_from_player_hash(player_hash)
+            mutated_teams[team_hash]["members"][player_hash]["player"] = player
+
+    return mutated_teams
 
 
 # EDITING RESOURCES
@@ -689,7 +784,343 @@ def set_user_online(email: str, online=True):
     finally:
         session.remove()
 
+def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = None, team_name: str = None):
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        modified_teams = None;
+
+        score_template = {
+            "points": 0,
+            "correct": 0,
+            "power": 0,
+            "incorrect": 0,
+            "buzzes": 0,
+            "buzzes_encountered": 0,
+            "early": 0,
+            "bonuses": 0,
+            "questions_encountered": 0
+        }
+        
+        # 1. Get the game from the hash
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        
+        # 2. Access the teams property (see the JSON in the README)
+        teams = game_dict.get("teams")
+        modified_teams = teams;
+
+        team_template = {
+            "name": team_name if team_name else f"Team {len(teams.keys()) + 1}",
+            "color": get_hex_color(len(teams.keys())),
+            "score": 0,
+            "members": {
+
+            }
+        }
+
+        found_player = False
+        # Check and see if the player is already in a team
+        for t_hash in list(teams.keys()):
+            if player_hash in teams[t_hash]["members"].keys():
+                found_player = True
+
+        if found_player:
+            return teams
+
+        # 3. IF there is a team_hash, add the player to that, otherwise make their own team
+        if team_hash:
+            # If we are passed a team hash, but there isn't one, lets set the team with this hash
+            found_team = False
+            for t_hash in list(teams.keys()):
+                if t_hash == team_hash:
+                    modified_teams[t_hash]["members"][player_hash] = score_template
+                    found_team = True
+
+            if not found_team:
+                modified_teams[team_hash] = team_template
+
+                modified_teams[team_hash]["members"][player_hash] = score_template
+        else:
+            # 4. Create a team
+            new_team_hash = generate_unique_hash()
+            modified_teams[new_team_hash] = team_template
+
+            # 5. Add the player to that team
+            modified_teams[new_team_hash]["members"][player_hash] = score_template        
+
+        # 6. Set the teams in the database
+        setattr(game, "teams", modified_teams)
+        flag_modified(game, "teams")
+        session.commit()
+        # 7. Return the updated teams
+        return modified_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def set_game_scores(game_hash: str, player_hash: str, diff: dict) -> dict:
+    """
+        1. Get the game from the hash
+        2. Access the teams property (see the JSON in the README)
+        3. Find the team that has a member with the player_hash
+        4. For every property in the diff, add the value of the diff to it
+        5. Put the modififed diff and overall object back into the teams structure
+        6. Return the updated teams
+    """
+
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        modified_teams = None;
+
+        # 1. Get the game from the hash
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        # 2. Access the teams property (see the JSON in the README)
+        teams = game_dict.get("teams")
+        modified_teams = teams;
+        # 3. Find the team that has a member with the player_hash
+        for team_hash in list(teams.keys()):
+            for team_member_hash in list(teams[team_hash].get("members").keys()):
+                if player_hash == team_member_hash:
+                    breakdown = teams[team_hash]["members"][team_member_hash]
+                    # 4. For every property in the diff, add the value of the diff to it
+                    for key in list(diff.keys()):
+                        # Make sure that this property is already in the diff (no funny business with modification)
+                        if key in list(breakdown.keys()): 
+                            breakdown[key] += diff[key];
+                    # 5. Put the modififed diff and overall object back into the teams structure
+                    modified_teams[team_hash]["members"][team_member_hash] = breakdown
+        
+        # 6. Set the teams in the database
+        setattr(game, "teams", modified_teams)
+        flag_modified(game, "teams")
+
+        session.commit()
+        # 7. Return the updated teams
+        return modified_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'set_game_scores(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def increment_score_attribute(game_hash: str, key: str, player_hash: str = None, amount: int = 1):
+    if not game_hash or not key:
+        raise Exception("increment_score_attribute(): insufficient arguments")
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        teams = game_dict.get("teams")
+        mutated_teams = teams
+
+        for team_hash, team in teams.items():
+            # If this is about points, then we need to increment the team score
+            for p_hash, player in team["members"].items():
+                # If there is no player_hash, then we want to do it for all of the members
+                # Increment buzzes
+                if player_hash:
+                    if p_hash == player_hash:
+                        # Specific to just the player/team
+                        if key == "points":
+                            mutated_teams[team_hash]["score"] += amount
+                        mutated_teams[team_hash]["members"][p_hash][key] += amount
+                        break
+                else:
+                    mutated_teams[team_hash]["members"][p_hash][key] += amount
+
+        # 6. Set the teams in the database
+        setattr(game, "teams", mutated_teams)
+        flag_modified(game, "teams")
+
+        session.commit()
+        # 7. Return the updated teams
+        return mutated_teams
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'increment_score_attribute(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def write_player_stats(player_hash: str, stats: dict) -> dict:
+    session = get_session()
+    try:
+        player = session.execute(
+            select(Players)
+            .where(Players.hash == player_hash)
+            .options(
+                joinedload(Players.stats)
+            )
+        ).scalars().first()
+
+        all_stats = {};
+
+        for key in list(stats.keys()):
+            all_stats[key] = 0
+            # Forget it if there is no change
+            if stats[key] == 0:
+                continue
+            new_total = getattr(player.stats, key) + stats.get(key)
+            all_stats[key] = new_total
+            setattr(player.stats, key, new_total)
+
+        session.commit()
+
+        return all_stats
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'write_player_stats(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
+    session = get_session()
+    try:
+        lobby = session.execute(
+            select(Lobbies)
+            .where(Lobbies.name == lobbyAlias)
+        ).scalars().first()
+        
+        columns = {}
+
+        for column in MUTATABLE_RULES:
+            if settings.get(column) is not None:
+                # Translate the categories to its number code
+                # TODO: Handle custom percentages for categories
+                if settings.get("category"):
+                    settings["category"] = CATEGORIES.index(columns["category"])
+                setattr(lobby, column, settings[column])
+        
+        session.commit()
+
+        lobby_data = to_dict_safe(lobby)
+
+        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+# DELETING RESOURCES
+
+def reset_game_scores(game_hash: str) -> bool:
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        setattr(game, "teams", {})
+
+        session.commit()
+
+        return {'message': 'reset_game_scores(): success', "code": 200}
+
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'reset_game_scores(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def remove_player_game_scores(game_hash: str, player_hash: str):
+    if not game_hash or not player_hash:
+        raise Exception("remove_player_game_scores(): arguments undefined")
     
+    session = get_session()
+    try:
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == game_hash)
+        ).scalars().first()
+
+        game_dict = to_dict_safe(game, rel_depths=REL_DEP["db:game"], depth=0)
+        teams = game_dict.get("teams")
+        modified_teams = teams
+
+        stats = None
+
+        # Find the player stats based on the hash
+        for team_hash in list(teams.keys()):
+            if player_hash in list(teams[team_hash]["members"].keys()):
+                stats = dict(teams[team_hash]["members"][player_hash])
+                del modified_teams[team_hash]["members"][player_hash]
+
+                # If there are no more players on this team, delete the team
+                if len(list(modified_teams[team_hash]["members"].keys())) == 0:
+                    del modified_teams[team_hash]
+
+        setattr(game, "teams", modified_teams)
+        flag_modified(game, "teams")
+        session.commit()
+
+        return stats
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def delete_inactive_lobbies():
+    # TODO: We need to remove the Players table before this probably
+    return;
+    session = get_session()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS)
+
+        print("cutoff:", cutoff)
+        print("min active_at:", session.execute(
+            select(func.min(Games.active_at))
+        ).scalar())
+
+        # Delete inactive games
+        games = session.execute(
+            delete(Games)
+            .where(Games.active_at <= cutoff)
+        )
+
+        # Now delete lobbies with no games
+        session.execute(
+            delete(Lobbies).where(
+                ~Lobbies.games.any(),                 # no gamess exist
+                ~Lobbies.name.in_(PROTECTED_LOBBIES)  # not protected
+            )
+        )
+
+        session.commit()
+
+        return stats
+
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # =====GAME FUNCTIONS=====
@@ -1004,9 +1435,6 @@ def set_question_to_game(question, lobbyAlias):
         setattr(game, "current_question_id", question.get("id"))
 
         session.commit()
-
-        print("UPDATING GAME with new question", question.get("id"))
-
 
         return {'message': 'set_question_to_game(): success', "code": 200}
     except Exception as e:
