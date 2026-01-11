@@ -84,9 +84,9 @@ const SidebarLayout = ({ children, style, isLoading }) => {
         <View style={styles.root}>
             {/* Background Layer */}
             <View style={styles.bg} >                
-            <Video
+                <Video
                     source={{uri: "/videos/Earth.mp4"}}
-                    style={[StyleSheet.absoluteFill, { borderWidth: 3, borderColor: "red" }]}
+                    style={[StyleSheet.absoluteFill]}
                     muted
                     repeat
                     resizeMode="cover"
