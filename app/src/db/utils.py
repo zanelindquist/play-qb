@@ -32,7 +32,7 @@ ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
 
 # Creating a lobby
-MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause", "public", "creator_id"]
+MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "public", "creator_id"]
 CATEGORIES = [
     "everything",
     "science",
@@ -712,8 +712,6 @@ def get_users_by_query(query):
 def get_lobbies_by_query(query: str, user_id: int = None, public: bool = False) -> list:
     session = get_session()
 
-    print("LOBBIES BY QUERY", user_id, public)
-
     if not query:
         return []
 
@@ -1003,7 +1001,7 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
         columns = {}
 
         for column in MUTATABLE_RULES:
-            if settings.get(column):
+            if settings.get(column) is not None:
                 # Translate the categories to its number code
                 # TODO: Handle custom percentages for categories
                 if settings.get("category"):
@@ -1011,7 +1009,7 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
                 setattr(lobby, column, settings[column])
         
         session.commit()
-
+        
         lobby_data = to_dict_safe(lobby)
 
         return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}

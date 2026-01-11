@@ -79,7 +79,7 @@ const GAMEMODES = [
     },
 ];
 
-const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]
 
 export default function LobbyScreen() {
     const router = useRouter();

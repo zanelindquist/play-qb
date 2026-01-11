@@ -48,7 +48,7 @@ const CATEGORIES = [
     "custom",
 ];
 
-const MUTATABLE_RULES = ["name", "public", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skips", "allow_question_pause"]
+const MUTATABLE_RULES = ["name", "public", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]
 
 
 
