@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
+from time import timezone
 
 class Games(Base, CreatedAtColumn):
     __tablename__ = 'games'
@@ -12,6 +13,7 @@ class Games(Base, CreatedAtColumn):
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     active = Column(Boolean, default=True)
+    active_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     
     question_number = Column(Integer, default=0)
     game_mode = Column(Integer, default=1)
