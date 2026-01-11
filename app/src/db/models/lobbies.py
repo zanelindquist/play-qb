@@ -14,6 +14,7 @@ class Lobbies(Base, CreatedAtColumn):
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     name = Column(String(40), default="playqb")
+    public = Column(Boolean, default=False)
     total_games = Column(Integer, default=0)
     level = Column(Integer, default=0)
     category = Column(Integer, default=0)

@@ -445,12 +445,14 @@ def on_search_users(data):
     user_id = request.environ["user_id"]
     lobby = request.environ["prelobby"]
 
+    user = get_user_by_email(user_id)
+
     query = data.get("query")
     if not query:
-        emit("lobbies_found", {"users": []})
+        emit("lobbies_found", {"lobbies": []})
         return
 
-    lobbies = get_lobbies_by_query(query)
+    lobbies = get_lobbies_by_query(query, user_id=user.get("id"), public=True)
 
     emit("lobbies_found", {"lobbies": lobbies})
 

@@ -17,7 +17,6 @@ const readyCallbacksStore = {
 };
 
 export function useSocket(namespace, lobbyAlias) {
-    console.log(socketInstances)
     const socketRef = useRef(null);
     const listenersRef = useRef(new Map());
     const { showAlert } = useAlert();
