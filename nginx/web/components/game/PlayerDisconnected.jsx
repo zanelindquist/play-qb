@@ -9,16 +9,16 @@ import theme from "../../assets/themes/theme";
 
 // TODO: Hover for stat tooltip
 
-export default function PlayerJoined ({ style, event }) {
+export default function PlayerDisconnected ({ style, event }) {
 
     return (
         <View style={[styles.container, style]}>
             <Icon
-                source={"account-plus"}
+                source={"account-minus"}
                 color={theme.primary}
                 size={20}
             />
-            <HelperText style={styles.name}>{event.name}  joined the game!</HelperText>
+            <HelperText style={styles.name}>{event.firstname} {event.lastname} left the game</HelperText>
         </View>
     )
 }

@@ -1,27 +1,96 @@
 import React from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { Text } from "react-native-paper";
+import { HelperText, Text } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
+import GlassyView from "../custom/GlassyView";
 import PlayerLine from "./PlayerLine";
+import theme from "../../assets/themes/theme";
 
 export default function PlayerScores ({
-    players, style
+    teams,
+    gameMode="solos",
+    style
 }) {
-
-    return (
-        <GlassyButton style={[styles.container, style]}>
+    // We need to handle the different layouts of teams
+    if (gameMode === "solos") return (
+        <GlassyView style={[style, styles.container]}>
         {
-            players.map((p, i) => 
-                <PlayerLine key={i} player={p}/>
+            Object.entries(teams).map(([teamHash, team], teamIndex) => 
+                <PlayerLine player={team} key={teamIndex}/>
             )
         }
-        </GlassyButton>
+        </GlassyView >
+    )
+
+    // Duos/trios/squads is the default fallback mode
+    return (
+        <GlassyView style={[style, styles.verticalTeamsContainer]}>
+        {
+            Object.entries(teams).sort(([, aTeam], [, bTeam]) => bTeam.score - aTeam.score).map(([teamHash, team], teamIndex) => 
+                <View style={styles.team}>
+                    <View style={[styles.teamTitle, {backgroundColor: team.color}, teamIndex == 0 && {paddingTop: 10}]}>
+                        <Text style={[styles.teamName]}>{team.name}</Text>
+                        <View style={[styles.circle, {backgroundColor: theme.surface}]}>
+                            <Text style={styles.score}>{team.score}</Text>
+                        </View>
+                    </View>
+                    {
+                        Object.entries(team.members).map(([playerHash, player], playerIndex) => 
+                            <PlayerLine player={{name: player.player?.firstname + " " + player.player?.lastname, score: player.points, color: "transparent"}} style={styles.playerLine} key={playerIndex}/>
+                        )
+                    }
+                </View>
+            )
+        }
+        </GlassyView >
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: "column"
-    }
+        flexDirection: "column",
+        gap: 5,
+    },
+    verticalTeamsContainer: {
+        flexDirection: "column",
+        gap: 5,
+        padding: 0,
+    },
+    fivesTeamsContainer: {
+        flexDirection: "row",
+        padding: 0,
+    },
+    team: {
+        flexDirection: "column",
+        gap: 5,
+        paddingBottom: 10,
+    },
+    teamTitle: {
+        padding: 5,
+        marginBottom: 5,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    circle: {
+        width: "3rem",
+        height: "1.5rem",
+        borderRadius: 999,
+        justifyContent: "center",
+        alignItems: "center"
+    },
+    score: {
+        fontSize: "1.1rem"
+    },
+    teamName: {
+        textAlign: "center",
+        fontSize: "1.2rem",
+        fontWeight: "bold",
+    },
+    playerLine: {
+        paddingHorizontal: 5,
+        paddingLeft: 10
+    },
+
 })
