@@ -67,6 +67,7 @@ const Play = () => {
     
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
+    const rateLimitRef = useRef(null)
 
     // Register keybinds
     useEffect(() => {
@@ -181,8 +182,10 @@ const Play = () => {
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
+                console.log("CHANGED SET", lobby.public)
                 // If we are the one who made these chagnes, return
                 if(myPlayer?.user?.id === lobby?.creator_id) return
+                console.log("Public", lobby.public)
                 setLobby({...lobby})
             })
 
@@ -333,14 +336,23 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        // If there isn't myPlayer, we haven't actually loaded in yet, and this is from the mounting
-        if(!myPlayer) return
-        // console.log("RULES", rules)
-        // We can only change the rules if we are the creator of this lobby
-        if(myPlayer?.user?.id !== lobby?.creator_id) return
-        console.log("RULES", rules)
-        // Race condition on render, fix
-        // send("change_game_settings", {settings: rules})
+        if (!myPlayer) return
+        if (myPlayer?.user?.id !== lobby?.creator_id) return
+
+        if (rateLimitRef.current) {
+            clearTimeout(rateLimitRef.current)
+        }
+
+        rateLimitRef.current = setTimeout(() => {
+            console.log(rules.public)
+            send("change_game_settings", { settings: rules })
+        }, 20)
+
+        return () => {
+            if (rateLimitRef.current) {
+                clearTimeout(rateLimitRef.current)
+            }
+        }
     }
 
     // useEffect(() => {
@@ -367,6 +379,7 @@ const Play = () => {
                                         <Question
                                             question={e}
                                             timestamp={synctimestamp}
+                                            speed={lobby?.speed}
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}
