@@ -9,7 +9,7 @@ import random
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case
+from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
@@ -45,6 +45,10 @@ CATEGORIES = [
     "geography",
     "custom",
 ];
+PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
+
+# Cleaning up database
+LOBBY_DELETE_DAYS = 0
 
 def normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower().strip())
@@ -1009,7 +1013,7 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
                 setattr(lobby, column, settings[column])
         
         session.commit()
-        
+
         lobby_data = to_dict_safe(lobby)
 
         return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
@@ -1077,6 +1081,43 @@ def remove_player_game_scores(game_hash: str, player_hash: str):
 
     except Exception as e:
         session.rollback()
+        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def delete_inactive_lobbies():
+    # TODO: We need to remove the Players table before this probably
+    return;
+    session = get_session()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS)
+
+        print("cutoff:", cutoff)
+        print("min active_at:", session.execute(
+            select(func.min(Games.active_at))
+        ).scalar())
+
+        # Delete inactive games
+        games = session.execute(
+            delete(Games)
+            .where(Games.active_at <= cutoff)
+        )
+
+        # Now delete lobbies with no games
+        session.execute(
+            delete(Lobbies).where(
+                ~Lobbies.games.any(),                 # no gamess exist
+                ~Lobbies.name.in_(PROTECTED_LOBBIES)  # not protected
+            )
+        )
+
+        session.commit()
+
+        return stats
+
+    except Exception as e:
+        session.rollback()
+        print(e)
         return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
