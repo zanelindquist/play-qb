@@ -159,7 +159,7 @@ export default function LobbyScreen() {
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
-                showBanner(`${user.firstname} ${user.lastname} joined party`)
+                showBanner(`${user.username} joined party`)
                 // If we are the new member, we need to update our lobby info
                 if(user.hash === myHash) {
                     setLobbyInfo({...lobby})
@@ -184,7 +184,7 @@ export default function LobbyScreen() {
                 }
 
                 leaveParty(user.hash)
-                showBanner(`${user.firstname} ${user.lastname} left the party`)
+                showBanner(`${user.username} left the party`)
             })
 
             addEventListener("party_member_readied", ({ready_info}) => {

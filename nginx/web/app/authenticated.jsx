@@ -14,7 +14,7 @@ export default function Authenticated() {
 
   return ( 
     <View style={styles.container}>
-        <Logo text={true}/>
+        <Logo text={true} image={true}/>
     </View>
   );
 }

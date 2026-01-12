@@ -110,7 +110,7 @@ def on_join_lobby(data):
         party_hash = create_party(user.get("hash"))
 
     # Team name (if its solos, we want it to be their name)
-    team_name = user.get("firstname") + " " + user.get("lastname") if gamemode == "solos" else None
+    team_name = user.get("username") if gamemode == "solos" else None
     # Don't put partied users on the same team if its solos or the number excedes the mode
     party_member_hashes = sorted(list(parties[party_hash]["members"].keys()))
     party_size = len(party_member_hashes)

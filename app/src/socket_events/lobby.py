@@ -210,7 +210,7 @@ def on_search_friends(data):
     friends = get_friends_by_email(user_id, online=True, party=parties[party_hash])
 
     # Apply the query
-    friends = search_filter(friends, ["firstname", "lastname"], query)
+    friends = search_filter(friends, ["username"], query)
 
     emit("friends_found", {"friends": friends})
 

@@ -86,7 +86,7 @@ const SignUp = () => {
             // If a string did get set as the value, we have an error, so handle it
             else return handleInvalidField(value)
         }
-    }, [password])
+    }, [password, confirmPassword])
 
     // Validate email as we type
     useEffect(() => {
@@ -182,7 +182,7 @@ const SignUp = () => {
             })
             .then(() => {
                 // We are all good to forward the user to the main page
-                router.push("/?tutorial=true")
+                router.replace("/?tutorial=true")
                 showAlert("Account created!")
             })
             .catch((error) => {
@@ -195,17 +195,28 @@ const SignUp = () => {
         setHTVisibleStates(defaultHTStates)
         
         try {
-            const response = await postAuthRoute("/register", {
+            console.log(username)
+            postAuthRoute("/register", {
                 email: email,
                 password: password,
+                username: username,
                 phone_number: phoneNumber || "0",
+            }).then((data) => {
+                const token = data?.access_token; 
+                if (!token) {
+                    console.error("No access_token in response");
+                    return;
+                }
+                saveAccessToken(token);
+                
+                router.replace("/?tutorial=true")
             })
-
-            const accessToken = response.data.access_token
-            saveAccessToken(accessToken)
+            .catch((error) => {
+                console.log(error)
+            })
             
             // Now, lets redirect them to the dashboard page
-            router.push("/")
+            router.replace("/")
         } catch (error) {
             console.log(error)
             // Handle data input errors
@@ -296,7 +307,7 @@ const SignUp = () => {
                     <Text style={[styles.linkText, styles.textShadow]}>
                         Already have an account?
                         <Pressable
-                            onPress={() => router.push("/signin")}>
+                            onPress={() => router.replace("/signin")}>
                             <HelperText
                                 style={styles.linkButton}
                             >Sign in</HelperText>

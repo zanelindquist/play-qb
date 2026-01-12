@@ -73,7 +73,7 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                     if(data.message == "User already exists"){
                         showBanner("Account already exists. Logged in.")
                         // Go straigt to the login page
-                        // router.push("/")
+                        router.replace("/")
                     }
                     
                     // Here we have to make the user set a username
@@ -83,7 +83,7 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                 .catch((error) => {
                     const message = error?.response?.data?.error
                     if(message === "Email does not exist") {
-                        router.push("/signup")
+                        router.replace("/signup")
                         showAlert("Email not found. Please make an account.")
                         return
                     }
@@ -102,12 +102,12 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                         return;
                     }
                     saveAccessToken(token); 
-                    router.push("/"); 
+                    router.replace("/"); 
                 })
                 .catch((error) => {
                     const message = error?.response?.data?.error
                     if(message === "Email does not exist") {
-                        router.push("/signup")
+                        router.replace("/signup")
                         showAlert("Email not found. Please make an account.")
                         return
                     }

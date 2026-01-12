@@ -330,7 +330,7 @@ def create_player(email, lobbyAlias):
                 game_id = game["id"]
 
         player = Players(
-            name=user["firstname"] + " " + user["lastname"],
+            name=user["username"],
             user_id=user["id"],
             lobby_id=lobby["id"],
             current_game_id=game_id
@@ -696,21 +696,18 @@ def get_users_by_query(query):
     users = session.execute(
         select(
             Users.hash,
-            Users.firstname,
-            Users.lastname
+            Users.username
         )
         .where(
             or_(
-                func.concat(Users.firstname, " ", Users.lastname).ilike(f"%{query}%"),
-                Users.firstname.ilike(f"%{query}%"),
-                Users.lastname.ilike(f"%{query}%"),
+                Users.username.ilike(f"%{query}%"),
             )
         )
         .limit(20)
     ).all()
 
     # REL DEP is empty right now
-    return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
+    return [{"hash": user[0], "username": user[1]} for user in users]
 
 def get_lobbies_by_query(query: str, user_id: int = None, public: bool = False) -> list:
     session = get_session()

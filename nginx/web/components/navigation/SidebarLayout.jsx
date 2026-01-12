@@ -80,6 +80,11 @@ const SidebarLayout = ({ children, style, isLoading }) => {
         outputRange: [-300, 0], // Slide drawer from left (-300) to 0
     });
 
+    function handleLogout() {
+        removeAccessToken()
+        router.replace("/signin")
+    }
+
     return (
         <View style={styles.root}>
             {/* Background Layer */}
@@ -122,15 +127,15 @@ const SidebarLayout = ({ children, style, isLoading }) => {
 
                     <View style={styles.rightNav} >
                         <TopNavItem
-                            label="Settings"
-                            onPress={() => {}}
-                            icon="cog"
-                            iconColor={iconColor}
-                        />
-                        <TopNavItem
                             label="Account"
                             onPress={() => {}}
                             icon="account"
+                            iconColor={iconColor}
+                        />
+                        <TopNavItem
+                            label="Logout"
+                            onPress={handleLogout}
+                            icon="logout"
                             iconColor={iconColor}
                         />
                     </View>

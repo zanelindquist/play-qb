@@ -42,7 +42,7 @@ export default function Friend ({ style, friend, onPress = () => {}}) {
                 <View style={styles.circle}>
                     <Icon source={"account-outline"} size={"2rem"} color={theme.onPrimary}/>
                 </View>
-                <HelperText style={styles.name}>{friend.firstname} {friend.lastname}</HelperText>
+                <HelperText style={styles.name}>{friend.username}</HelperText>
             </View>
             <View>
                 <View style={[styles.circle, {backgroundColor: theme.onPrimary}]}>
