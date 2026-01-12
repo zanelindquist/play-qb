@@ -89,8 +89,19 @@ async function postAuthRoute(route, data) {
     return response.data;
 }
 
+async function postProtectedAuthRoute(route, data) {
+    const token = await getAccessToken()
+    if (!token) return handleNoAccessToken()
+
+    try {
+        return await auth.post(route, data, {headers: {Authorization: `Bearer ${token}`}})
+    }catch (error) {
+        throw handleGeneralRequestError(error)
+    }
+}
+
 async function validateEmail(email) {
-    return await auth.post("/email", {email: email})
+    return await auth.post("/email", {email})
 }
 
 async function permissions(org_hash) {
@@ -101,4 +112,4 @@ async function permissions(org_hash) {
 }
 
 
-module.exports = { postAuthRoute, handleServerRequestError, validateEmail, getProtectedRoute, postProtectedRoute, putProtectedRoute, deleteProtectedRoute, handleExpiredAccessToken, permissions }
+module.exports = { postAuthRoute, postProtectedAuthRoute, handleServerRequestError, validateEmail, getProtectedRoute, postProtectedRoute, putProtectedRoute, deleteProtectedRoute, handleExpiredAccessToken, permissions }

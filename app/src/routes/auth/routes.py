@@ -13,7 +13,7 @@ import requests
 
 bcrypt = Bcrypt()
 
-from ...db.utils import create_user, validate_email, validate_password, get_user_by_email
+from ...db.utils import *
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -81,7 +81,8 @@ def google_auth_login():
         info = id_token.verify_oauth2_token(
             id_token_str, 
             google_requests.Request(), 
-            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
         )
 
         data = {
@@ -142,39 +143,92 @@ def register():
 
 @bp.route("/google_auth_register", methods=["POST"])
 def google_auth_register():
-    token = request.json.get("token")
+    code = request.json.get("code")
+    redirect_uri = request.json.get("redirect_uri")
 
-    if not token:
-        return jsonify({"error": "No access token provided"}), 400
-
-    # Verify google token
-    info = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
-    data = {
-        "email": info["email"],
-        "name": info["name"],
-        "google_id": info["sub"]
-    }
-
-    print(data)
-
-    email = data.get("email")
-
-    # NO PASSWORD BECAUSE WE ARE USING GOOGLE
-    data["password"] = ""
-
-    # Create the user using the data we received
-    result = create_user(data)
-
-    code = result["code"]
-    del result["code"]
-
-    if result.get("error"):
-        return jsonify(result), code
+    if not code:
+        return jsonify({"error": "No authorization code provided"}), 400
     
-    result["access_token"] = create_access_token(identity=str(email))
+    if not redirect_uri:
+        return jsonify({"error": "No redirect URI provided"}), 400
 
-    # Process the data or respond
-    return jsonify(result), code
+    try:
+        # Exchange authorization code for tokens
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code"
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        token_response.raise_for_status()
+        tokens = token_response.json()
+        
+        # Verify the ID token
+        id_token_str = tokens.get("id_token")
+        if not id_token_str:
+            return jsonify({"error": "No ID token in response"}), 400
+            
+        info = id_token.verify_oauth2_token(
+            id_token_str, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
+        )
+
+        data = {
+            "email": info["email"],
+            "name": info["name"],
+            "google_id": info["sub"]
+        }
+
+        email = data.get("email")
+        user = get_user_by_email(email, gentle=False)
+
+        if user is not None:
+            # If the user exists, just log them in, but tell them the user exists
+            access_token = create_access_token(identity=str(email))
+            return jsonify({"access_token": access_token, "message": "User already exists"}), 200
+        
+        result = create_user({
+            "email": email,
+            "password": None, # NO PASSWORD BECAUSE WE ARE USING GOOGLE
+            "username": data.get("name")
+        })
+
+        code = result["code"]
+        del result["code"]
+
+        if result.get("error"):
+            return jsonify(result), code
+
+        # Now that the user is created, log them in, we log them in
+        access_token = create_access_token(identity=str(email))
+        
+        # Optionally store refresh_token for later use
+        # refresh_token = tokens.get("refresh_token")
+        
+        return jsonify({"access_token": access_token, "email": email, "name": data.get("name")}), 200
+        
+    except Exception as e:
+        print(f"Error during Google OAuth: {str(e)}")
+        return jsonify({"error": "Failed to authenticate with Google"}), 400
+
+@bp.route("/google_set_username", methods=["POST"])
+@jwt_required()
+def google_set_username():
+    username = request.json.get("username")
+    email = get_jwt_identity()
+
+    result = edit_user(email, {"username": username})
+
+    if result.get("code") >= 400:
+        return jsonify(result), result.get("code")
+    
+    return jsonify(), 200
 
 
 @bp.route("/email", methods=["POST"])

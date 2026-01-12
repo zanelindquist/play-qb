@@ -45,8 +45,6 @@ export default function SignInScreen() {
     const isMobile = width < 680;
 
     useEffect(() => {
-
-        return
         // On loading we want to see if we have an access token so we can log in
         getAccessToken()
         .then((token) => {

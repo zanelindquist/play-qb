@@ -1,6 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -19,48 +19,99 @@ import Video from 'react-native-video';
 
 import theme from '../../assets/themes/theme.js';
 import { hashPassword, saveAccessToken } from "../../utils/encryption.js"
-import { postAuthRoute, validateEmail , handleExpiredAccessToken } from "../../utils/requests.jsx"
+import { postAuthRoute, postProtectedAuthRoute, validateEmail , handleExpiredAccessToken } from "../../utils/requests.jsx"
 import GlassyView from '../../components/custom/GlassyView.jsx';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
+import { useAlert } from '../../utils/alerts.jsx';
 
 const { width } = Dimensions.get('window');
 
 
 const SignUp = () => {
-    const {promptAsync, disabled} = useGoogleAuth(true)
-    
+    const {showAlert} = useAlert()
 
-    const [email, setEmail] = React.useState("");
+    const {promptAsync, disabled} = useGoogleAuth(true, handleAccountCreation)
+    const [createWithGoogle, setCreateWithGoogle] = useState(false)
+
+    const [email, setEmail] = useState("");
+    const [emailDebounce, setEmailDebounce] = useState(null)
 
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
     const [secureTextEntry, setSecureTextEntry] = useState(true);
 
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const [username, setUsername] = useState("")
+    const [phoneNumber, setPhoneNumber] = useState("");
 
-    const [inputDate, setInputDate] = React.useState(undefined)
-
-    const [firstname, setFirstname] = React.useState("")
-    const [lastname, setLastname] = React.useState("")
-    const [age, setAge] = React.useState(18)
-
-    const [visible, setVisible] = useState(false);
-    const [selectedGender, setSelectedGender] = useState('');
 
     // Helper text visibility
-    const [HTVisibleStates, setHTVisibleStates] = useState({
-        email: false, password: false, phone: false, firstname: false, lastname: false, birthday: false
-    })
+    const defaultHTStates = { email: false, password: false, phone: false, username: false }
+    const [HTVisibleStates, setHTVisibleStates] = useState(defaultHTStates)
 
 
     // State to manage phases
     const [phase, setPhase] = useState(1);
-    const openMenu = () => setVisible(true);
-    const closeMenu = () => setVisible(false);
-    const handleSelect = (gender) => {
-        setSelectedGender(gender);
-        closeMenu();
-    };
+
+
+    // Validate password as we type
+    useEffect(() => {
+        setHTVisibleStates((prev) => {
+            return {
+                ...prev,
+                password: false
+            }
+        })
+
+        if(!password) return
+
+        
+        // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
+        setHTVisibleStates(defaultHTStates)
+        // First, make sure the passwords match
+        if(password !== confirmPassword) return handleInvalidField("Password does not match confirm password field")
+        
+        // First ensure password is valid and safe
+        const results = {
+            length: /.{8,20}/.test(password) ? false : "Password must be between 8 and 20 characters",               // Check length
+            lowercase: /[a-z]/.test(password) ? false : "Password must have at least one lowercase letter",              // At least one lowercase
+            uppercase: /[A-Z]/.test(password) ? false : "Password must have at least one uppercase letter",              // At least one uppercase
+            digit: /\d/.test(password) ? false : "Password must contain at least one digit",                     // At least one digit
+            special: /[@$!%*?&]/.test(password) ? false : "Password must have at least one special character",            // At least one special character                             // Overall validity
+        };
+        
+        // Loop through each condition and handle the error for it, if there is one
+        for (let [key, value] of Object.entries(results)) {
+            // If the value is false, then we can continue
+            if (!value) continue
+            // If a string did get set as the value, we have an error, so handle it
+            else return handleInvalidField(value)
+        }
+    }, [password])
+
+    // Validate email as we type
+    useEffect(() => {
+        setHTVisibleStates((prev) => {
+            return {
+                ...prev,
+                email: false
+            }
+        })
+
+        if(!email) return
+        
+        if(emailDebounce) clearTimeout(emailDebounce)
+        setEmailDebounce(
+            setTimeout(() => {
+                validateEmail(email)
+                .catch((error) => {
+                    // If the email is invalid, set the helper text as the error below the field
+                    if(error?.response && error.response.data.error) {
+                        handleInvalidField(error.response.data.error)
+                    }
+                })
+            }, 500)
+        )
+    }, [email])
 
     // Handle invalid field inputs with helper text
     function handleInvalidField(error) {
@@ -81,47 +132,28 @@ const SignUp = () => {
     const translateX = useRef(new Animated.Value(width/2)).current;
 
     // Slide animation function
-    const goToNextPhase = async () => {
-        // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
-        setHTVisibleStates({
-            email: false, pasword: false, phone: false, firstname: false, lastname: false, birthday: false
-        })
-        // First, make sure the passwords match
-        if(password !== confirmPassword) return handleInvalidField("Password does not match confirm password field")
-        
-        // First ensure password is valid and safe
-        const results = {
-            length: /.{8,20}/.test(password) ? false : "Password must be between 8 and 20 characters",               // Check length
-            lowercase: /[a-z]/.test(password) ? false : "Password must have at least one lowercase letter",              // At least one lowercase
-            uppercase: /[A-Z]/.test(password) ? false : "Password must have at least one uppercase letter",              // At least one uppercase
-            digit: /\d/.test(password) ? false : "Password must contain at least one digit",                     // At least one digit
-            special: /[@$!%*?&]/.test(password) ? false : "Password must have at least one special character",            // At least one special character                             // Overall validity
-        };
-        
-        // Loop through each condition and handle the error for it, if there is one
-        for (let [key, value] of Object.entries(results)) {
-            // If the value is false, then we can continue
-            if (!value) continue
-            // If a string did get set as the value, we have an error, so handle it
-            else return handleInvalidField(value)
-        }
-
-        // First make sure there are no problems with the data inputs on this page before we go to the next
-        try{
-            const response = await validateEmail(email)
-
-            Animated.timing(translateX, {
-                toValue: -width/2, // Slide left by one screen width
-                duration: 250,
-                useNativeDriver: true,
-            }).start(() => setPhase(2));
-        } catch (error) {
-            console.log(error)
-            // If the email is invalid, set the helper text as the error below the field
-            if(error?.response && error.response.data.error) {
-                handleInvalidField(error.response.data.error)
+    function goToNextPhase(ignoreErrors) {
+        // Check for errors
+        if(ignoreErrors !== true) {
+            if(password && email) {
+                if(Object.values(HTVisibleStates).some(v => v !== false)) return
+            } else {
+                setHTVisibleStates((prev) => {
+                    return {
+                        ...prev,
+                        email: "Required*",
+                        password: "Required*"
+                    }
+                })
+                return
             }
         }
+
+        Animated.timing(translateX, {
+            toValue: -width/2, // Slide left by one screen width
+            duration: 250,
+            useNativeDriver: true,
+        }).start(() => setPhase(2));
     };
 
     const goToPreviousPhase = () => {
@@ -133,28 +165,47 @@ const SignUp = () => {
     };
 
     const submit = async () => {
-        // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
-        setHTVisibleStates({
-            email: false, pasword: false, phone: false, firstname: false, lastname: false, birthday: false
-        })
+        if(!username) {
+            setHTVisibleStates((prev) => {
+                return {
+                    ...prev,
+                    username: "Required*"
+                }
+            })
+            return
+        }
+        // If we are creating with google, then we just need to update the username and or password
+        if(createWithGoogle) {
+            postProtectedAuthRoute("/google_set_username", {
+                username: username,
+                phone_number: phoneNumber || "0"
+            })
+            .then(() => {
+                // We are all good to forward the user to the main page
+                router.push("/?tutorial=true")
+                showAlert("Account created!")
+            })
+            .catch((error) => {
+                showAlert("There was an error while setting your username:" + error)
+            })
 
-        const birthday = new Date(inputDate)
+            return
+        }
+        // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
+        setHTVisibleStates(defaultHTStates)
         
         try {
             const response = await postAuthRoute("/register", {
                 email: email,
                 password: password,
-                firstname: firstname,
-                lastname: lastname,
-                phone_number: phoneNumber,
-                birthday: `${birthday.getMonth() + 1}/${birthday.getDate()}/${birthday.getFullYear()}`
+                phone_number: phoneNumber || "0",
             })
 
             const accessToken = response.data.access_token
             saveAccessToken(accessToken)
             
             // Now, lets redirect them to the dashboard page
-            router.replace("/")
+            router.push("/")
         } catch (error) {
             console.log(error)
             // Handle data input errors
@@ -162,6 +213,15 @@ const SignUp = () => {
                 handleInvalidField(error.response.data.error)
             }
         }
+    }
+
+    function handleAccountCreation () {
+        goToNextPhase(true)
+    }
+
+    function handleCreateWithGoogle() {
+        setCreateWithGoogle(true)
+        promptAsync()
     }
 
     return (
@@ -183,20 +243,20 @@ const SignUp = () => {
                 ]}
             >
                 <GlassyView style={styles.phaseContainer}>
-                    <HelperText style={styles.header}>Create Account</HelperText>
+                    <HelperText style={[styles.header, styles.textShadow]}>Create Account</HelperText>
                     <TextInput
                         style={styles.input}
-                        label="Email"
+                        label="Email*"
                         value={email}
                         mode='outlined'
                         onChangeText={text => setEmail(text)}
                     />
-                    <HelperText type="error" visible={!!HTVisibleStates.email}>
+                    <HelperText style={styles.error} visible={!!HTVisibleStates.email}>
                         {HTVisibleStates.email}
                     </HelperText>
                     <TextInput
                         style={styles.input}
-                        label="Password"
+                        label="Password*"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry={secureTextEntry}
@@ -208,12 +268,12 @@ const SignUp = () => {
                         />
                         }
                     />
-                    <HelperText type="error" visible={!!HTVisibleStates.password}>
+                    <HelperText style={styles.error} visible={!!HTVisibleStates.password}>
                         {HTVisibleStates.password}
                     </HelperText>
                     <TextInput
                         style={styles.input}
-                        label="Confirm password"
+                        label="Confirm password*"
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry={secureTextEntry}
@@ -247,7 +307,7 @@ const SignUp = () => {
                         mode="outlined"
                         contentStyle={styles.googleButton}
                         rippleColor={theme.primary}
-                        onPress={() => promptAsync()}
+                        onPress={handleCreateWithGoogle}
                         disabled={disabled}
                     >
                         <Image
@@ -260,75 +320,29 @@ const SignUp = () => {
 
                 {/* Phase 2 */}
                 <GlassyView style={styles.phaseContainer}>
-                    <HelperText style={styles.header}>Create Account</HelperText>
+                    <HelperText style={[styles.header, styles.textShadow]}>Select A Username</HelperText>
                     <TextInput
+                        style={styles.input}
+                        label="Username*"
+                        value={username}
+                        mode='outlined'
+                        onChangeText={setUsername}
+                    />
+                    <HelperText style={styles.error} visible={!!HTVisibleStates.username}>
+                        {HTVisibleStates.username}
+                    </HelperText>
+                    {/* <TextInput
                         style={styles.input}
                         label="Phone number"
                         value={phoneNumber}
-                        onChangeText={text => setPhoneNumber(text)}
+                        onChangeText={setPhoneNumber}
                         mode='outlined'
                         keyboardType="numeric"
                     />
-                    <HelperText type="error" visible={!!HTVisibleStates.phone}>
+                    <HelperText style={styles.error} visible={!!HTVisibleStates.phone}>
                         {HTVisibleStates.phone}
-                    </HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Firstname"
-                        value={firstname}
-                        mode='outlined'
-                        onChangeText={text => setFirstname(text)}
-                    />
-                    <HelperText type="error" visible={!!HTVisibleStates.firstname}>
-                        {HTVisibleStates.firstname}
-                    </HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Lastname"
-                        value={lastname}
-                        mode='outlined'
-                        onChangeText={text => setLastname(text)}
-                    />
-                    <HelperText type="error" visible={!!HTVisibleStates.lastname}>
-                        {HTVisibleStates.lastname}
-                    </HelperText>
-                    <SafeAreaProvider>
-                        <DatePickerInput
-                        mode='outlined'
-                        locale="en"
-                        label="Birthdate"
-                        value={inputDate}
-                        onChange={(d) => setInputDate(d)}
-                        inputMode="start"
-                        style={styles.input}
-                        />
-                    </SafeAreaProvider>
-                    <HelperText type="error" visible={!!HTVisibleStates.birthday}>
-                        {HTVisibleStates.birthday}
-                    </HelperText>
-                    <Menu
-                        visible={visible}
-                        onDismiss={closeMenu}
-                        anchor={
-                            <Button
-                                mode="outlined"
-                                onPress={openMenu}
-                                style={styles.genderButton}
-                                contentStyle={styles.buttonContent}
-                                labelStyle={{ color: theme.onSurface }}
-                                
-                            >
-                                {selectedGender || 'Select Gender'}
-                            </Button>
-                        }
-                    >
-                        <Menu.Item onPress={() => handleSelect('Male')} title="Male" />
-                        <Menu.Item onPress={() => handleSelect('Female')} title="Female" />
-                        <Menu.Item
-                        onPress={() => handleSelect('Prefer not to say')}
-                        title="Prefer not to say"
-                        />
-                    </Menu>
+                    </HelperText> */}
+                
 
                     <Divider style={styles.divider}/>
                     
@@ -394,6 +408,14 @@ const styles = StyleSheet.create({
         minWidth: inputMinWidth,
         maxWidth: inputMaxWidth,
         width: inputWidth,
+    },
+    error: {
+        fontSize: 14,
+        alignSelf: "baseline",
+        color: "#FF2C2C",
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     textShadow: {
         textShadowColor: "rgba(0,0,0,0.8)",

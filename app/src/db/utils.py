@@ -233,21 +233,20 @@ def search_filter(items, keys, query):
 
 # CREATING RESOURCES
 
-def create_user(client_data, rel_depths=None, depth=1):
-    global sanitize_data
-    sanitized_data = sanitize_data(data=client_data)
-    try:
-        sanitized_data = validate_data(sanitized_data)
-    except Exception as e:
-        print(e)
-        return {'message': 'create_user(): failure', "code": 400, "error": f"{e}"}
+def create_user(data):
 
-    new_user = Users(
-        **sanitized_data
-    )
+    try:
+        data["email"] = validate_email(data.get("email"))
+        data["password"] = validate_password_hash(data.get("password"))
+    except Exception as e:
+        return {'message': 'create_user(): failure', "code": 400, "error": e}
 
     try:
         session = get_session()
+
+        new_user = Users(
+            **data
+        )
 
         session.add(new_user)
         session.commit()
@@ -1023,6 +1022,32 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
     finally:
         session.commit()
 
+def edit_user(email:str, data: dict):
+    try:
+        session = get_session()
+
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        if not user:
+            return {"message": "edit_user(): failure", "error": "User not found", "code": 404}
+        
+        for key, value in data.items():
+            setattr(user, key, value)
+
+        session.commit()
+
+        return {"message": "edit_user(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        return {"message": "edit_user(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
+
 # DELETING RESOURCES
 
 def reset_game_scores(game_hash: str) -> bool:
@@ -1473,12 +1498,16 @@ def validate_password(password):
     return password
 
 def validate_password_hash(password):
+    # They might not have a password if they log in with Google
+    if password is None:
+        return ""
+
     bcrypt_regex = r"^\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}$"
 
     if bool(re.match(bcrypt_regex, password)):
         return password
     else:
-        raise ValueError("Password is an invalide hash.")
+        raise ValueError("Password is an invalid hash.")
 
 def validate_email(email):
     # Simple regex to validate and sanitize email format
@@ -1494,46 +1523,7 @@ def validate_email(email):
     
     return email
 
-def validate_and_convert_date(date_str):
-    try:
-        # Validate and parse the date string in MM/DD/YYYY format
-        valid_date = datetime.strptime(date_str, '%m/%d/%Y').date()
-        print(valid_date)
-        return valid_date
-    except ValueError:
-        # If date parsing fails, raise an error
-        raise ValueError("Date is of invalid format. Please use MM/DD/YYYY.")
-
-def validate_phone_number(phone_number):
-    if isinstance(phone_number, str):
-        cleaned_string = re.sub(r"[()\-\s]", "", phone_number)
-        # Regex for a general phone number format
-        if len(cleaned_string) < 10:
-            raise ValueError("Phone is of invalid format.")
-        else:
-            return cleaned_string
-    else:
-        raise ValueError("Phone is of invalid format. Must be of type str.")
-
-# Maybe add an explicit filter to these in the future ;)
-def validate_firstname(firstname):
-    if len(firstname) > 15 or len(firstname) == 0:
-        raise ValueError("Firstname must not exceed 15 characters.")
-    else:
-        return firstname
-    
-def validate_lastname(lastname):
-    if len(lastname) > 25 or len(lastname) == 0:
-        raise ValueError("Lastname must not exceed 25 characters.")
-    else:
-        return lastname
-
 validation_list = {
     "email": validate_email,
     "password": validate_password_hash,
-    "date": validate_and_convert_date,
-    "birthday": validate_and_convert_date,
-    "phone_number": validate_phone_number,
-    "firstname": validate_firstname,
-    "lastname": validate_lastname
 }
