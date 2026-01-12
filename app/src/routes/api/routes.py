@@ -25,17 +25,17 @@ def random_question():
 
 @bp.route("/identity")
 @jwt_required()
-def connection():
+def identity():
     email = get_jwt_identity()
     print(email)
     return email, 200
 
-# GAME ROUTES
-
-@bp.route("/check_lobby_status/<hash>", methods=[])
+@bp.route("/account")
 @jwt_required()
-def check_lobby_status(hash):
-    # Query database for the lobby with this hash
+def account():
+    email = get_jwt_identity()
 
-    # Return the lobby
-    return 200
+    user = get_user_by_email(email)
+
+    print(email)
+    return jsonify(user), 200

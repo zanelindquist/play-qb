@@ -19,7 +19,8 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     # Remove this later-- its just so we can use a different localhost port in development
-    CORS(app, resources={r"/*": {"origins": "https://localhost"}}, origins=["https://app.localhost"])
+    # TODO: Remove 8081 because its development
+    CORS(app, resources={r"/*": {"origins": ["http://localhost:8081"]}}) #"https://localhost", "https://app.localhost", 
 
     app.config.from_mapping(
         SECRET_KEY='dev',

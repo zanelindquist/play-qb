@@ -84,13 +84,9 @@ async function deleteProtectedRoute(route) {
 
 
 // ===== AUTH ROUTES =====
-
-async function signUp(data) {
-    return await auth.post("/register", data)
-}
-
-async function signIn(email, password) {
-    return await auth.post("/login", {email: email, password: password})
+async function postAuthRoute(route, data) {
+    const response = await auth.post(route, data);
+    return response.data;
 }
 
 async function validateEmail(email) {
@@ -105,4 +101,4 @@ async function permissions(org_hash) {
 }
 
 
-module.exports = { signUp, handleServerRequestError, signIn, validateEmail, getProtectedRoute, postProtectedRoute, putProtectedRoute, deleteProtectedRoute, handleExpiredAccessToken, permissions }
+module.exports = { postAuthRoute, handleServerRequestError, validateEmail, getProtectedRoute, postProtectedRoute, putProtectedRoute, deleteProtectedRoute, handleExpiredAccessToken, permissions }
