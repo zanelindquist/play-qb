@@ -195,7 +195,11 @@ def on_submit(data): # FinalAnswer
     gamestate = get_game_by_lobby_alias(lobby);
     question = gamestate.get("current_question")
     final_answer = data.get("final_answer")
-    is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
+    is_correct = 0
+    if not question:
+        is_correct = -1
+    else:
+        is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
     # IsCorrect= math.floor(random.random() * 2) - 1
     player = get_player_by_email_and_lobby(user_id, lobby)
 

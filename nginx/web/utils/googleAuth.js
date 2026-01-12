@@ -103,6 +103,7 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                     }
                     saveAccessToken(token); 
                     router.replace("/"); 
+                    showBanner("Logged in!")
                 })
                 .catch((error) => {
                     const message = error?.response?.data?.error
