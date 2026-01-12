@@ -51,7 +51,7 @@ export default function SignInScreen() {
             if(token){
                 getProtectedRoute("/account")
                 .then((response) => {
-                    router.replac("/")
+                    router.replace("/")
                     showAlert("Logged in as " + response.data.user.username + " 🎉")
                 })
                 .catch((error) => {
@@ -82,17 +82,18 @@ export default function SignInScreen() {
             email: false, password: false
         })
 
-        try {
-            const response = await postAuthRoute("/login", {email, password})
-            
-            saveAccessToken(response.data.access_token)
+        postAuthRoute("/login", {email, password})
+        .then((data) => {
+            saveAccessToken(data.access_token)
             // Redirect user to the dashboard page
             router.replace("/")
-        } catch (error) {
+        })
+        .catch((error) => {
             console.log(error)
             if (error.response?.data?.error) handleInvalidField(error.response.data.error)
-                else setHTVisibleStates((prevStates) => ({...prevStates, password: error.response?.data?.error || "An error occurred"}))
-        }
+            else setHTVisibleStates((prevStates) => ({...prevStates, password: error.response?.data?.error || "An error occurred"}))
+        })
+            
     }
 
   return ( 
