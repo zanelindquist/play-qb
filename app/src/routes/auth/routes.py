@@ -8,7 +8,8 @@ from flask_jwt_extended import (
 from flask_bcrypt import Bcrypt
 
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
+import requests
 
 bcrypt = Bcrypt()
 
@@ -17,10 +18,11 @@ from ...db.utils import create_user, validate_email, validate_password, get_user
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # TODO: Put this in an environment variable or something. Do the same for the front end one.
-GOOGLE_CLIENT_ID = "808125844318-mauiibkqggqmpgisg2von6cvtulhkkmh.apps.googleusercontent.com"
+from .secrets import *
 
 @bp.route("/test", methods=["POST"])
 def test():
+    print("TESTTTT")
     package = request.json.get("package")
 
     return {"package": package}, 200
@@ -44,33 +46,68 @@ def login():
         return jsonify({"error": "Password is incorrect"}), 401
 
     # We need to find the password associated with the email
-    
+
 @bp.route("/google_auth_login", methods=["POST"])
 def google_auth_login():
-    token = request.json.get("token")
+    code = request.json.get("code")
+    redirect_uri = request.json.get("redirect_uri")
 
-    # Verify google token
-    info = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
-    data = {
-        "email": info["email"],
-        "name": info["name"],
-        "google_id": info["sub"]
-    }
+    if not code:
+        return jsonify({"error": "No authorization code provided"}), 400
+    
+    if not redirect_uri:
+        return jsonify({"error": "No redirect URI provided"}), 400
 
-    print(data)
+    try:
+        # Exchange authorization code for tokens
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code"
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        token_response.raise_for_status()
+        tokens = token_response.json()
+        
+        # Verify the ID token
+        id_token_str = tokens.get("id_token")
+        if not id_token_str:
+            return jsonify({"error": "No ID token in response"}), 400
+            
+        info = id_token.verify_oauth2_token(
+            id_token_str, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID
+        )
 
-    email = data.get("email")
+        data = {
+            "email": info["email"],
+            "name": info["name"],
+            "google_id": info["sub"]
+        }
 
-    user = get_user_by_email(email, gentle=False)
+        email = data.get("email")
+        user = get_user_by_email(email, gentle=False)
 
-    if user is None:
-        return jsonify({"error": "Email does not exist"}), 400
+        if user is None:
+            return jsonify({"error": "Email does not exist"}), 400
 
-    # If the user exists here, we log them in
-
-    access_token = create_access_token(identity=str(email))
-    return jsonify({"access_token": access_token}), 200
-
+        # If the user exists here, we log them in
+        access_token = create_access_token(identity=str(email))
+        
+        # Optionally store refresh_token for later use
+        # refresh_token = tokens.get("refresh_token")
+        
+        return jsonify({"access_token": access_token}), 200
+        
+    except Exception as e:
+        print(f"Error during Google OAuth: {str(e)}")
+        return jsonify({"error": "Failed to authenticate with Google"}), 400
+    
 @bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
@@ -106,6 +143,9 @@ def register():
 @bp.route("/google_auth_register", methods=["POST"])
 def google_auth_register():
     token = request.json.get("token")
+
+    if not token:
+        return jsonify({"error": "No access token provided"}), 400
 
     # Verify google token
     info = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)

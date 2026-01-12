@@ -17,7 +17,7 @@ import { Button, TextInput, HelperText, Text, useTheme, Divider, Icon, Card, Men
 
 import theme from '../../assets/themes/theme.js';
 import { getAccessToken, saveAccessToken } from "../../utils/encryption.js"
-import { signIn, getProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
+import { postAuthRoute, getProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
 import { useAlert } from '../../utils/alerts.jsx';
 
 import GlassyView from "../../components/custom/GlassyView.jsx"
@@ -28,7 +28,7 @@ const { width, height } = Dimensions.get("window")
 
 export default function SignInScreen() {
     const {showAlert} = useAlert()
-    const {promptAsync, disabled} = useGoogleAuth()
+    const {promptAsync, disabled} = useGoogleAuth(false)
 
     // States
     const [email, setEmail] = React.useState("");
@@ -45,17 +45,19 @@ export default function SignInScreen() {
     const isMobile = width < 680;
 
     useEffect(() => {
+
+        return
         // On loading we want to see if we have an access token so we can log in
         getAccessToken()
         .then((token) => {
             if(token){
                 getProtectedRoute("/account")
                 .then((response) => {
-                    router.replace("/play")
+                    router.push("/")
                     showAlert("Logged in as " + response.data.user.firstname + " " + response.data.user.lastname + " 🎉")
                 })
                 .catch((error) => {
-                    console.log(error)
+
                 })
             }
         })
@@ -83,7 +85,7 @@ export default function SignInScreen() {
         })
 
         try {
-            const response = await signIn(email, password)
+            const response = await postAuthRoute("/login", {email, password})
             
             saveAccessToken(response.data.access_token)
             // Redirect user to the dashboard page
@@ -150,9 +152,10 @@ export default function SignInScreen() {
             <Text style={[styles.linkText, styles.textShadow]}>
                 Don't have an account yet?
                 <Pressable
-                    style={styles.linkButton}
                     onPress={() => router.push("/signup")}>
-                    Sign up
+                    <HelperText
+                        style={styles.linkButton}
+                    >Sign in</HelperText>
                 </Pressable>
             </Text>
 
@@ -225,7 +228,7 @@ const styles = StyleSheet.create({
         display: "inline"
     },
     linkButton: {
-        marginLeft: 10,
+        fontSize: 14,
         color: theme.primary
     },
     dividerBottom: {

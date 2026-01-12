@@ -7,23 +7,28 @@ import {
   Animated,
   StyleSheet,
   Dimensions,
-  Image
+  Image,
+  Pressable
 } from 'react-native';
 
 import { DatePickerInput } from 'react-native-paper-dates';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Button, TextInput, HelperText, Text, useTheme, Divider, Icon, Card, Menu } from 'react-native-paper';
+import Video from 'react-native-video';
 
 import theme from '../../assets/themes/theme.js';
 import { hashPassword, saveAccessToken } from "../../utils/encryption.js"
-import { signUp, validateEmail , handleExpiredAccessToken } from "../../utils/requests.jsx"
+import { postAuthRoute, validateEmail , handleExpiredAccessToken } from "../../utils/requests.jsx"
+import GlassyView from '../../components/custom/GlassyView.jsx';
+import { useGoogleAuth } from '../../utils/googleAuth.js';
 
 const { width } = Dimensions.get('window');
 
 
 const SignUp = () => {
-    const colors = useTheme()
+    const {promptAsync, disabled} = useGoogleAuth(true)
+    
 
     const [email, setEmail] = React.useState("");
 
@@ -136,7 +141,7 @@ const SignUp = () => {
         const birthday = new Date(inputDate)
         
         try {
-            const response = await signUp({
+            const response = await postAuthRoute("/register", {
                 email: email,
                 password: password,
                 firstname: firstname,
@@ -161,15 +166,15 @@ const SignUp = () => {
 
     return (
         <View style={styles.container}>
-            {/*Top logo and text*/}
-            <Image
-                source={require("../../assets/images/steig-black.png")}
-                style={styles.logoImage}
-                resizeMode='contain'
-                >
-            </Image>
-            <HelperText style={styles.header}>Create Account</HelperText>
-            
+            <View style={styles.bg} >                
+                <Video
+                    source={{uri: "/videos/Earth.mp4"}}
+                    style={[StyleSheet.absoluteFill]}
+                    muted
+                    repeat
+                    resizeMode="cover"
+                />
+            </View>
             {/* Lower container where all of the action happens*/}
             <Animated.View
                 style={[
@@ -177,8 +182,8 @@ const SignUp = () => {
                     { transform: [{ translateX }] },
                 ]}
             >
-                {/* Phase 1 */}
-                <View style={styles.phaseContainer}>
+                <GlassyView style={styles.phaseContainer}>
+                    <HelperText style={styles.header}>Create Account</HelperText>
                     <TextInput
                         style={styles.input}
                         label="Email"
@@ -214,30 +219,48 @@ const SignUp = () => {
                         secureTextEntry={secureTextEntry}
                         mode="outlined"
                         right={
-                        <TextInput.Icon
-                            icon={secureTextEntry ? "eye-off" : "eye"}
-                            onPress={() => setSecureTextEntry(!secureTextEntry)}
-                        />
+                            <TextInput.Icon
+                                icon={secureTextEntry ? "eye-off" : "eye"}
+                                onPress={() => setSecureTextEntry(!secureTextEntry)}
+                            />
                         }
                     />
                     <Button
-                            mode="contained"
-                            rippleColor="#FF000020"
-                            onPress={goToNextPhase}
-                            style={styles.nextButton}
-                        >
-                            Next
+                        mode="contained"
+                        rippleColor={theme.primary}
+                        onPress={goToNextPhase}
+                        style={styles.nextButton}
+                    >
+                        Next
                     </Button>
-                    <View style={styles.linkContainer}>
-                        <HelperText >Alreay have an account?</HelperText>
-                        <Link href="https://app.localhost/signin" style={styles.link}>
-                            Sign in
-                        </Link>
-                    </View>
-                </View>
+                    <Text style={[styles.linkText, styles.textShadow]}>
+                        Already have an account?
+                        <Pressable
+                            onPress={() => router.push("/signin")}>
+                            <HelperText
+                                style={styles.linkButton}
+                            >Sign in</HelperText>
+                        </Pressable>
+                    </Text>
+                    <Divider />
+                    <Button
+                        mode="outlined"
+                        contentStyle={styles.googleButton}
+                        rippleColor={theme.primary}
+                        onPress={() => promptAsync()}
+                        disabled={disabled}
+                    >
+                        <Image
+                            source={require("../../assets/images/google_logo.png")}
+                            style={styles.googleIcon}
+                        />
+                        <HelperText style={[styles.googleText, styles.textShadow]}>Create an account with Google</HelperText>
+                    </Button>
+                </GlassyView>
 
                 {/* Phase 2 */}
-                <View style={styles.phaseContainer}>
+                <GlassyView style={styles.phaseContainer}>
+                    <HelperText style={styles.header}>Create Account</HelperText>
                     <TextInput
                         style={styles.input}
                         label="Phone number"
@@ -292,7 +315,7 @@ const SignUp = () => {
                                 onPress={openMenu}
                                 style={styles.genderButton}
                                 contentStyle={styles.buttonContent}
-                                labelStyle={{ color: colors.colors.onSurface }}
+                                labelStyle={{ color: theme.onSurface }}
                                 
                             >
                                 {selectedGender || 'Select Gender'}
@@ -311,7 +334,7 @@ const SignUp = () => {
                     
                     <Button
                             mode="outlined"
-                            rippleColor="#FF000020"
+                            rippleColor={theme.primary}
                             onPress={goToPreviousPhase}
                             style={styles.nextButton}
                         >
@@ -320,13 +343,13 @@ const SignUp = () => {
                     <Divider style={styles.divider}/>
                     <Button
                             mode="contained"
-                            rippleColor="#FF000020"
+                            rippleColor={theme.primary}
                             onPress={submit}
                             style={styles.nextButton}
                         >
                             Create Account
                     </Button>
-                </View>
+                </GlassyView>
             </Animated.View>
         </View>
   );
@@ -339,22 +362,24 @@ const inputMinWidth = 350
 const styles = StyleSheet.create({
     container: {
         height: "100vh",
+        width: "100vw",
         alignItems: 'center',
         justifyContent: "center",
         backgroundColor: theme.background
     },
+    bg: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "black",
+    },
     animatedContainer: {
         flexDirection: 'row',
+        justifyContent: "space-around",
+        alignItems: "center",
         width: '200vw', // Twice the screen width
     },
-    logoImage: {
-        position: "relative",
-        bottom: 0,
-        maxHeight: 150,
-    },
     phaseContainer: {
-        flex: 2,
-        width: "50%",
+        flexDirection: "column",
+        gap: 10,
         alignItems: "center",
 
         padding: "20px",
@@ -369,18 +394,37 @@ const styles = StyleSheet.create({
         minWidth: inputMinWidth,
         maxWidth: inputMaxWidth,
         width: inputWidth,
-        paddingHorizontal: 10,
-        marginBottom: 15,
     },
-    linkContainer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        margin: 20,
-        fontSize: "1rem"
+    textShadow: {
+        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    linkText: {
+        marginTop: 10
+    },
+    linkButton: {
+        fontSize: 14,
+        color: theme.primary
     },
     link: {
         color: theme.primary,
+    },
+    googleButton: {
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 10,
+        maxWidth: inputMaxWidth,
+        minWidth: inputMinWidth,
+        width: inputWidth,
+    },
+    googleIcon: {
+        height: 16,
+        width: 16,
+    },
+    googleText: {
+        fontSize: "0.8rem"
     },
     genderButton:{
         minWidth: inputMinWidth,
@@ -391,7 +435,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 4,
         justifyContent: 'center',
-        paddingVertical: 5, // Mimics TextInput paddi
+        paddingVertical: 5, // Mimics TextInput padding
     },
     buttonContent: {
         justifyContent: 'flex-start', // Align text to the left
@@ -402,10 +446,6 @@ const styles = StyleSheet.create({
         minWidth: inputMinWidth,
         width: inputWidth,
     },
-    divider: {
-        marginTop: "10px",
-        marginBottom: "10px",
-    }
 });
 
 export default SignUp;
