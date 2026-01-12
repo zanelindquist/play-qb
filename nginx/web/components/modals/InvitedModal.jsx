@@ -16,12 +16,10 @@ import AddFriend from './AddFriendModal';
 
 
 export default function InvitedModal({acceptInvite, user, partyHash, close}) {
-
-
     return (
         <View style={styles.container}>
             <View style={styles.dialogueTitle}>
-                <Title style={styles.createDTitle}>Accept Invite from {user.firstname} {user.lastname}</Title>
+                <Title style={styles.createDTitle}>Accept Invite from {user.username}</Title>
                 <View style={styles.rightDialogue}>
                     <GlassyButton
                         onPress={() => {

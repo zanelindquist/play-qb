@@ -18,7 +18,7 @@ export default function PlayerDisconnected ({ style, event }) {
                 color={theme.primary}
                 size={20}
             />
-            <HelperText style={styles.name}>{event.firstname} {event.lastname} left the game</HelperText>
+            <HelperText style={styles.name}>{event.username} left the game</HelperText>
         </View>
     )
 }

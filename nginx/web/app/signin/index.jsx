@@ -51,8 +51,8 @@ export default function SignInScreen() {
             if(token){
                 getProtectedRoute("/account")
                 .then((response) => {
-                    router.push("/")
-                    showAlert("Logged in as " + response.data.user.firstname + " " + response.data.user.lastname + " 🎉")
+                    router.replac("/")
+                    showAlert("Logged in as " + response.data.user.username + " 🎉")
                 })
                 .catch((error) => {
 
@@ -150,10 +150,10 @@ export default function SignInScreen() {
             <Text style={[styles.linkText, styles.textShadow]}>
                 Don't have an account yet?
                 <Pressable
-                    onPress={() => router.push("/signup")}>
+                    onPress={() => router.replace("/signup")}>
                     <HelperText
                         style={styles.linkButton}
-                    >Sign in</HelperText>
+                    >Sign up</HelperText>
                 </Pressable>
             </Text>
 

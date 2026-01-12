@@ -13,8 +13,6 @@ class Users(Base, CreatedAtColumn):
     email = Column(String(50), nullable=False, unique=True)
     password = Column(String(60), nullable=True)
     username = Column(String(20), nullable=False)
-    firstname = Column(String(15), nullable=True)
-    lastname = Column(String(15), nullable=True)
     phone_number = Column(String(14), nullable=True)
     birthday = Column(Date, nullable=False)
     account_disabled = Column(Boolean, nullable=False, default=False)
@@ -38,4 +36,4 @@ class Users(Base, CreatedAtColumn):
         return accepted
 
     def __repr__(self):
-        return f"<User(id={self.id}, name={self.lastname}, {self.firstname}, email={self.email})>"
+        return f"<User(id={self.id}, name={self.username}, email={self.email})>"

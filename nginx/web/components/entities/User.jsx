@@ -42,7 +42,7 @@ export default function User ({ style, user, onPress = () => {}}) {
                 <View style={styles.circle}>
                     <Icon source={"account-outline"} size={"2rem"} color={theme.onPrimary}/>
                 </View>
-                <HelperText style={styles.name}>{user.firstname} {user.lastname}</HelperText>
+                <HelperText style={styles.name}>{user.username}</HelperText>
             </View>
             <View>
                 <View style={[styles.circle, {backgroundColor: theme.onPrimary}]}>

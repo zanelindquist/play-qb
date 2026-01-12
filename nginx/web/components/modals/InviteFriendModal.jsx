@@ -23,7 +23,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
     const [loading, setLoading] = useState(false)
     const [timeoutId, setTimeoutId] = useState(null)
 
-    const [friends, setFriends] = useState([]) //{firstname: "Zane", lastname: "Lindquist"}
+    const [friends, setFriends] = useState([]) //{username: "f4de17"}
 
     function handleTyping(value) {
         // Cancel timeout if it hasn't already gone off
@@ -81,7 +81,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
 
             </View>
             {
-                friends ?
+                friends.length > 0 ?
                 friends.map((friend, i) => 
                     <Friend
                         friend={friend}
@@ -90,7 +90,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 )
                 :
                 <View style={styles.noFriendsContainer}>
-                    <HelperText style={styles.noFriendsText}>You have no friends yet</HelperText>
+                    <HelperText style={styles.noFriendsText}>You have no friends who are currently online</HelperText>
                     <GlassyButton
                         style={styles.addFriendsButton}
                         onPress={openAddFriendModal}

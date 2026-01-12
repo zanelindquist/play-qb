@@ -117,16 +117,17 @@ def register():
 
     # The front end should validate our password, but its just good to do it twice bc Im using postman
     try:
-        validate_password(password=password)
+        validate_password(password)
+        validate_email(email)
     except ValueError as e:
         return jsonify({"error": f"{e}"}), 400
 
     # Hash and salt password here using bcrypt
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
-    print(hashed_password)
-
     data["password"] = hashed_password
+
+    print(data)
 
     result = create_user(data)
 

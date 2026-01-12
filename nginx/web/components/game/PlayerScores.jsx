@@ -37,7 +37,7 @@ export default function PlayerScores ({
                     </View>
                     {
                         Object.entries(team.members).map(([playerHash, player], playerIndex) => 
-                            <PlayerLine player={{name: player.player?.firstname + " " + player.player?.lastname, score: player.points, color: "transparent"}} style={styles.playerLine} key={playerIndex}/>
+                            <PlayerLine player={{name: player.player?.username, score: player.points, color: "transparent"}} style={styles.playerLine} key={playerIndex}/>
                         )
                     }
                 </View>
