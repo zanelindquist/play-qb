@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Button, HelperText, Title, IconButton, Searchbar } from 'react-native-paper';
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { TimePickerModal } from 'react-native-paper-dates';
-
-import { timeUntil, timeAgo, formatTime, fromTimeString } from '../../utils/time';
-import { getProtectedRoute, putProtectedRoute, deleteProtectedRoute } from "../../utils/requests"
 
 import { useAlert } from '../../utils/alerts';
 
