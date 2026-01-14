@@ -1,7 +1,19 @@
 // React native components
-import { Platform, View, ScrollView, StyleSheet, Pressable } from "react-native";
+import {
+    Platform,
+    View,
+    ScrollView,
+    StyleSheet,
+    Pressable,
+} from "react-native";
 import { BlurView } from "expo-blur";
-import { Text, HelperText, Icon, IconButton, Divider } from "react-native-paper";
+import {
+    Text,
+    HelperText,
+    Icon,
+    IconButton,
+    Divider,
+} from "react-native-paper";
 
 // Hooks
 import theme from "../../assets/themes/theme";
@@ -17,59 +29,66 @@ import GlassyButton from "../custom/GlassyButton";
 import Friend from "./Friend";
 import User from "./User";
 
-
-export default function FriendOptions ({
+export default function FriendOptions({
     friends,
     friendRequests,
     handleInvite,
     handleAddFriend,
-    style
+    handleUnfriend,
+    style,
 }) {
-
-    let fs = friends.sort((f) => f.is_online ? -1 : 1)
+    let fs = friends.sort((f) => (f.is_online ? -1 : 1));
 
     return (
         <GlassyView style={[styles.container, style]}>
             <View>
-                <HelperText style={styles.label}>Friends ({friends.length})</HelperText>
-                {
-                    friends && fs.length > 0 ?
-                    fs.map((f) => 
-                        <Friend onPress={() => handleInvite(f.hash)} friend={f} showIcon={false}/>
-                    ) :
+                <HelperText style={styles.label}>
+                    Friends ({friends.length})
+                </HelperText>
+                {friends && fs.length > 0 ? (
+                    fs.map((f) => (
+                        <Friend
+                            onPress={() => handleInvite(f.hash)}
+                            friend={f}
+                            showIcon={false}
+                            onUnfriend={() => handleUnfriend(f.hash)}
+                        />
+                    ))
+                ) : (
                     <HelperText>No friends online right now</HelperText>
-                }
+                )}
             </View>
             <View>
-                <HelperText style={styles.label}>Friend Requests ({friendRequests.length})</HelperText>
-                {
-                    friendRequests.length > 0 ?
-                    friendRequests.map((u) => 
+                <HelperText style={styles.label}>
+                    Friend Requests ({friendRequests.length})
+                </HelperText>
+                {friendRequests.length > 0 ? (
+                    friendRequests.map((u) => (
                         <User
                             user={u}
                             showIcon={false}
                             onPress={() => handleAddFriend(u.hash)}
                         />
-                    ) :
+                    ))
+                ) : (
                     <HelperText>No friends requests</HelperText>
-                }
+                )}
             </View>
-
         </GlassyView>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
     container: {
         marginTop: 10,
-        gap: 10
+        gap: 10,
     },
     title: {
         fontSize: 20,
-        fontWeight: "bold"
+        fontWeight: "bold",
     },
     label: {
         fontSize: 16,
-        fontWeight: "bold"
-    }
-})
+        fontWeight: "bold",
+    },
+});

@@ -14,7 +14,7 @@ const HOVER_MULTIPLIER = 1.1;
 const ANIMATION_DURATION = 150;
 const HOVER_DELAY = 100;
 
-export default function Friend({ style, friend, showIcon=true, onPress = () => {} }) {
+export default function Friend({ style, friend, showIcon=true, onPress = () => {}, onUnfriend }) {
     if (!friend) return;
 
     const [isInvited, setIsInvited] = useState(false);
@@ -73,6 +73,16 @@ export default function Friend({ style, friend, showIcon=true, onPress = () => {
                     style={styles.iconButton}
                     disabled={!friend.is_online}
                 />
+                {
+                    onUnfriend &&
+                    <IconButton
+                        icon={"account-minus"}
+                        size={"1.5rem"}
+                        onPress={onUnfriend}
+                        style={styles.iconButton}
+                    />
+                }
+
             </View>
         </View>
     );
