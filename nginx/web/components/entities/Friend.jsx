@@ -8,13 +8,14 @@ import GlassyView from "../custom/GlassyView";
 import theme from "../../assets/themes/theme";
 import GradientText from "../custom/GradientText";
 import { capitalize } from "../../utils/text";
+import UnfoldIconMenu from "../custom/UnfoldIconMenu";
 
 // TODO: Hover for stat tooltip
 const HOVER_MULTIPLIER = 1.1;
 const ANIMATION_DURATION = 150;
 const HOVER_DELAY = 100;
 
-export default function Friend({ style, friend, showIcon=true, onPress = () => {}, onUnfriend }) {
+export default function Friend({ style, friend, showIcon=true, onPress = () => {}, onUnfriend, isMenu }) {
     if (!friend) return;
 
     const [isInvited, setIsInvited] = useState(false);
@@ -65,21 +66,30 @@ export default function Friend({ style, friend, showIcon=true, onPress = () => {
                     friend.is_online &&
                     <Icon source={"circle"} color={theme.static.correct}/>
                 }
-
-                <IconButton
-                    icon={isInvited ? "check" : "email-arrow-right"}
-                    size={"1.5rem"}
-                    onPress={handlePress}
-                    style={styles.iconButton}
-                    disabled={!friend.is_online}
-                />
                 {
-                    onUnfriend &&
+                    isMenu ?
+                    <UnfoldIconMenu>
+                        <IconButton
+                            icon={isInvited ? "check" : "email-arrow-right"}
+                            size={"1.5rem"}
+                            onPress={handlePress}
+                            style={styles.iconButton}
+                            disabled={!friend.is_online}
+                        />
+                        <IconButton
+                            icon={"account-minus"}
+                            size={"1.5rem"}
+                            onPress={onUnfriend}
+                            style={styles.iconButton}
+                        />
+                    </UnfoldIconMenu>
+                    :
                     <IconButton
-                        icon={"account-minus"}
+                        icon={isInvited ? "check" : "email-arrow-right"}
                         size={"1.5rem"}
-                        onPress={onUnfriend}
+                        onPress={handlePress}
                         style={styles.iconButton}
+                        disabled={!friend.is_online}
                     />
                 }
 

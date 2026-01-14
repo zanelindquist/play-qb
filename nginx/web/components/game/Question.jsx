@@ -50,7 +50,6 @@ const Question = ({
     // Speed in WPM
     MS_FOR_ANSWER = 5000,
 }) => {
-    console.log(speed)
     // Text variables
     const fullText = question.question || "";
     const [charIndex, setCharIndex] = useState(0);

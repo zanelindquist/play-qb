@@ -202,6 +202,7 @@ def on_enter_lobby(data):
     party_members = get_party_member_info(party_hash)
 
     set_user_online(user_id, True)
+    user["is_online"] = True
 
     # Get user friends
     added_friends = get_friends_by_email(user_id, online=False)

@@ -280,17 +280,12 @@ export default function LobbyScreen() {
             })
 
             addEventListener("friend_now_online", ({friend}) => {
-                setFriends((prev) => [
-                    prev.filter((user) => user.hash !== friend.hash),
-                    friend
-                ])
+                console.log("now onlinw", friend.is_online)
+                setFriends((prev) => prev.map((user) => user.hash == friend.hash ? friend : user))
             })
 
             addEventListener("friend_now_offline", ({friend}) => {
-                setFriends((prev) => [
-                    prev.filter((user) => user.hash !== friend.hash),
-                    friend
-                ])
+                setFriends((prev) => prev.map((user) => user.hash == friend.hash ? friend : user))
             })
 
             // Now that the listners are registered, we are ready to join the lobby
@@ -442,7 +437,7 @@ export default function LobbyScreen() {
     return (
         <SidebarLayout >
             <View style={styles.container}>
-                <View style={styles.gamemodes}>
+                <View style={styles.left}>
                     {
                         GAMEMODES.map((g, i) => (
                         <GameMode
@@ -548,13 +543,18 @@ const styles = StyleSheet.create({
         margin: 10
     },
     left: {
-
+        width: 200,
+        gap: 10
     },
     right: {
         flexGrow: 1,
         marginLeft: 30,
         flexDirection: "column",
-        gap: 20
+        gap: 20,
+
+        // For tool tips on friends
+        zIndex: -1,
+        elevation: -1,
     },
     noPartySlots: {
         width: "100%"
@@ -594,10 +594,6 @@ const styles = StyleSheet.create({
     settingsButton: {
         margin: 0,
         backgroundColor: "transparent"
-    },
-    gamemodes: {
-        width: 200,
-        gap: 10
     },
     gamemode: {
         width: "100%",
