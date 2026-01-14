@@ -28,5 +28,7 @@ export default function Template ({
 }
 
 const styles = StyleSheet.create({
+    container: {
 
+    },
 })

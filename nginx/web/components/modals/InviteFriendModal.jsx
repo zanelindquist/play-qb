@@ -80,6 +80,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 </View>
 
             </View>
+            <View style={styles.friends}>
             {
                 friends.length > 0 ?
                 friends.map((friend, i) => 
@@ -98,7 +99,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 </View>
                 
             }
-
+            </View>
         </View>
     );
 }
@@ -116,6 +117,9 @@ const styles = StyleSheet.create({
     },
     rightDialogue: {
         flexDirection: 'row',
+    },
+    friends: {
+        gap: 10
     },
     noFriendsContainer: {
         flexDirection: "row",

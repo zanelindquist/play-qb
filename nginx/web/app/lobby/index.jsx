@@ -54,6 +54,7 @@ import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
 import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
+import FriendOptions from "../../components/entities/FriendOptions.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -113,14 +114,21 @@ export default function LobbyScreen() {
 
     const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : generateRandomLobbyName);
 
+    const [friends, setFriends] = useState([])
+    const [friendRequests, setFriendRequests] = useState([])
+
     
     useEffect(() => {
         onReady(() => {
-            addEventListener("prelobby_joined", ({ player, party_members, user, lobby, currentlyActive }) => {
+            addEventListener("prelobby_joined", ({ player, party_members, user, lobby, friends, friend_requests }) => {
                 setIsLoading(false)
                 setMyHash(user.hash);
                 setMyPM(party_members.find((m) => m.hash === user.hash))
                 setPlayersOnline(lobby.number_of_online_players)
+                setFriends(friends)
+                setFriendRequests(friend_requests)
+                console.log("FRIENDS", friends, friend_requests)
+
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
                 }
@@ -260,6 +268,12 @@ export default function LobbyScreen() {
                 setSearchedLobbies(lobbies)
             })
 
+            addEventListener("added_friend", ({message, friends, friend_requests})=> {
+                showBanner(message)
+                if(friends !== undefined) setFriends(friends)
+                if(friend_requests !== undefined) setFriendRequests(friend_requests)
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
                 send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
@@ -312,8 +326,16 @@ export default function LobbyScreen() {
         send("change_gamemode", {lobby_alias: mode})
     }
 
+    function handleInvite(hash) {
+        socket.emit("invite_friend", {hash: hash})
+    } 
+
     function handleAcceptInvite(hash) {
         send("accepted_invite", {party_hash: hash})
+    }
+
+    function handleAddFriend(hash) {
+        socket.emit("add_friend", {hash: hash})
     }
 
     function handleReadyPressed() {
@@ -409,6 +431,12 @@ export default function LobbyScreen() {
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
                         />
                     ))}
+                    <FriendOptions
+                        friends={friends}
+                        friendRequests={friendRequests}
+                        handleInvite={handleInvite}
+                        handleAddFriend={handleAddFriend}
+                    />
                 </View>
                 <View style={styles.right}>
                     <View style={styles.partySlots}>
@@ -545,6 +573,7 @@ const styles = StyleSheet.create({
     },
     gamemodes: {
         width: 200,
+        gap: 10
     },
     gamemode: {
         width: "100%",

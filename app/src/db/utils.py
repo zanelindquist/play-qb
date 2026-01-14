@@ -72,7 +72,7 @@ def json_safe(value):
         return value.isoformat()
     return value
 
-def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
+def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
     # If depth is 0 we only lo the static properties of object
     # If depth is 1 we load the static properties of obj's relationships
     # If rel depths is equal to "LENGTH", then we just want to return {"length": <length>}
@@ -356,6 +356,7 @@ def create_player(email, lobbyAlias):
 def create_friend_request_from_email_to_hash(email, hash):
     session = get_session()
     try:
+        print(email, hash)
         user = get_user_by_email(email)
         target = get_user_by_hash(hash)
 
@@ -375,7 +376,7 @@ def create_friend_request_from_email_to_hash(email, hash):
 
         if correct_direction_request:
             if correct_direction_request.is_accepted:
-                return {'message': 'You are already friends', "code": 200}
+                return {'message': 'You are already friends', "code": 409}
             return {'message': 'This user already has a pending friend request', "code": 409}
         
         # If the target has sent the user a friend request, then we want to make it is_accepted
@@ -388,9 +389,9 @@ def create_friend_request_from_email_to_hash(email, hash):
 
         if reverse_direction_request:
             if reverse_direction_request.is_accepted:
-                return {'message': 'You are already friends', "code": 200}
+                return {'message': 'You are already friends', "code": 409}
             setattr(reverse_direction_request, "is_accepted", True)
-            return {'message': 'Friend added', "code": 201}
+            return {'message': 'You are now friends with ' + target.get("username"), "code": 201}
 
 
         friend_request = Friends(
@@ -401,7 +402,7 @@ def create_friend_request_from_email_to_hash(email, hash):
         session.add(friend_request)
         session.commit()
 
-        return {'message': 'create_friend_request_from_email_to_hash(): success', "code": 200}
+        return {'message': 'Friend request sent to ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
         return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
@@ -651,16 +652,6 @@ def get_friends_by_email(email, online=False, party=False):
     if not user:
         return []
     
-    # If we only want online users
-    if not online:
-        friends = get_user_by_email(email).get("friends")
-        # Filter by party members
-        return [
-            friend for friend in friends
-            if not party
-            or friend.get("hash") not in party.get("members")
-        ]
-    
     friends = session.execute(
         select(Friends)
         .where(
@@ -674,22 +665,61 @@ def get_friends_by_email(email, online=False, party=False):
         )
     ).scalars().all()
 
-    if online:
-        online_friends = []
-        for friend in friends:
-            # Get the other person
-            target = friend.sender
-            if friend.sender_id == user.id:
-                target = friend.receiver
 
+    filtered_friends = []
+    for friend in friends:
+        # Get the other person
+        target = friend.sender
+        if friend.sender_id == user.id:
+            target = friend.receiver
+
+        # Filter for online if that is present
+        if online:
             if target.is_online:
-                online_friends.append(target)
-        # Filter for parties if that is present
-        return [
-            to_dict_safe(friend) for friend in online_friends
-            if not party
-            or friend.hash not in party.get("members")
-        ]
+                filtered_friends.append(target)
+        else:
+            filtered_friends.append(target)
+    # Filter for parties if that is present
+    if party:
+        filtered_friends = [friend for friend in filtered_friends if not friend.hash in party.get("members")]
+    return [
+        to_dict_safe(friend) for friend in filtered_friends
+    ]
+
+def get_friend_requests_by_email(email):
+    session = get_session()
+
+    if not email:
+        raise Exception("get_friends_by_email(): No email provided")
+    
+    user = session.execute(
+        select(Users)
+        .where(Users.email == email)
+    ).scalars().first()
+
+    if not user:
+        return []
+    
+    requests = session.execute(
+        select(Friends)
+        .where(
+            Friends.receiver_id == user.id,
+            Friends.is_accepted == False
+        )
+    ).scalars().all()
+
+
+    pending_senders = []
+    for r in requests:
+        # Get the sender
+
+        # Filter for online if that is present
+        pending_senders.append(r.sender)
+    # Filter for parties if that is present
+    return [
+        to_dict_safe(sender) for sender in pending_senders
+    ]
+
 
 def get_users_by_query(query):
     session = get_session()
@@ -1012,7 +1042,7 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
 
         lobby_data = to_dict_safe(lobby)
 
-        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
+        return {'message': 'set_lobby_settings(): success', "code": 200, 'lobby': lobby_data}
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}

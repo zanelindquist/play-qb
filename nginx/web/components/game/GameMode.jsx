@@ -99,7 +99,7 @@ export default function GameMode({
 
 const styles = StyleSheet.create({
     animated: {
-        marginTop: 10,
+        
     },
     container: {
         flexDirection: "row",

@@ -195,7 +195,13 @@ def on_enter_lobby(data):
 
     set_user_online(user_id, True)
 
-    emit("prelobby_joined", {"player": player, "user": user, "party_members": party_members, "lobby": lobby_data})
+    # Get user friends
+    added_friends = get_friends_by_email(user_id, online=False)
+
+    # Get friend requests
+    friend_requests = get_friend_requests_by_email(user_id)
+
+    emit("prelobby_joined", {"player": player, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
 
 # Partying
 
@@ -435,8 +441,43 @@ def on_add_friend(data):
 
     result = create_friend_request_from_email_to_hash(user_id, hash)
 
-    emit("added_friend", result)
+    added_friends = get_friends_by_email(user_id, online=False)
 
+    # Get friend requests
+    friend_requests = get_friend_requests_by_email(user_id)
+
+    # Tell the user
+    emit("added_friend", {"message": result.get("message"), "friends": added_friends, "friend_requests": friend_requests})
+
+    # These are done for the other person, whether someone is sent a request or accepting a request
+
+    # If the target is online, tell them they have a new friend request
+    if result.get("code") == 200:
+        # We need their email address, so gentle must be false
+        target = get_user_by_hash(hash, gentle=False)
+        if not target.get("is_online"):
+            return
+        
+        sender = get_user_by_email(user_id)
+
+        friend_requests = get_friend_requests_by_email(target.get("email"))
+        
+        # Update their friend requests
+        emit("added_friend", {"message": "New friend request from " + sender.get("username"), "friend_requests": friend_requests})
+        
+
+    # Tell the other user if they have a new friend based off of message
+
+    if result.get("code") == 201:
+        # We need their email address, so gentle must be false
+        sender = get_user_by_hash(hash, gentle=False)
+        if not sender.get("is_online"):
+            return;
+        # Update friends
+        added_friends = get_friends_by_email(sender.get("email"), online=False)
+
+        target = get_user_by_email(user_id)
+        emit("added_friend", {"message": target.get("username") + " accepted your friend request", "friends": friends}, room=f"user:{hash}")
 
 # Finding lobbies
 
