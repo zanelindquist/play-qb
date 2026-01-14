@@ -21,6 +21,7 @@ import Video from 'react-native-video';
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
 import { useAlert } from "../../utils/alerts";
+import {useSocket} from "../../utils/socket"
 
 import { removeAccessToken } from "../../utils/encryption";
 
@@ -46,6 +47,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     const router = useRouter();
     const { showAlert } = useAlert();
     const segments = useSegments();
+    const {disconnect} = useSocket("lobby")
 
 
     // Page variables
@@ -82,7 +84,11 @@ const SidebarLayout = ({ children, style, isLoading }) => {
 
     function handleLogout() {
         removeAccessToken()
-        router.replace("/signin")
+        .then(() => {
+            disconnect()
+            console.log("Logged out")
+            router.replace("/signin")
+        })
     }
 
     return (
