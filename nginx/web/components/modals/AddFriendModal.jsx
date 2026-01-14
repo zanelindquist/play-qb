@@ -39,14 +39,6 @@ export default function AddFriendModal({socket, addEventListener, close}) {
             setUsers(users)
             setLoading(false)
         })
-
-        addEventListener("added_friend", (result)=> {
-            console.log(result)
-
-            if(result.error) {
-                
-            }
-        })
     })
 
     function fetchUsers(query) {

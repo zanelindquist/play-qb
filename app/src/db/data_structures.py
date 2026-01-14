@@ -1,7 +1,7 @@
 SERIALIZATION_CONFIG = {
     "Users": {
         "fields": [
-            "id", "hash", "username", "is_male", 
+            "id", "hash", "username", "is_male", "is_online", 
             "account_disabled", "email_verified"
         ],
         "relationships": {

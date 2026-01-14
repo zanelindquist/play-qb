@@ -92,11 +92,11 @@ export default function HomeScreen() {
                         colors={GAMEMODES.map((g) => g.color)}
                         style={styles.title}
                     >Welcome to PlayQB!</GradientText>
-                    <View style={[styles.bottomBoxes, styles.bentoRow]}>
+                    {/* <View style={[styles.bottomBoxes, styles.bentoRow]}>
                     {
                         DEMO.map((d) => <GameDemoBox info={d}/>)
                     }
-                    </View>
+                    </View> */}
                 </View>
                 <View style={[styles.topBoxes, styles.bentoRow]}>
                     <BentoGameMode gamemode={GAMEMODES[3]}/>
