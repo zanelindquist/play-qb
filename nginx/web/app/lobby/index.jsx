@@ -167,7 +167,7 @@ export default function LobbyScreen() {
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
-                showBanner(`${user.username} joined party`)
+                showBanner(`${user.username} joined the party`)
                 // If we are the new member, we need to update our lobby info
                 if(user.hash === myHash) {
                     setLobbyInfo({...lobby})
@@ -274,6 +274,25 @@ export default function LobbyScreen() {
                 if(friend_requests !== undefined) setFriendRequests(friend_requests)
             })
 
+            addEventListener("removed_friend", ({message, friends}) => {
+                showBanner(message)
+                if(friends !== undefined) setFriends(friends)
+            })
+
+            addEventListener("friend_now_online", ({friend}) => {
+                setFriends((prev) => [
+                    prev.filter((user) => user.hash !== friend.hash),
+                    friend
+                ])
+            })
+
+            addEventListener("friend_now_offline", ({friend}) => {
+                setFriends((prev) => [
+                    prev.filter((user) => user.hash !== friend.hash),
+                    friend
+                ])
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
                 send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
@@ -327,15 +346,19 @@ export default function LobbyScreen() {
     }
 
     function handleInvite(hash) {
-        socket.emit("invite_friend", {hash: hash})
+        socket.emit("invite_friend", {hash})
     } 
 
-    function handleAcceptInvite(hash) {
-        send("accepted_invite", {party_hash: hash})
+    function handleAcceptInvite(party_hash) {
+        send("accepted_invite", {party_hash})
     }
 
     function handleAddFriend(hash) {
-        socket.emit("add_friend", {hash: hash})
+        socket.emit("add_friend", {hash})
+    }
+
+    function handleUnfriend(hash) {
+        socket.emit("remove_friend", {hash})
     }
 
     function handleReadyPressed() {
@@ -436,6 +459,7 @@ export default function LobbyScreen() {
                         friendRequests={friendRequests}
                         handleInvite={handleInvite}
                         handleAddFriend={handleAddFriend}
+                        handleUnfriend={handleUnfriend}
                     />
                 </View>
                 <View style={styles.right}>

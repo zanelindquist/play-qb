@@ -356,7 +356,6 @@ def create_player(email, lobbyAlias):
 def create_friend_request_from_email_to_hash(email, hash):
     session = get_session()
     try:
-        print(email, hash)
         user = get_user_by_email(email)
         target = get_user_by_hash(hash)
 
@@ -1171,6 +1170,36 @@ def delete_inactive_lobbies():
         session.rollback()
         print(e)
         return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        target = get_user_by_hash(hash)
+
+        # See if there is already a friend request
+        friend = session.execute(
+            select(Friends)
+            .where(
+                or_(
+                    and_(Friends.sender_id == user.get("id"), Friends.receiver_id == target.get("id")),
+                    and_(Friends.sender_id == target.get("id"), Friends.receiver_id == user.get("id")),
+                )
+            )
+        ).scalars().first()
+
+        if not friend:
+            return {'message': "You are not friends with " + target.get("username"), "code": 400}
+
+        session.delete(friend)
+        session.commit()
+
+        return {'message': 'Unfriended ' + target.get("username"), "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
