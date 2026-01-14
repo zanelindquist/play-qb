@@ -1,5 +1,5 @@
 // React native components
-import { Platform, View, ScrollView, StyleSheet, Pressable } from "react-native";
+import { Platform, View, ScrollView, StyleSheet, Pressable, Animated } from "react-native";
 import { BlurView } from "expo-blur";
 import { Text, HelperText, Icon, IconButton } from "react-native-paper";
 

@@ -52,6 +52,7 @@ export default function FriendOptions({
                             friend={f}
                             showIcon={false}
                             onUnfriend={() => handleUnfriend(f.hash)}
+                            isMenu={true}
                         />
                     ))
                 ) : (
@@ -82,6 +83,7 @@ const styles = StyleSheet.create({
     container: {
         marginTop: 10,
         gap: 10,
+        overflow: "visible"
     },
     title: {
         fontSize: 20,
