@@ -72,7 +72,7 @@ def json_safe(value):
         return value.isoformat()
     return value
 
-def to_dict_safe(obj, depth=1, gentle=True, rel_depths=None):
+def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
     # If depth is 0 we only lo the static properties of object
     # If depth is 1 we load the static properties of obj's relationships
     # If rel depths is equal to "LENGTH", then we just want to return {"length": <length>}
@@ -233,21 +233,20 @@ def search_filter(items, keys, query):
 
 # CREATING RESOURCES
 
-def create_user(client_data, rel_depths=None, depth=1):
-    global sanitize_data
-    sanitized_data = sanitize_data(data=client_data)
-    try:
-        sanitized_data = validate_data(sanitized_data)
-    except Exception as e:
-        print(e)
-        return {'message': 'create_user(): failure', "code": 400, "error": f"{e}"}
+def create_user(data):
 
-    new_user = Users(
-        **sanitized_data
-    )
+    try:
+        data["email"] = validate_email(data.get("email"))
+        data["password"] = validate_password_hash(data.get("password"))
+    except Exception as e:
+        return {'message': 'create_user(): failure', "code": 400, "error": e}
 
     try:
         session = get_session()
+
+        new_user = Users(
+            **data
+        )
 
         session.add(new_user)
         session.commit()
@@ -331,7 +330,7 @@ def create_player(email, lobbyAlias):
                 game_id = game["id"]
 
         player = Players(
-            name=user["firstname"] + " " + user["lastname"],
+            name=user["username"],
             user_id=user["id"],
             lobby_id=lobby["id"],
             current_game_id=game_id
@@ -376,7 +375,7 @@ def create_friend_request_from_email_to_hash(email, hash):
 
         if correct_direction_request:
             if correct_direction_request.is_accepted:
-                return {'message': 'You are already friends', "code": 200}
+                return {'message': 'You are already friends', "code": 409}
             return {'message': 'This user already has a pending friend request', "code": 409}
         
         # If the target has sent the user a friend request, then we want to make it is_accepted
@@ -389,9 +388,9 @@ def create_friend_request_from_email_to_hash(email, hash):
 
         if reverse_direction_request:
             if reverse_direction_request.is_accepted:
-                return {'message': 'You are already friends', "code": 200}
+                return {'message': 'You are already friends', "code": 409}
             setattr(reverse_direction_request, "is_accepted", True)
-            return {'message': 'Friend added', "code": 201}
+            return {'message': 'You are now friends with ' + target.get("username"), "code": 201}
 
 
         friend_request = Friends(
@@ -402,7 +401,7 @@ def create_friend_request_from_email_to_hash(email, hash):
         session.add(friend_request)
         session.commit()
 
-        return {'message': 'create_friend_request_from_email_to_hash(): success', "code": 200}
+        return {'message': 'Friend request sent to ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
         return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
@@ -652,16 +651,6 @@ def get_friends_by_email(email, online=False, party=False):
     if not user:
         return []
     
-    # If we only want online users
-    if not online:
-        friends = get_user_by_email(email).get("friends")
-        # Filter by party members
-        return [
-            friend for friend in friends
-            if not party
-            or friend.get("hash") not in party.get("members")
-        ]
-    
     friends = session.execute(
         select(Friends)
         .where(
@@ -675,43 +664,79 @@ def get_friends_by_email(email, online=False, party=False):
         )
     ).scalars().all()
 
-    if online:
-        online_friends = []
-        for friend in friends:
-            # Get the other person
-            target = friend.sender
-            if friend.sender_id == user.id:
-                target = friend.receiver
 
+    filtered_friends = []
+    for friend in friends:
+        # Get the other person
+        target = friend.sender
+        if friend.sender_id == user.id:
+            target = friend.receiver
+
+        # Filter for online if that is present
+        if online:
             if target.is_online:
-                online_friends.append(target)
-        # Filter for parties if that is present
-        return [
-            to_dict_safe(friend) for friend in online_friends
-            if not party
-            or friend.hash not in party.get("members")
-        ]
+                filtered_friends.append(target)
+        else:
+            filtered_friends.append(target)
+    # Filter for parties if that is present
+    if party:
+        filtered_friends = [friend for friend in filtered_friends if not friend.hash in party.get("members")]
+    return [
+        to_dict_safe(friend) for friend in filtered_friends
+    ]
+
+def get_friend_requests_by_email(email):
+    session = get_session()
+
+    if not email:
+        raise Exception("get_friends_by_email(): No email provided")
+    
+    user = session.execute(
+        select(Users)
+        .where(Users.email == email)
+    ).scalars().first()
+
+    if not user:
+        return []
+    
+    requests = session.execute(
+        select(Friends)
+        .where(
+            Friends.receiver_id == user.id,
+            Friends.is_accepted == False
+        )
+    ).scalars().all()
+
+
+    pending_senders = []
+    for r in requests:
+        # Get the sender
+
+        # Filter for online if that is present
+        pending_senders.append(r.sender)
+    # Filter for parties if that is present
+    return [
+        to_dict_safe(sender) for sender in pending_senders
+    ]
+
 
 def get_users_by_query(query):
     session = get_session()
     users = session.execute(
         select(
             Users.hash,
-            Users.firstname,
-            Users.lastname
+            Users.username
         )
         .where(
             or_(
-                func.concat(Users.firstname, " ", Users.lastname).ilike(f"%{query}%"),
-                Users.firstname.ilike(f"%{query}%"),
-                Users.lastname.ilike(f"%{query}%"),
+                Users.username.ilike(f"%{query}%"),
             )
         )
         .limit(20)
     ).all()
 
     # REL DEP is empty right now
-    return [{"hash": user[0], "firstname": user[1], "lastname": user[2]} for user in users]
+    return [{"hash": user[0], "username": user[1]} for user in users]
 
 def get_lobbies_by_query(query: str, user_id: int = None, public: bool = False) -> list:
     session = get_session()
@@ -1016,12 +1041,38 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
 
         lobby_data = to_dict_safe(lobby)
 
-        return {'message': 'create_lobby(): success', "code": 200, 'lobby': lobby_data}
+        return {'message': 'set_lobby_settings(): success', "code": 200, 'lobby': lobby_data}
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def edit_user(email:str, data: dict):
+    try:
+        session = get_session()
+
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        if not user:
+            return {"message": "edit_user(): failure", "error": "User not found", "code": 404}
+        
+        for key, value in data.items():
+            setattr(user, key, value)
+
+        session.commit()
+
+        return {"message": "edit_user(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        return {"message": "edit_user(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
 
 # DELETING RESOURCES
 
@@ -1119,6 +1170,36 @@ def delete_inactive_lobbies():
         session.rollback()
         print(e)
         return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        target = get_user_by_hash(hash)
+
+        # See if there is already a friend request
+        friend = session.execute(
+            select(Friends)
+            .where(
+                or_(
+                    and_(Friends.sender_id == user.get("id"), Friends.receiver_id == target.get("id")),
+                    and_(Friends.sender_id == target.get("id"), Friends.receiver_id == user.get("id")),
+                )
+            )
+        ).scalars().first()
+
+        if not friend:
+            return {'message': "You are not friends with " + target.get("username"), "code": 400}
+
+        session.delete(friend)
+        session.commit()
+
+        return {'message': 'Unfriended ' + target.get("username"), "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -1473,12 +1554,16 @@ def validate_password(password):
     return password
 
 def validate_password_hash(password):
+    # They might not have a password if they log in with Google
+    if password is None:
+        return ""
+
     bcrypt_regex = r"^\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}$"
 
     if bool(re.match(bcrypt_regex, password)):
         return password
     else:
-        raise ValueError("Password is an invalide hash.")
+        raise ValueError("Password is an invalid hash.")
 
 def validate_email(email):
     # Simple regex to validate and sanitize email format
@@ -1494,46 +1579,7 @@ def validate_email(email):
     
     return email
 
-def validate_and_convert_date(date_str):
-    try:
-        # Validate and parse the date string in MM/DD/YYYY format
-        valid_date = datetime.strptime(date_str, '%m/%d/%Y').date()
-        print(valid_date)
-        return valid_date
-    except ValueError:
-        # If date parsing fails, raise an error
-        raise ValueError("Date is of invalid format. Please use MM/DD/YYYY.")
-
-def validate_phone_number(phone_number):
-    if isinstance(phone_number, str):
-        cleaned_string = re.sub(r"[()\-\s]", "", phone_number)
-        # Regex for a general phone number format
-        if len(cleaned_string) < 10:
-            raise ValueError("Phone is of invalid format.")
-        else:
-            return cleaned_string
-    else:
-        raise ValueError("Phone is of invalid format. Must be of type str.")
-
-# Maybe add an explicit filter to these in the future ;)
-def validate_firstname(firstname):
-    if len(firstname) > 15 or len(firstname) == 0:
-        raise ValueError("Firstname must not exceed 15 characters.")
-    else:
-        return firstname
-    
-def validate_lastname(lastname):
-    if len(lastname) > 25 or len(lastname) == 0:
-        raise ValueError("Lastname must not exceed 25 characters.")
-    else:
-        return lastname
-
 validation_list = {
     "email": validate_email,
     "password": validate_password_hash,
-    "date": validate_and_convert_date,
-    "birthday": validate_and_convert_date,
-    "phone_number": validate_phone_number,
-    "firstname": validate_firstname,
-    "lastname": validate_lastname
 }

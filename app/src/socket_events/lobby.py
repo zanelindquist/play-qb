@@ -157,6 +157,14 @@ def on_disconnect():
 
     emit("user_disconnected", {"user_hash": user.get("hash")}, room=f"party:{party_hash}")
 
+    # Get user friends
+    added_friends = get_friends_by_email(user_id, online=False)
+
+    # Tell the user's friends that they are now offline
+    for friend in added_friends:
+        if friend.get("is_online"):
+            emit("friend_now_offline", {"friend": user}, room=f"user:{friend.get("hash")}")
+
 # This is where we get information about a lobby
 @socketio.on("enter_lobby", "/lobby")
 def on_enter_lobby(data):
@@ -194,8 +202,20 @@ def on_enter_lobby(data):
     party_members = get_party_member_info(party_hash)
 
     set_user_online(user_id, True)
+    user["is_online"] = True
 
-    emit("prelobby_joined", {"player": player, "user": user, "party_members": party_members, "lobby": lobby_data})
+    # Get user friends
+    added_friends = get_friends_by_email(user_id, online=False)
+
+    # Tell the user's friends that they are now online
+    for friend in added_friends:
+        if friend.get("is_online"):
+            emit("friend_now_online", {"friend": user}, room=f"user:{friend.get("hash")}")
+
+    # Get friend requests
+    friend_requests = get_friend_requests_by_email(user_id)
+
+    emit("prelobby_joined", {"player": player, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
 
 # Partying
 
@@ -210,7 +230,7 @@ def on_search_friends(data):
     friends = get_friends_by_email(user_id, online=True, party=parties[party_hash])
 
     # Apply the query
-    friends = search_filter(friends, ["firstname", "lastname"], query)
+    friends = search_filter(friends, ["username"], query)
 
     emit("friends_found", {"friends": friends})
 
@@ -435,8 +455,63 @@ def on_add_friend(data):
 
     result = create_friend_request_from_email_to_hash(user_id, hash)
 
-    emit("added_friend", result)
+    added_friends = get_friends_by_email(user_id, online=False)
 
+    # Get friend requests
+    friend_requests = get_friend_requests_by_email(user_id)
+
+    # Tell the user
+    emit("added_friend", {"message": result.get("message"), "friends": added_friends, "friend_requests": friend_requests})
+
+    # These are done for the other person, whether someone is sent a request or accepting a request
+
+    # 201 is accepting a friend request
+    # 200 is sending a friend request
+
+    # If the target is online, tell them they have a new friend request
+    if result.get("code") == 200:
+        # We need their email address, so gentle must be false
+        target = get_user_by_hash(hash, gentle=False)
+        if not target.get("is_online"):
+            return
+        
+        sender = get_user_by_email(user_id)
+
+        friend_requests = get_friend_requests_by_email(target.get("email"))
+        
+        # Update their friend requests
+        emit("added_friend", {"message": f"New friend request from {sender.get("username")}", "friend_requests": friend_requests}, room=f"user:{hash}")
+        
+
+    # Tell the other user if they have a new friend based off of message
+    elif result.get("code") == 201:
+        # We need their email address, so gentle must be false
+        sender = get_user_by_hash(hash, gentle=False)
+        if not sender.get("is_online"):
+            return;
+        # Update friends
+        added_friends = get_friends_by_email(sender.get("email"), online=False)
+
+        target = get_user_by_email(user_id)
+        emit("added_friend", {"message": f"{target.get("username")} accepted your friend request", "friends": added_friends}, room=f"user:{hash}")
+
+@socketio.on("remove_friend", "/lobby")
+def on_remove_friend(data):
+    user_id = request.environ["user_id"]
+    lobby = request.environ["prelobby"]
+
+    hash = data.get("hash")
+
+    if not hash:
+        emit("removed_friend", {"message": "remove_friend(): hash not provided", "code": 400})
+        return
+
+    result = remove_friend_by_email_to_hash(user_id, hash)
+
+    added_friends = get_friends_by_email(user_id, online=False)
+
+    # Tell the user
+    emit("removed_friend", {"message": result.get("message"), "friends": added_friends})
 
 # Finding lobbies
 

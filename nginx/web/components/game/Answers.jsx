@@ -16,14 +16,13 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
 
     const moreInformation = answers.accept || answers.prompt || answers.reject || answers.suggested_cateogry
 
-    function handleExpand() {
-        setExpanded(true)
-        if(onExpand) onExpand(mountHeight.current)
-    }
-
-    function handleCollapse() {
-        setExpanded(false)
-        if(onCollapse) onCollapse()
+    function onPress() {
+        setExpanded(!expanded)
+        if(expanded) {
+            if(onExpand) onExpand(mountHeight.current)
+        } else {
+            if(onCollapse) onCollapse()
+        }
     }
 
     return (
@@ -47,7 +46,7 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
             >
                 <View style={styles.container}>
                     <HelperText style={styles.answerText}>{answers.main}</HelperText>
-                    <IconButton icon={"chevron-up"} onPress={handleCollapse}/>
+                    <IconButton icon={"chevron-up"} onPress={onPress}/>
                 </View>
                 <HelperText style={styles.answerInfo}>Answer information</HelperText>
                 {answers.accept && <HelperText>Accept: {answers.accept.join(", ")}</HelperText>}
@@ -59,7 +58,7 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
             {!expanded &&
             <View style={styles.container}>
                 <HelperText style={styles.answerText}>{answers.main}</HelperText>
-                {moreInformation && <IconButton icon={"chevron-down"} onPress={handleExpand}/>}
+                {moreInformation && <IconButton icon={"chevron-down"} onPress={onPress}/>}
             </View>}
         </ExpandableView>
     )

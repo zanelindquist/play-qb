@@ -61,6 +61,11 @@
             "buttonBlue": "linear-gradient(135deg, rgba(96, 165, 250, 0.7), rgba(59, 130, 246, 0.8))",
             "buttonRoyal": "linear-gradient(135deg, rgba(136, 65, 181, 0.73), rgba(67, 87, 186, 0.93))",
             "background": "linear-gradient(135deg, rgba(114, 45, 167, 0.86), rgba(46, 118, 138, 0.62))",
+            "selectedMode": [
+                "rgba(45, 106, 79, 0.25)",
+                "rgba(82, 183, 136, 0.22)",
+                "rgba(183, 228, 199, 0.18)"
+            ],
             "backgroundTint": [
                 "rgba(255, 255, 255, 0.3)",
                 "rgba(0,0,0,0)"

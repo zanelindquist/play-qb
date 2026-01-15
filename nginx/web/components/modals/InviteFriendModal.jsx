@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Button, HelperText, Title, IconButton, Searchbar } from 'react-native-paper';
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { TimePickerModal } from 'react-native-paper-dates';
-
-import { timeUntil, timeAgo, formatTime, fromTimeString } from '../../utils/time';
-import { getProtectedRoute, putProtectedRoute, deleteProtectedRoute } from "../../utils/requests"
 
 import { useAlert } from '../../utils/alerts';
 
@@ -23,7 +18,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
     const [loading, setLoading] = useState(false)
     const [timeoutId, setTimeoutId] = useState(null)
 
-    const [friends, setFriends] = useState([]) //{firstname: "Zane", lastname: "Lindquist"}
+    const [friends, setFriends] = useState([]) //{username: "f4de17"}
 
     function handleTyping(value) {
         // Cancel timeout if it hasn't already gone off
@@ -80,8 +75,9 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 </View>
 
             </View>
+            <View style={styles.friends}>
             {
-                friends ?
+                friends.length > 0 ?
                 friends.map((friend, i) => 
                     <Friend
                         friend={friend}
@@ -90,7 +86,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 )
                 :
                 <View style={styles.noFriendsContainer}>
-                    <HelperText style={styles.noFriendsText}>You have no friends yet</HelperText>
+                    <HelperText style={styles.noFriendsText}>You have no friends who are currently online</HelperText>
                     <GlassyButton
                         style={styles.addFriendsButton}
                         onPress={openAddFriendModal}
@@ -98,7 +94,7 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
                 </View>
                 
             }
-
+            </View>
         </View>
     );
 }
@@ -116,6 +112,9 @@ const styles = StyleSheet.create({
     },
     rightDialogue: {
         flexDirection: 'row',
+    },
+    friends: {
+        gap: 10
     },
     noFriendsContainer: {
         flexDirection: "row",

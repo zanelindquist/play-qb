@@ -12,9 +12,8 @@ class Users(Base, CreatedAtColumn):
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     email = Column(String(50), nullable=False, unique=True)
     password = Column(String(60), nullable=True)
-    firstname = Column(String(15), nullable=False)
-    lastname = Column(String(25), nullable=False)
-    phone_number = Column(String(14), nullable=False)
+    username = Column(String(20), nullable=False)
+    phone_number = Column(String(14), nullable=True)
     birthday = Column(Date, nullable=False)
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
@@ -37,4 +36,4 @@ class Users(Base, CreatedAtColumn):
         return accepted
 
     def __repr__(self):
-        return f"<User(id={self.id}, name={self.lastname}, {self.firstname}, email={self.email})>"
+        return f"<User(id={self.id}, name={self.username}, email={self.email})>"

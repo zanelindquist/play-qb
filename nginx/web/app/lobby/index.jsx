@@ -54,6 +54,7 @@ import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
 import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
+import FriendOptions from "../../components/entities/FriendOptions.jsx";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -113,14 +114,21 @@ export default function LobbyScreen() {
 
     const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : generateRandomLobbyName);
 
+    const [friends, setFriends] = useState([])
+    const [friendRequests, setFriendRequests] = useState([])
+
     
     useEffect(() => {
         onReady(() => {
-            addEventListener("prelobby_joined", ({ player, party_members, user, lobby, currentlyActive }) => {
+            addEventListener("prelobby_joined", ({ player, party_members, user, lobby, friends, friend_requests }) => {
                 setIsLoading(false)
                 setMyHash(user.hash);
                 setMyPM(party_members.find((m) => m.hash === user.hash))
                 setPlayersOnline(lobby.number_of_online_players)
+                setFriends(friends)
+                setFriendRequests(friend_requests)
+                console.log("FRIENDS", friends, friend_requests)
+
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
                 }
@@ -159,7 +167,7 @@ export default function LobbyScreen() {
                 for(let i = 0; i < members.length; i++) {
                     joinParty(members[i])
                 }
-                showBanner(`${user.firstname} ${user.lastname} joined party`)
+                showBanner(`${user.username} joined the party`)
                 // If we are the new member, we need to update our lobby info
                 if(user.hash === myHash) {
                     setLobbyInfo({...lobby})
@@ -184,7 +192,7 @@ export default function LobbyScreen() {
                 }
 
                 leaveParty(user.hash)
-                showBanner(`${user.firstname} ${user.lastname} left the party`)
+                showBanner(`${user.username} left the party`)
             })
 
             addEventListener("party_member_readied", ({ready_info}) => {
@@ -260,6 +268,26 @@ export default function LobbyScreen() {
                 setSearchedLobbies(lobbies)
             })
 
+            addEventListener("added_friend", ({message, friends, friend_requests})=> {
+                showBanner(message)
+                if(friends !== undefined) setFriends(friends)
+                if(friend_requests !== undefined) setFriendRequests(friend_requests)
+            })
+
+            addEventListener("removed_friend", ({message, friends}) => {
+                showBanner(message)
+                if(friends !== undefined) setFriends(friends)
+            })
+
+            addEventListener("friend_now_online", ({friend}) => {
+                console.log("now onlinw", friend.is_online)
+                setFriends((prev) => prev.map((user) => user.hash == friend.hash ? friend : user))
+            })
+
+            addEventListener("friend_now_offline", ({friend}) => {
+                setFriends((prev) => prev.map((user) => user.hash == friend.hash ? friend : user))
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
                 send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
@@ -312,8 +340,20 @@ export default function LobbyScreen() {
         send("change_gamemode", {lobby_alias: mode})
     }
 
-    function handleAcceptInvite(hash) {
-        send("accepted_invite", {party_hash: hash})
+    function handleInvite(hash) {
+        socket.emit("invite_friend", {hash})
+    } 
+
+    function handleAcceptInvite(party_hash) {
+        send("accepted_invite", {party_hash})
+    }
+
+    function handleAddFriend(hash) {
+        socket.emit("add_friend", {hash})
+    }
+
+    function handleUnfriend(hash) {
+        socket.emit("remove_friend", {hash})
     }
 
     function handleReadyPressed() {
@@ -397,7 +437,7 @@ export default function LobbyScreen() {
     return (
         <SidebarLayout >
             <View style={styles.container}>
-                <View style={styles.gamemodes}>
+                <View style={styles.left}>
                     {
                         GAMEMODES.map((g, i) => (
                         <GameMode
@@ -409,6 +449,13 @@ export default function LobbyScreen() {
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
                         />
                     ))}
+                    <FriendOptions
+                        friends={friends}
+                        friendRequests={friendRequests}
+                        handleInvite={handleInvite}
+                        handleAddFriend={handleAddFriend}
+                        handleUnfriend={handleUnfriend}
+                    />
                 </View>
                 <View style={styles.right}>
                     <View style={styles.partySlots}>
@@ -496,13 +543,18 @@ const styles = StyleSheet.create({
         margin: 10
     },
     left: {
-
+        width: 200,
+        gap: 10
     },
     right: {
         flexGrow: 1,
         marginLeft: 30,
         flexDirection: "column",
-        gap: 20
+        gap: 20,
+
+        // For tool tips on friends
+        zIndex: -1,
+        elevation: -1,
     },
     noPartySlots: {
         width: "100%"
@@ -542,9 +594,6 @@ const styles = StyleSheet.create({
     settingsButton: {
         margin: 0,
         backgroundColor: "transparent"
-    },
-    gamemodes: {
-        width: 200,
     },
     gamemode: {
         width: "100%",

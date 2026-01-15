@@ -21,6 +21,7 @@ import Video from 'react-native-video';
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
 import { useAlert } from "../../utils/alerts";
+import {useSocket} from "../../utils/socket"
 
 import { removeAccessToken } from "../../utils/encryption";
 
@@ -46,6 +47,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     const router = useRouter();
     const { showAlert } = useAlert();
     const segments = useSegments();
+    const {disconnect} = useSocket("lobby")
 
 
     // Page variables
@@ -80,13 +82,22 @@ const SidebarLayout = ({ children, style, isLoading }) => {
         outputRange: [-300, 0], // Slide drawer from left (-300) to 0
     });
 
+    function handleLogout() {
+        removeAccessToken()
+        .then(() => {
+            disconnect()
+            console.log("Logged out")
+            router.replace("/signin")
+        })
+    }
+
     return (
         <View style={styles.root}>
             {/* Background Layer */}
             <View style={styles.bg} >                
-            <Video
+                <Video
                     source={{uri: "/videos/Earth.mp4"}}
-                    style={[StyleSheet.absoluteFill, { borderWidth: 3, borderColor: "red" }]}
+                    style={[StyleSheet.absoluteFill]}
                     muted
                     repeat
                     resizeMode="cover"
@@ -122,15 +133,15 @@ const SidebarLayout = ({ children, style, isLoading }) => {
 
                     <View style={styles.rightNav} >
                         <TopNavItem
-                            label="Settings"
-                            onPress={() => {}}
-                            icon="cog"
-                            iconColor={iconColor}
-                        />
-                        <TopNavItem
                             label="Account"
                             onPress={() => {}}
                             icon="account"
+                            iconColor={iconColor}
+                        />
+                        <TopNavItem
+                            label="Logout"
+                            onPress={handleLogout}
+                            icon="logout"
                             iconColor={iconColor}
                         />
                     </View>

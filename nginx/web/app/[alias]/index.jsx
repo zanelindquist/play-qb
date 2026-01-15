@@ -92,11 +92,16 @@ const Play = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [buzzer, questionState])
 
+    useEffect(() => {
+        console.log("LOBBY", lobby)
+    }, [lobby])
+
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
             addEventListener("you_joined", ({player, lobby}) => {
                 setMyPlayer(player)
+                setLobby(lobby)
             })
 
             addEventListener("lobby_not_found", () => {
@@ -108,7 +113,7 @@ const Play = () => {
                 showBanner("Failed to join lobby: " + error.message.toLowerCase())
             })
 
-            addEventListener("player_joined", ({player, game_state, lobby}) => {
+            addEventListener("player_joined", ({player, lobby}) => {
                 console.log("JOINED", lobby)
                 player.eventType = "player_joined"
                 addEvent(player)
@@ -432,7 +437,7 @@ const Play = () => {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }
                     {
-                        lobby && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        lobby && lobby.games && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
                     }
                     <ShowSettings
                         onChange={setShowSettings}

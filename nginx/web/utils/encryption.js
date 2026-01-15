@@ -53,7 +53,7 @@ const getAccessToken = async () => {
 
 const removeAccessToken = async () => {
     try {
-        await AsyncStorage.removeItem("access_token");
+        return AsyncStorage.removeItem("access_token");
     } catch (error) {
         console.error("Error removing token:", error);
     }
