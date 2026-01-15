@@ -94,7 +94,7 @@ export default function PartySlot({
                             />
                         </View>
                         <HelperText style={styles.name}>
-                            {player?.firstname} {player.lastname}
+                            {player?.username}
                         </HelperText>
                     </>
                 ) : (

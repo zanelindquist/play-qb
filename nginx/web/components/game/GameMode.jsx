@@ -70,9 +70,7 @@ export default function GameMode({
                 style={styles.container}
                 gradient={
                     selected && {
-                        colors:
-                            theme.gradients?.[gamemode.name + "Array"] ||
-                            theme.gradients.mysteryArray,
+                        colors: theme.gradients.selectedMode,
                         start: { x: 0, y: 0 },
                         end: { x: 1, y: 1 },
                     }
@@ -101,7 +99,7 @@ export default function GameMode({
 
 const styles = StyleSheet.create({
     animated: {
-        marginTop: 10,
+        
     },
     container: {
         flexDirection: "row",

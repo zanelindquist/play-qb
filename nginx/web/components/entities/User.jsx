@@ -14,7 +14,7 @@ const HOVER_MULTIPLIER = 1.1;
 const ANIMATION_DURATION = 150;
 const HOVER_DELAY = 100;
 
-export default function User ({ style, user, onPress = () => {}}) {
+export default function User ({ style, user, showIcon=true, onPress}) {
     if(!user) return
 
     const [normalHeight, setNormalHeight] = useState(0)
@@ -28,59 +28,91 @@ export default function User ({ style, user, onPress = () => {}}) {
         setTimeout(() => setIsHovering(false), HOVER_DELAY)
     }
 
+    function handlePress() {
+        if(onPress) onPress()
+    }
+
     return (
         <View
             style={[
                 styles.container,
-                isHovering && {backgroundColor: "white"}
-                ]}
-            onPress={onPress}
+                isHovering && { backgroundColor: "white" },
+            ]}
+            onPress={handlePress}
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}
         >
             <View style={styles.left}>
-                <View style={styles.circle}>
-                    <Icon source={"account-outline"} size={"2rem"} color={theme.onPrimary}/>
-                </View>
-                <HelperText style={styles.name}>{user.firstname} {user.lastname}</HelperText>
-            </View>
-            <View>
-                <View style={[styles.circle, {backgroundColor: theme.onPrimary}]}>
+                {
+                    showIcon &&
                     <IconButton
-                        icon={"account-plus"}
-                        size={"1.5rem"}
-                        onPress={onPress}
+                        icon={"account-outline"}
+                        size={"2rem"}
+                        iconColor={theme.onPrimary}
+                        style={[
+                            styles.iconButton,
+                            { backgroundColor: theme.primary },
+                        ]}
                     />
-                </View>
+                }
+                <HelperText style={[styles.name, !user.is_online && styles.offline]}>{user.username}</HelperText>
+            </View>
+            <View style={styles.right}>
+                {
+                    user.is_online &&
+                    <Icon source={"circle"} color={theme.static.correct}/>
+                }
+
+                <IconButton
+                    icon={"account-plus"}
+                    size={"1.5rem"}
+                    onPress={handlePress}
+                    style={styles.iconButton}
+                />
             </View>
         </View>
     )
+
 }
 
 const styles = StyleSheet.create({
     animated: {
-        marginTop: 10
+        marginTop: 10,
     },
     container: {
         flexDirection: "row",
-        justifyContent: "space-between"
+        justifyContent: "space-between",
     },
     left: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 20
+        gap: 20,
+    },
+    right: {
+        flexDirection: "row",
+        alignItems: "center",
     },
     circle: {
         padding: 5,
         borderRadius: "50%",
-        backgroundColor: theme.primary
+        backgroundColor: theme.primary,
+    },
+    iconButton: {
+        backgroundColor: theme.onPrimary,
+        width: 40,
+        height: 40,
+        borderRadius: "50%",
     },
     name: {
         fontSize: "1rem",
+        color: theme.onSurface,
         letterSpacing: 0,
         textAlign: "center",
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    offline: {
+        color: theme.outline
     }
-})
+});
