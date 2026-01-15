@@ -491,7 +491,7 @@ def get_user_from_player_hash(player_hash: str) -> dict:
     finally:
         session.remove()
 
-def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1):
+def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
 
     try:
@@ -510,6 +510,9 @@ def get_random_question(level=False, type=0, difficulty=False, subject=False, co
 
         if subject:
             base_query = base_query.where(Questions.category == subject)
+
+        if hand_labeled:
+            base_query = base_query.where(Questions.hand_labeled == False)
 
         # Count filtered rows
         count = session.execute(
@@ -1070,6 +1073,38 @@ def edit_user(email:str, data: dict):
     except Exception as e:
         session.rollback()
         return {"message": "edit_user(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
+def classify_question(hash: str, category: str) -> dict:
+    try:
+        session = get_session()
+
+        question = session.execute(
+            select(Questions)
+            .where(Questions.hash == hash)
+        ).scalars().first()
+
+        if not question:
+            return {"message": "classify_question(): failure", "error": "Question not found", "code": 404}
+        
+        setattr(question, "category", category)
+        setattr(question, "category_confidence", 1)
+        setattr(question, "hand_labeled", True)
+
+        session.commit()
+
+        count = session.execute(
+            select(func.count())
+            .select_from(Questions)
+            .where(Questions.hand_labeled == True)
+        ).scalar_one()
+
+        return {"message": "classify_question(): success", "count": count, "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        return {"message": "classify_question(): failure","error": e, "code": 500}
     finally:
         session.remove()
 

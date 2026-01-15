@@ -11,14 +11,25 @@ from src.db.utils import*
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
-# TEST ENDPOINT
-@bp.route("/random_question", methods=["GET"])
-def random_question():
-    question = get_random_question()
+# ===== CLASSIFYING QUESTIONS FOR TRAINING =====
+@bp.route("/classify_next", methods=["GET"])
+@jwt_required()
+def on_classify_next():
+    question = get_random_question(hand_labeled=True)
+
     if question.get("error"):
         return question
     
     return question, 200
+
+@bp.route("/classify_question", methods=["POST"])
+@jwt_required()
+def on_classify_question():
+    data = request.get_json()
+
+    result = classify_question(data.get("hash"), data.get("category"))
+    
+    return result, result.get("code")
 
 
 # ===== AUTHORIZED ROUTES =====

@@ -92,10 +92,6 @@ const Play = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [buzzer, questionState])
 
-    useEffect(() => {
-        console.log("LOBBY", lobby)
-    }, [lobby])
-
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
