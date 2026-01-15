@@ -43,6 +43,8 @@ CATEGORIES = [
     "religion",
     "mythology",
     "geography",
+    "fine arts",
+    "current events"
     "custom",
 ];
 PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]

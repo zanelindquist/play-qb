@@ -2,7 +2,7 @@ import re
 from scipy.stats import norm
 import numpy as np
 from ...utils import get_json
-from ...keywords import *
+from .keywords import *
 
 def classify_by_keywords(question_data, model):
 
