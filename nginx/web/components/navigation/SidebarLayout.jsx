@@ -123,15 +123,14 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                             icon="play-outline"
                             iconColor={iconColor}
                         />
+                    </View>
+                    <View style={styles.rightNav} >
                         <TopNavItem
-                            label="Invite"
-                            onPress={() => {}}
-                            icon="account-group"
+                            label="Stats"
+                            onPress={() => router.push("/stats")}
+                            icon="poll"
                             iconColor={iconColor}
                         />
-                    </View>
-
-                    <View style={styles.rightNav} >
                         <TopNavItem
                             label="Account"
                             onPress={() => {}}

@@ -32,41 +32,25 @@ const CATEGORIES = [
     "fine arts"
 ]
  
-export default function Classify() {
+export default function Stats() {
     // Hooks
     const {showBanner} = useBanner()
 
     // Variables
-    const [question, setQuestion] = useState(null)
-    const [questionMS, setQuestionMS] = useState(0)
-    const [hasSet, setHasSet] = useState(false)
-    const [count, setCount] = useState(0)
+    const [stats, setStats] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        loadQuestion()
+        loadStats()
     }, [])
 
 
-    function loadQuestion() {
-        getProtectedRoute("/classify_next")
+    function loadStats() {
+        getProtectedRoute("/my_stats")
         .then((response) => {
-            setHasSet(false)
-            setQuestion(response.data)
-            setQuestionMS(Date.now())
-        })
-        .catch((error) => {
-            showBanner(error.message)
-        })
-    }
-
-    function submitQuestion(hash, category) {
-        if(!hash) return
-        postProtectedRoute("/classify_question", {hash, category})
-        .then((result) => {
-            setHasSet(true)
-            setCount(result.data.count)
-            console.log("Question set!")
-            loadQuestion()
+            console.log(response)
+            setStats(response.data)
+            setIsLoading(false)
         })
         .catch((error) => {
             showBanner(error.message)
@@ -76,44 +60,13 @@ export default function Classify() {
     return (
         <SidebarLayout>
             <View style={styles.container}>
-                {
+                <GlassyView>
+                    <HelperText style={styles.question}>{stats?.length}</HelperText>
+                    <HelperText style={styles.answer}></HelperText>
                     <View style={styles.categories}>
-                        <HelperText>{count}</HelperText>
-                        <Button onPress={loadQuestion} mode="contained">Skip</Button>
-                    </View>
-                }
-                <GlassyView
-                    gradient={
-                        hasSet && {
-                            colors: theme.gradients.readyTint,
-                            start: { x: 1, y: 0 },
-                            end: { x: 1, y: 1 },
-                        }
-                    }
-                >
-                    <HelperText style={styles.question}>{question?.question}</HelperText>
-                    <HelperText style={styles.answer}>{question?.answers.main}</HelperText>
-                    <View style={styles.categories}>
-                    {
-                        CATEGORIES.map((c) => 
-                            <HelperText
-                                style={styles.category}
-                                onPress={() => submitQuestion(question.hash, c)}
-                            >
-                                {c}
-                            </HelperText>
-                        )
-                    }
+
                     </View>
                 </GlassyView>
-                {
-                    hasSet &&
-                    <IconButton
-                        icon={"check"}
-                        size={40}
-                        style={{backgroundColor: "green"}}
-                    />
-                }
             </View>
         </SidebarLayout>
     );

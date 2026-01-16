@@ -60,5 +60,6 @@ RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:lobby": {"players": 0, "games": 0},
     "db:lobby_info": {},
     "db:game": {"current_question": 0},
-    "db:users": {}
+    "db:users": {},
+    "db:stat": {"player": {"lobby": 0}}
 }
