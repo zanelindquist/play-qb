@@ -30,6 +30,14 @@ TRAILING_DIRECTIVES = re.compile(
 )
 ROMAN_NUMERAL = re.compile(r"^(?=[MDCLXVI])M{0,4}(CM|CD|D?C{0,3})"
                            r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", re.I)
+COMMON_WORDS  = {
+    "a", "an", "the",
+    "and", "or", "but",
+    "of", "to", "in", "on", "at", "by", "for", "with",
+    "from", "into", "over", "under",
+    "is", "are", "was", "were", "be", "been", "being",
+    "this", "that", "these", "those"
+}
 
 # Creating a lobby
 MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "public", "creator_id"]
@@ -53,7 +61,12 @@ PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
 LOBBY_DELETE_DAYS = 0
 
 def normalize(s: str) -> str:
-    return re.sub(r"\s+", " ", s.lower().strip())
+    text = re.sub(r"\s+", " ", s.lower().strip())
+
+    # Remove common meaningless words
+    text = " ".join([w for w in text.split(" ") if w not in COMMON_WORDS])
+
+    return text
 
 def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
@@ -493,7 +506,7 @@ def get_user_from_player_hash(player_hash: str) -> dict:
     finally:
         session.remove()
 
-def get_random_question(level=False, type=0, difficulty=False, subject=False, confidence_threshold=0.1, hand_labeled=False):
+def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
 
     try:
@@ -504,14 +517,13 @@ def get_random_question(level=False, type=0, difficulty=False, subject=False, co
         )
 
         # Optional filters (only apply if non-zero / non-null)
-        if level:
+        if level != 0:
             base_query = base_query.where(Questions.level == level)
 
-        if difficulty:
-            base_query = base_query.where(Questions.difficulty == difficulty)
+        if category != "all":
+            # TODO: Handle custom
 
-        if subject:
-            base_query = base_query.where(Questions.category == subject)
+            base_query = base_query.where(Questions.category == category)
 
         if hand_labeled:
             base_query = base_query.where(Questions.hand_labeled == False)
@@ -1038,15 +1050,12 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
             if settings.get(column) is not None:
                 # Translate the categories to its number code
                 # TODO: Handle custom percentages for categories
-                if settings.get("category"):
-                    settings["category"] = CATEGORIES.index(columns["category"])
+
                 setattr(lobby, column, settings[column])
         
         session.commit()
 
-        lobby_data = to_dict_safe(lobby)
-
-        return {'message': 'set_lobby_settings(): success', "code": 200, 'lobby': lobby_data}
+        return {'message': 'set_lobby_settings(): success', "code": 200}
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
@@ -1266,9 +1275,9 @@ def check_question(question, guess) -> bool:
     is_reject = False
 
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
-    correct_threshold = 0.85
-    prompt_threshold = 0.7
-    dont_accept_threshold = 0.90
+    correct_threshold = 0.7
+    prompt_threshold = 0.6
+    dont_accept_threshold = 0.85
 
         # Parse parts of answer
     main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
@@ -1351,7 +1360,7 @@ def name_match(answer: str, guess: str, threshold=0.88):
 def normal_match(answer: str, guess: str, threshold=0.85):
     if not answer or not guess:
         return 0
-
+    
     answer_norm = normalize(answer)
     guess_norm = normalize(guess)
 

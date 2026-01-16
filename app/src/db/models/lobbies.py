@@ -16,8 +16,8 @@ class Lobbies(Base, CreatedAtColumn):
     name = Column(String(40), default="playqb")
     public = Column(Boolean, default=False)
     total_games = Column(Integer, default=0)
-    level = Column(Integer, default=0)
-    category = Column(Integer, default=0)
+    level = Column(Integer, default=0) # All, middle school, high school, college, open
+    category = Column(Integer, default=0) # Everything, sience, history, literature, social science, philosophy, religion, mythology, geography, fine arts, current events, custom
     speed = Column(Integer, default=400)
     gamemode = Column(String(10), default="solos", nullable=False)
     rounds = Column(Integer, default=20)

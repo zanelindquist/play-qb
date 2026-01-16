@@ -138,7 +138,11 @@ def on_join_lobby(data):
 def on_buzz(data): # Timestamp, AnswerContent
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
-    game_hash = request.environ["game_hash"]
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
 
     if not lobby:
         emit("reconnect")
@@ -165,7 +169,7 @@ def on_buzz(data): # Timestamp, AnswerContent
 # When a player is buzzing (every 100 ms or so when typing)
 @socketio.on("typing", namespace="/game")
 def on_typing(data): # AnswerContent
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
 
     if not lobby:
@@ -185,9 +189,13 @@ def on_typing(data): # AnswerContent
 # When the player has submitted their final answer
 @socketio.on("submit", namespace="/game")
 def on_submit(data): # FinalAnswer
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
-    game_hash = request.environ["game_hash"]
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
 
     # Logic for determining if an answer is acceptable or not
 
@@ -265,8 +273,13 @@ def on_change_game_settings(data):
     if result.get("code") >= 400:
         emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
         return;
+
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # TODO: Handle lobbies with multiple games
+    lobby_data["games"][0]["teams"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
     
-    emit("changed_game_settings", {"lobby": result.get("lobby")}, room=f"lobby:{lobby}")
+    emit("changed_game_settings", {"lobby": lobby_data}, room=f"lobby:{lobby}")
 
 # PAUSING AND PLAYING THE GAME
 
@@ -274,7 +287,15 @@ def on_change_game_settings(data):
 def on_next_question(data):
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
-    game_hash = request.environ["game_hash"]
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
 
     if not lobby:
         emit("reconnect")
@@ -285,16 +306,24 @@ def on_next_question(data):
     # Increment buzzes_encountered
     result = increment_score_attribute(game_hash, "questions_encountered")
 
+    lobby_data = get_lobby_by_alias(lobby)
+
     # Get question ACCORDING TO LOBBY SETTINGS
-    question = get_random_question(type=0)
+    question = get_random_question(
+        type=0, # Tossup
+        level=lobby_data.get("level"), # All, ms, hs, college, open
+        category=CATEGORIES[lobby_data.get("category")]
+    )
+
     # Set this question as the game's question
     set_question_to_game(question, lobby)
+
     emit("next_question", {"question": question, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume", namespace="/game")
 def on_game_resume(): # Empty
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
 
     player = get_player_by_email_and_lobby(user_id, lobby)
@@ -304,7 +333,7 @@ def on_game_resume(): # Empty
 # Occurs only when a player pauses the game
 @socketio.on("game_pause", namespace="/game")
 def on_game_pause(): # Empty
-    lobby = request.environ["lobby"]
+    lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
 
     player = False;

@@ -29,6 +29,7 @@ import theme from "../../assets/themes/theme.js";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
+import GlassyView from "../../components/custom/GlassyView.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -95,9 +96,10 @@ const Play = () => {
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
-            addEventListener("you_joined", ({player, lobby}) => {
+            addEventListener("you_joined", ({player}) => {
                 setMyPlayer(player)
-                setLobby(lobby)
+                // if(!lobby.games[0]) throw Error("Lobby games are not defined")
+                // setLobby(lobby)
             })
 
             addEventListener("lobby_not_found", () => {
@@ -105,15 +107,21 @@ const Play = () => {
                 router.replace("/lobby?mode=solos")
             })
 
+            addEventListener("return_to_lobby", () => {
+                showAlert("Server restarted: return to lobby")
+                router.replace(`/lobby?mode=${alias}`)
+            })
+
             addEventListener("join_lobby_failed", ({error}) => {
                 showBanner("Failed to join lobby: " + error.message.toLowerCase())
             })
 
             addEventListener("player_joined", ({player, lobby}) => {
-                console.log("JOINED", lobby)
                 player.eventType = "player_joined"
                 addEvent(player)
                 // For updating the scores and stuff
+                if(!lobby.games[0]) throw Error("Lobby games are not defined")
+
                 setLobby({...lobby})
             })
 
@@ -142,6 +150,7 @@ const Play = () => {
                     setLobby((prev) => {
                         let changed = prev;
                         // TODO: Adjust for multiple games
+                        console.log(changed.games[0])
                         changed.games[0].teams = scores
                         return changed
                     })
@@ -152,6 +161,13 @@ const Play = () => {
             })
 
             addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+                console.log(question)
+                // Make sure the question is not a 404
+                if(question?.error == 'No questions meet this query') {
+                    showBanner(question?.error)
+                    return
+                }
+
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
                 setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
                 // Minimize the current quetsion
@@ -164,6 +180,7 @@ const Play = () => {
                     setLobby((prev) => {
                         let changed = prev;
                         // TODO: Adjust for multiple games
+                        console.log(changed.games[0])
                         changed.games[0].teams = scores
                         return changed
                     })
@@ -183,11 +200,14 @@ const Play = () => {
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
-                console.log("CHANGED SET", lobby.public)
                 // If we are the one who made these chagnes, return
                 if(myPlayer?.user?.id === lobby?.creator_id) return
-                console.log("Public", lobby.public)
+                if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 setLobby({...lobby})
+            })
+
+            addEventListener("changed_game_settings_failure", (error) => {
+                console.error(error)
             })
 
             // Mostly test listner
@@ -203,6 +223,7 @@ const Play = () => {
             addEventListener("player_disconnected", ({lobby, user}) => {
                 user.eventType = "player_disconnected"
                 addEvent(user)
+                if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 setLobby({...lobby})
             })
 
@@ -337,15 +358,14 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        if (!myPlayer) return
-        if (myPlayer?.user?.id !== lobby?.creator_id) return
+        if (!myPlayer || myPlayer?.user?.id !== lobby?.creator_id) return
 
         if (rateLimitRef.current) {
             clearTimeout(rateLimitRef.current)
         }
 
         rateLimitRef.current = setTimeout(() => {
-            console.log(rules.public)
+            console.log("CHANGED SETTINGS", rules.category)
             send("change_game_settings", { settings: rules })
         }, 20)
 
@@ -356,9 +376,9 @@ const Play = () => {
         }
     }
 
-    // useEffect(() => {
-    //     console.log("PLAYER< LOBBY", myPlayer, lobby)
-    // }, [myPlayer, lobby])
+    useEffect(() => {
+        console.log("LOBBY", lobby)
+    }, [lobby])
 
 
     return (
@@ -433,7 +453,12 @@ const Play = () => {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }
                     {
-                        lobby && lobby.games && <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        lobby && lobby.games ? 
+                        <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        :
+                        <GlassyView>
+                            <HelperText>Lobby or lobb.games undefined</HelperText>
+                        </GlassyView>
                     }
                     <ShowSettings
                         onChange={setShowSettings}

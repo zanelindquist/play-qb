@@ -141,7 +141,7 @@ export default function LobbyScreen() {
                 for(let key of Object.keys(lobby)) {
                     if(!MUTATABLE_RULES.includes(key)) delete customSettingsFromLobby[key]
                 }
-                // customSettingsFromLobby["name"] = randomLobbyName
+                customSettingsFromLobby["name"] = randomLobbyName
                 setCustomSettings(customSettingsFromLobby)
             });
 
@@ -280,7 +280,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("friend_now_online", ({friend}) => {
-                console.log("now onlinw", friend.is_online)
                 setFriends((prev) => prev.map((user) => user.hash == friend.hash ? friend : user))
             })
 
@@ -305,12 +304,16 @@ export default function LobbyScreen() {
 
     useEffect(() => {
         // console.log("CUSTOM INFO", customSettings)
-    }, [customSettings])
+        // console.log("IS CREATE", isCreateCustom)
+
+    }, [customSettings, isCreateCustom])
 
     // Setting game rule editing
     useEffect(() => {
         setDisableGameRules(gameMode !== "custom" || !myPM?.is_leader)
-        // setLobbyInfo((prev) => {return {...prev, name: randomLobbyName}})
+        if(myPM?.is_leader) {
+            setCustomSettings((prev) => {return {...prev, name: randomLobbyName}})
+        }
     }, [gameMode, myPM]);
 
     const openInviteFriendModal = React.useCallback(() => {
