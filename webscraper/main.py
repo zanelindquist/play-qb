@@ -31,7 +31,7 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # print(categorize_question(question, model="1.0ml"))
 
 # Categorize all questions
-mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.0 bayesian")
+# mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.2 ml")
 
 # result = process_question_answer(question)
 # print(result)
@@ -45,7 +45,7 @@ mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.0 baye
 # scrape_questions()
 
 # Train ML model
-# train_ml_classifier("1.1 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
+# train_ml_classifier("1.2 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
 
 # Bayesian classifier
 # labeled_questions = execute_query("SELECT category FROM questions WHERE hand_labeled = TRUE;")

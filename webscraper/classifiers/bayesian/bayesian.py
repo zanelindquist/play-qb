@@ -42,8 +42,6 @@ def classify_by_bayesian(question, model, diagnostics=False) -> list:
     category_confidences = softmax(category_scores)
     confidence = category_confidences[category_index]
 
-    print(category, category_scores)
-
     # - Set confidence
     return {"category": category, "confidence": confidence}
 
