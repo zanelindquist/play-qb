@@ -1367,6 +1367,10 @@ def normal_match(answer: str, guess: str, threshold=0.85):
     answer_tokens = set(list(answer_norm))
     guess_tokens = set(list(guess_norm))
 
+    # Can't divide by 0 later, so if there are no tokens in the answer for some reason, give them the question
+    if len(answer_tokens) == 0:
+        return 0
+
     # Exact match
     if answer_norm == guess_norm:
         return 1
