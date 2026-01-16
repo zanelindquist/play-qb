@@ -403,7 +403,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                 if not question or not answer:
                     continue
 
-                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.2 ml")
                 # If there is an error in this for some reason
                 if not classifier_data:
                     continue
@@ -475,7 +475,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                 question = " ||| ".join(question_parts)
                 answer = " ||| ".join(answer_parts)
 
-                classifier_data = categorize_question({"question": intro, "answer": None}, model="1.0 ml")
+                classifier_data = categorize_question({"question": intro, "answer": None}, model="1.2 ml")
                 
                 # If there is an error in this for some reason
                 if not classifier_data:
@@ -856,7 +856,7 @@ def train_ml_classifier(model, confidence_threshold=0.1, diagnostics=False):
     values = (confidence_threshold,)
 
     # ===== Re-classify questions =====
-    cursor.execute("SELECT question, category, answers FROM questions WHERE category_confidence >= %s AND category != ''", values)
+    cursor.execute("SELECT question, category, answers FROM questions WHERE category_confidence >= %s AND category != '' AND hand_labeled = TRUE", values)
     questions = cursor.fetchall()
 
     questions = [{"question": question[0], "category": question[1], "answers": question[2]} for question in questions]
