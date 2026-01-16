@@ -736,7 +736,6 @@ def get_friend_requests_by_email(email):
         to_dict_safe(sender) for sender in pending_senders
     ]
 
-
 def get_users_by_query(query):
     session = get_session()
     users = session.execute(
@@ -801,6 +800,29 @@ def attatch_players_to_teams(teams: dict):
             mutated_teams[team_hash]["members"][player_hash]["player"] = player
 
     return mutated_teams
+
+def get_stats_by_email(email: str) -> list:
+    session = get_session()
+    try:
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+            .options(
+                joinedload(Users.player_instances)
+            )
+        ).scalars().first()
+
+        if not user:
+            return False;
+
+        return [to_dict_safe(player.stats, rel_depths=REL_DEP["db:stat"], depth=0) for player in user.player_instances]
+
+    except Exception as e:
+        session.rollback()
+        return {'message': 'get_stats_by_email(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
 
 
 # EDITING RESOURCES

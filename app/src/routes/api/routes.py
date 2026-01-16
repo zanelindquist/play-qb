@@ -32,6 +32,19 @@ def on_classify_question():
     return result, result.get("code")
 
 
+# ===== OTHER PAGES =====
+
+@bp.route("/my_stats", methods=["GET"])
+@jwt_required()
+def on_my_stats():
+    email = get_jwt_identity()
+
+    stats = get_stats_by_email(email)
+    
+    return stats, 200
+
+
+
 # ===== AUTHORIZED ROUTES =====
 
 @bp.route("/identity")
