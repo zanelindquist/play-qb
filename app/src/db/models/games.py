@@ -1,10 +1,9 @@
 from sqlalchemy import Column, ForeignKey, Table, Integer, String, DateTime, Date, Boolean
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
-from time import timezone
+from datetime import timezone, datetime
 
 class Games(Base, CreatedAtColumn):
     __tablename__ = 'games'

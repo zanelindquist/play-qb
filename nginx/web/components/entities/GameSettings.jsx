@@ -203,7 +203,7 @@ export default function GameSettings({
             mode="slider"
             minimum={100}
             maximum={800}
-            defaultValue={defaultInfo?.speed}
+            defaultValue={400}
             onChange={handleGameRuleChange}
             disabled={disabled}
         />

@@ -259,10 +259,9 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                {/* <HelperText>{question.answers.main}</HelperText> */}
+                <HelperText>{question.answers.main}</HelperText>
                 {
-                    state == "dead" ||
-                    true &&
+                    state == "dead" &&
                     (
                         <Answers
                             answers={question.answers}

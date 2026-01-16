@@ -27,10 +27,6 @@ export default function CustomCategories ({
     // Just set it as a category so we have something to alter
     const [nextAlter, setNextAlter] = useState("science")
 
-    useEffect(() => {
-        console.log(summateCategories())
-    }, [categoryPercentages])
-
     /*
         ALGORITHM handleCategoryToggle()
         1. IF User increments one category
