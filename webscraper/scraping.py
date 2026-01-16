@@ -23,7 +23,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 from .config import *
-from .keywords import *
+from .classifiers.words.keywords import *
 from .classifier_models import *
 from .utils import *
 from .classifiers.ml.ml import *
@@ -225,7 +225,6 @@ def scrape_questions():
     for link in valid_links:
         tpacket = scrape_tournament_to_sql(link[1:], diagnostics="./logs/full_scrape.txt", level="College")
         
-
 def scrape_individual_page_to_json():
     print("BEGINNING webscrape")
     tournment_packet = scrape_tournament_page("/3209/", diagnostics="./logs/scrape.txt", level="College")
@@ -404,7 +403,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                 if not question or not answer:
                     continue
 
-                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.0 ml")
+                classifier_data = categorize_question({"question": question, "answer": answer}, model="1.2 ml")
                 # If there is an error in this for some reason
                 if not classifier_data:
                     continue
@@ -476,7 +475,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
                 question = " ||| ".join(question_parts)
                 answer = " ||| ".join(answer_parts)
 
-                classifier_data = categorize_question({"question": intro, "answer": None}, model="1.0 ml")
+                classifier_data = categorize_question({"question": intro, "answer": None}, model="1.2 ml")
                 
                 # If there is an error in this for some reason
                 if not classifier_data:
@@ -536,6 +535,29 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
 
     return {"status": 200, "message": "Success!"}
 
+# FETCHING
+def execute_query(query: str, data: tuple=False, diagnostics: str=False):
+    if not query:
+        raise Exception("execute_query(): no query given")
+    
+    cursor = connection.cursor()
+
+    try: 
+        if data:
+            cursor.execute(query, data)
+        else:
+            cursor.execute(query)
+
+        result = cursor.fetchall()
+
+        return result
+    except Exception as e:
+        connection.rollback()
+
+        print(f"fetch_all_questions(): Failed with error {e}")
+        if diagnostics:
+            append_to_diagnostics_file(diagnostics, f"FAILED fetching all questions: {e}")
+
 
 # MUTATING
 
@@ -547,7 +569,7 @@ def mutate_existing_questions(diagnostics=False, model="400 words"):
 
     # ===== Re-classify questions =====
     try: 
-        cursor.execute("SELECT id, difficulty, category, question, answers FROM questions")
+        cursor.execute("SELECT id, difficulty, category, question, answers FROM questions WHERE hand_labeled = FALSE")
         questions = cursor.fetchall()
 
         print("LEN QUESTIONS", len(questions))
@@ -825,7 +847,6 @@ def categorize_question(question_data, model="400 words"):
 
     result = classifier_function(question_data, model)
     
-
     return result
 
 def train_ml_classifier(model, confidence_threshold=0.1, diagnostics=False):
@@ -835,7 +856,7 @@ def train_ml_classifier(model, confidence_threshold=0.1, diagnostics=False):
     values = (confidence_threshold,)
 
     # ===== Re-classify questions =====
-    cursor.execute("SELECT question, category, answers FROM questions WHERE category_confidence >= %s AND category != ''", values)
+    cursor.execute("SELECT question, category, answers FROM questions WHERE category_confidence >= %s AND category != '' AND hand_labeled = TRUE", values)
     questions = cursor.fetchall()
 
     questions = [{"question": question[0], "category": question[1], "answers": question[2]} for question in questions]

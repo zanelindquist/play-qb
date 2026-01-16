@@ -19,8 +19,9 @@ class Questions(Base, CreatedAtColumn):
     category = Column(String(20), default="Unknown")
     question = Column(Text, nullable=False)
     answers = Column(Text, nullable=False)
-    category_confidence = Column(Float, nullable=False, default=0.5)
     prompts = Column(Text)
+    category_confidence = Column(Float, nullable=False, default=0.5)
+    hand_labeled = Column(Boolean, default=False)
 
     reports = relationship("Reports", back_populates="question")
     games = relationship("Games", back_populates="current_question")

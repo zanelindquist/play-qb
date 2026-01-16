@@ -32,6 +32,13 @@ def get_json(file_path, base_dir=None):
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
     
+def write_to_json(file, data):
+    BASE_DIR = os.path.dirname(__file__)
+    file = os.path.join(BASE_DIR, file)
+
+    with open(file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 def generate_unique_hash(length=16):
     """Generate a unique hash consisting of uppercase and lowercase letters."""
     return ''.join(random.choices(string.ascii_letters, k=length))
