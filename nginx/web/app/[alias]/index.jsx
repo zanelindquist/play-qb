@@ -150,7 +150,6 @@ const Play = () => {
                     setLobby((prev) => {
                         let changed = prev;
                         // TODO: Adjust for multiple games
-                        console.log(changed.games[0])
                         changed.games[0].teams = scores
                         return changed
                     })
@@ -161,7 +160,6 @@ const Play = () => {
             })
 
             addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
-                console.log(question)
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
                     showBanner(question?.error)
@@ -180,7 +178,6 @@ const Play = () => {
                     setLobby((prev) => {
                         let changed = prev;
                         // TODO: Adjust for multiple games
-                        console.log(changed.games[0])
                         changed.games[0].teams = scores
                         return changed
                     })
@@ -200,6 +197,7 @@ const Play = () => {
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
+                console.log("MODE", lobby.gamemode)
                 // If we are the one who made these chagnes, return
                 if(myPlayer?.user?.id === lobby?.creator_id) return
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
@@ -364,10 +362,10 @@ const Play = () => {
             clearTimeout(rateLimitRef.current)
         }
 
+
         rateLimitRef.current = setTimeout(() => {
-            console.log("CHANGED SETTINGS", rules.category)
             send("change_game_settings", { settings: rules })
-        }, 20)
+        }, 100)
 
         return () => {
             if (rateLimitRef.current) {
@@ -375,10 +373,6 @@ const Play = () => {
             }
         }
     }
-
-    useEffect(() => {
-        console.log("LOBBY", lobby)
-    }, [lobby])
 
 
     return (
@@ -470,7 +464,7 @@ const Play = () => {
                         // TODO: Determine who can edit lobbies while they are in them
                         disabled={myPlayer?.user?.id !== lobby?.creator_id}
                         nameDisabled={true}
-                        title={"Game Rules"}
+                        title={"Game Settings"}
                         onGameRuleChange={handleGameRuleChange}
                     />
                 </View>

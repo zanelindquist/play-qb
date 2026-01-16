@@ -32,6 +32,8 @@ import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
 
+const LEVELS = ["Middle School", "High School", "Collegiate", "Open"]
+
 const collapsedHeight = 40;
 const EXPANDED_HEIGHT = 400;
 
@@ -226,7 +228,7 @@ const Question = ({
                 </View>
 
                 <View style={styles.questionTopline}>
-                    <HelperText>{question.tournament} {">"} {capitalize(question.category)}</HelperText>
+                    <HelperText>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
                 </View>
                 <View>
                     <HelperText style={styles.questionText}>
@@ -277,7 +279,7 @@ const Question = ({
             style={styles.collapsedBar}
             onPress={handleDeadPressed}
         >
-            <HelperText numberOfLines={1}>{question.tournament}</HelperText>
+            <HelperText numberOfLines={1}>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
             <HelperText style={styles.answer} numberOfLines={1}>
                 {question.answers.main}
             </HelperText>

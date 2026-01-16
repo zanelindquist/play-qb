@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { Text, HelperText } from "react-native-paper";
+import { Text, HelperText, ActivityIndicator } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 import GameRule from "./GameRule";
@@ -65,10 +65,31 @@ export default function GameSettings({
     ...props
 }) {
     if(!defaultInfo) {
-        console.log("<GameSettings />: No default info. Falling back onto component defaults.")
+        return (
+            <GlassyView>
+                <ActivityIndicator />
+            </GlassyView>
+        )
     }
+
     const [showCustomCategories, setShowCustomCategories] = useState(false)
     const [customSettings, setCustomSettings] = useState({})
+    const isMounted = useRef(false)
+
+    // Set mounted flag after initial render
+    useEffect(() => {
+        console.log("IS MOUTNED", isMounted)
+
+        // Wait a little bit for everything to mount until we can edit stuff
+        setTimeout(() => {
+            isMounted.current = true
+        }, 1000)
+
+
+        return () => {
+            isMounted.current = false
+        }
+    }, [])
 
     function allowLobbyName(text) {
         if(text === "" || text.length > 40 || detectCurseWords(text)) return false
@@ -76,6 +97,9 @@ export default function GameSettings({
     }
 
     function handleGameRuleChange(e) {
+        // Skip if not yet mounted (initial render)
+        if(!isMounted.current) return
+
         // If this is disabled, we are just getting the onmount change events
         if(disabled) return
         // For displaying the game rules
@@ -137,11 +161,11 @@ export default function GameSettings({
             })}
             defaultValue={
                 GAMEMODES.map((g) => g.name).indexOf(
-                    defaultInfo?.gamemode
+                    defaultInfo?.gamemode?.toLowerCase()
                 ) < 0 
                 ? 0 : 
                 GAMEMODES.map((g) => g.name).indexOf(
-                    defaultInfo?.gamemode
+                    defaultInfo?.gamemode?.toLowerCase()
                 )
             }
             onChange={handleGameRuleChange}

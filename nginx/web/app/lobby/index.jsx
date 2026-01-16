@@ -343,20 +343,8 @@ export default function LobbyScreen() {
         send("change_gamemode", {lobby_alias: mode})
     }
 
-    function handleInvite(hash) {
-        socket.emit("invite_friend", {hash})
-    } 
-
     function handleAcceptInvite(party_hash) {
         send("accepted_invite", {party_hash})
-    }
-
-    function handleAddFriend(hash) {
-        socket.emit("add_friend", {hash})
-    }
-
-    function handleUnfriend(hash) {
-        socket.emit("remove_friend", {hash})
     }
 
     function handleReadyPressed() {
@@ -455,9 +443,9 @@ export default function LobbyScreen() {
                     <FriendOptions
                         friends={friends}
                         friendRequests={friendRequests}
-                        handleInvite={handleInvite}
-                        handleAddFriend={handleAddFriend}
-                        handleUnfriend={handleUnfriend}
+                        socket={socket}
+                        addEventListener={addEventListener}
+                        removeEventListener={removeEventListener}
                     />
                 </View>
                 <View style={styles.right}>

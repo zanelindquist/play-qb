@@ -119,7 +119,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                     <View style={styles.middleNav}>
                         <TopNavItem
                             label="Play"
-                            onPress={() => router.replace("/play")}
+                            onPress={() => router.replace("/lobby?mode=solos")}
                             icon="play-outline"
                             iconColor={iconColor}
                         />

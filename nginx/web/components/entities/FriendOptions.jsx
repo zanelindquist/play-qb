@@ -28,23 +28,57 @@ import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
 import Friend from "./Friend";
 import User from "./User";
+import AddFriendModal from "../modals/AddFriendModal";
 
 export default function FriendOptions({
     friends,
     friendRequests,
-    handleInvite,
-    handleAddFriend,
-    handleUnfriend,
+    socket,
+    addEventListener,
+    removeEventListener,
     style,
 }) {
+    const {showAlert} = useAlert()
+
     let fs = friends.sort((f) => (f.is_online ? -1 : 1));
+    
+    function handleInvite(hash) {
+        socket.emit("invite_friend", {hash})
+    } 
+
+    function handleAddFriend(hash) {
+        socket.emit("add_friend", {hash})
+    }
+
+    function handleUnfriend(hash) {
+        socket.emit("remove_friend", {hash})
+    }
+
+    const openAddFriendModal = React.useCallback(() => {
+        showAlert(
+            <AddFriendModal
+                socket={socket}
+                addEventListener={addEventListener}
+                removeEventListener={removeEventListener}
+            />,
+            styles.dialogueModalStyle
+        );
+    })
 
     return (
         <GlassyView style={[styles.container, style]}>
             <View>
-                <HelperText style={styles.label}>
-                    Friends ({friends.length})
-                </HelperText>
+                <View style={styles.friendsTitleContainer}>
+                    <HelperText style={styles.label}>
+                        Friends ({friends.length})
+                    </HelperText>
+                    <IconButton
+                        icon={"account-plus"}
+                        onPress={openAddFriendModal}
+                        style={styles.iconButton}
+                    />
+                </View>
+
                 {friends && fs.length > 0 ? (
                     fs.map((f) => (
                         <Friend
@@ -85,9 +119,17 @@ const styles = StyleSheet.create({
         gap: 10,
         overflow: "visible"
     },
+    friendsTitleContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
     title: {
         fontSize: 20,
         fontWeight: "bold",
+    },
+    iconButton: {
+    
     },
     label: {
         fontSize: 16,
