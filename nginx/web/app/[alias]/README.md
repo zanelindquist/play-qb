@@ -104,7 +104,7 @@
     *We need to keep track of the state of the game in our database in case people are joining the game. I think the single socket will end up managing all of the games, unless I add unique routes on the socket for each game, but the difference is the same to the database and game state management*
 
     1. onJoinLobby
-        - player_join_lobby(player_id, lobby_id)
+        - user_join_lobby(player_id, lobby_id)
             * Update the Player's id to reflect which lobby they now in
             * Add the player's id to the Game's manifest
             * Add a score of 0 for the player

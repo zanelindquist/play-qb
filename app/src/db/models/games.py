@@ -25,7 +25,7 @@ class Games(Base, CreatedAtColumn):
     current_question_id = Column(Integer, ForeignKey("questions.id"), nullable=True)
     current_question = relationship("Questions", back_populates="games")
     
-    players = relationship("Players", back_populates="current_game")
+    users = relationship("Users", back_populates="current_game")
 
     def __repr__(self):
         return f"<Game(id={self.id}, lobby_id={self.lobby_id})>"
