@@ -264,7 +264,15 @@ def create_user(data):
         )
 
         session.add(new_user)
+        session.flush()
+
+        stats = Stats(
+            user_id=new_user.id
+        )
+
+        session.add(stats)
         session.commit()
+
         return {'message': 'create_user(): success', "code": 201}
     
     except Exception as e:
@@ -278,6 +286,28 @@ def create_user(data):
     
     finally:
         session.remove()
+
+# TEMPORARY
+def create_stat_for_all_users_temp():
+    session = get_session()
+
+    users = session.execute(
+        select(Users)
+    ).scalars().all()
+
+    for user in users:
+
+        stats = Stats(
+            user_id=user.id
+        )
+
+        session.add(stats)
+
+    session.commit()
+    print("Added stats for all users")
+
+# create_stat_for_all_users_temp()
+
 
 # Creates a game by default for this lobby
 def create_lobby(settings):
@@ -321,50 +351,6 @@ def create_lobby(settings):
     except Exception as e:
         session.rollback()
         return {'message': 'create_lobby(): failure', 'error': f'{e}', "code": 400}
-    finally:
-        session.commit()
-
-def create_player(email, lobbyAlias):
-    session = get_session()
-    try:
-        player = get_player_by_email_and_lobby(email, lobbyAlias)
-        user = get_user_by_email(email)
-        lobby = get_lobby_by_alias(lobbyAlias)
-
-        if player is not None:
-            return player
-
-        if not user or not lobby:
-            return {'message': 'User or lobby not found', "code": 404}
-        # Create stats for the player
-
-        # For the current game, we want to set it as the lobby's last game
-        game_id = 0;
-        for game in lobby["games"]:
-            if game["id"] > game_id:
-                game_id = game["id"]
-
-        player = Players(
-            name=user["username"],
-            user_id=user["id"],
-            lobby_id=lobby["id"],
-            current_game_id=game_id
-        )
-
-        session.add(player)
-        session.flush()
-
-        stats = Stats(
-            player_id=player.id
-        )
-
-        session.add(stats)
-        session.commit()
-
-        return to_dict_safe(player, rel_depths=REL_DEP["db:player"], depth=0)
-    except Exception as e:
-        session.rollback()
-        return {'message': 'create_player(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -424,6 +410,8 @@ def create_friend_request_from_email_to_hash(email, hash):
         session.commit()
 
 
+
+
 # RETRIEVING RESOURCES
 
 # All of thse functions must return dicts, not SQL Alchemy objects
@@ -432,24 +420,15 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     try:
         session = get_session()
         user = None
-        if not joinedloads: 
-            user = session.execute(
-                select(Users)
-                .where(Users.email == email)
-            ).scalars().first()
-        else:
-            user = session.execute(
-                select(Users)
-                .where(Users.email == email)
-                .options(
-                    joinedload(Users.player_instances),
-                )
-            ).scalars().first()
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
 
         if advanced:
             return to_dict_safe(user, gentle=True, rel_depths=[], depth=3)
         else:
-            return to_dict_safe(user, gentle=gentle, rel_depths=rel_depths, depth=depth)
+            return to_dict_safe(user, gentle=gentle, rel_depths=REL_DEP["db:user"], depth=depth)
     except Exception as e:
         print(e)
         return None
@@ -460,19 +439,11 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
     try:
         session = get_session()
         user = None
-        if not joinedloads: 
-            user = session.execute(
-                select(Users)
-                .where(Users.hash == hash)
-            ).scalars().first()
-        else:
-            user = session.execute(
-                select(Users)
-                .where(Users.hash == hash)
-                .options(
-                    joinedload(Users.player_instances),
-                )
-            ).scalars().first()
+
+        user = session.execute(
+            select(Users)
+            .where(Users.hash == hash)
+        ).scalars().first()
 
         if advanced:
             return to_dict_safe(user, gentle=True, rel_depths=[], depth=3)
@@ -484,27 +455,6 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
     finally:
         session.remove()
 
-def get_user_from_player_hash(player_hash: str) -> dict:
-    try:
-        session = get_session()
-
-        user = (
-            session.execute(
-                select(Users)
-                .join(Users.player_instances)
-                .where(Players.hash == player_hash)
-                .options(joinedload(Users.player_instances))
-            )
-            .scalars()
-            .first()
-        )
-
-        return to_dict_safe(user, depth=0)
-    except Exception as e:
-        print(e)
-        return None
-    finally:
-        session.remove()
 
 def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
@@ -520,7 +470,7 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
         if level != 0:
             base_query = base_query.where(Questions.level == level)
 
-        if category != "all":
+        if category != "everything":
             # TODO: Handle custom
 
             base_query = base_query.where(Questions.category == category)
@@ -566,34 +516,6 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
-
-def get_player_by_email_and_lobby(email, lobbyAlias, rel_depths=REL_DEP["db:player"]):
-    try:
-        session = get_session()
-
-        lobby = session.execute(
-            select(Lobbies)
-            .where(Lobbies.name == lobbyAlias)
-        ).scalars().first()
-
-        player = session.execute(
-            select(Players)
-            .join(Users)
-            .where(
-                Users.email == email,
-                Players.lobby_id == lobby.id
-            )
-            .options(
-                joinedload(Players.user),
-            )
-        ).scalars().first()
-
-        return to_dict_safe(player, rel_depths=rel_depths)
-    except Exception as e:
-        print(e)
-        return None
-    finally:
-        session.remove()
 
 def get_lobby_by_alias(lobbyAlias):
     session = get_session()
@@ -796,7 +718,7 @@ def attatch_players_to_teams(teams: dict):
 
     for team_hash, team in teams.items():
         for player_hash, player in team["members"].items():
-            player = get_user_from_player_hash(player_hash)
+            player = get_user_by_hash(player_hash)
             mutated_teams[team_hash]["members"][player_hash]["player"] = player
 
     return mutated_teams
@@ -807,9 +729,6 @@ def get_stats_by_email(email: str) -> list:
         user = session.execute(
             select(Users)
             .where(Users.email == email)
-            .options(
-                joinedload(Users.player_instances)
-            )
         ).scalars().first()
 
         if not user:
@@ -1026,14 +945,14 @@ def increment_score_attribute(game_hash: str, key: str, player_hash: str = None,
     finally:
         session.commit()
 
-def write_player_stats(player_hash: str, stats: dict) -> dict:
+def write_user_stats(player_hash: str, stats: dict) -> dict:
     session = get_session()
     try:
-        player = session.execute(
-            select(Players)
-            .where(Players.hash == player_hash)
+        user = session.execute(
+            select(Users)
+            .where(Users.hash == player_hash)
             .options(
-                joinedload(Players.stats)
+                joinedload(Users.stats)
             )
         ).scalars().first()
 
@@ -1044,9 +963,9 @@ def write_player_stats(player_hash: str, stats: dict) -> dict:
             # Forget it if there is no change
             if stats[key] == 0:
                 continue
-            new_total = getattr(player.stats, key) + stats.get(key)
+            new_total = getattr(user.stats, key) + stats.get(key)
             all_stats[key] = new_total
-            setattr(player.stats, key, new_total)
+            setattr(user.stats, key, new_total)
 
         session.commit()
 
@@ -1054,7 +973,7 @@ def write_player_stats(player_hash: str, stats: dict) -> dict:
 
     except Exception as e:
         session.rollback()
-        return {'message': 'write_player_stats(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'write_user_stats(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -1165,9 +1084,9 @@ def reset_game_scores(game_hash: str) -> bool:
     finally:
         session.commit()
 
-def remove_player_game_scores(game_hash: str, player_hash: str):
+def remove_user_game_scores(game_hash: str, player_hash: str):
     if not game_hash or not player_hash:
-        raise Exception("remove_player_game_scores(): arguments undefined")
+        raise Exception("remove_user_game_scores(): arguments undefined")
     
     session = get_session()
     try:
@@ -1485,7 +1404,7 @@ def strip_answerline_junk(answer: str) -> str:
 
 # Game state management
 
-def player_join_lobby(email, lobbyAlias):
+def user_join_lobby(email, lobbyAlias):
     session = get_session()
     try:
         lobby = session.execute(
@@ -1498,23 +1417,18 @@ def player_join_lobby(email, lobbyAlias):
             .where(Games.lobby_id == lobby.id)
         ).scalars().all()
 
-        player = session.execute(
-            select(Players)
-            .join(Users)
+        user = session.execute(
+            select(Users)
             .where(
                 Users.email == email,
-                Players.lobby_id == lobby.id
-            )
-            .options(
-                joinedload(Players.user),
             )
         ).scalars().first()
 
-        if not player:
-            return {'message': 'player_join_lobby(): failure', 'error': f'User not found', "code": 400}
+        if not user:
+            return {'message': 'user_join_lobby(): failure', 'error': f'User not found', "code": 400}
 
-        # Set the player's lobby to this lobby
-        setattr(player, "lobby_id", lobby.id)
+        # Set the uesrs's lobby to this lobby
+        setattr(user, "current_lobby_id", lobby.id)
 
         # TODO: If a game is non-custom and that game is full, add them to another game
 
@@ -1527,48 +1441,39 @@ def player_join_lobby(email, lobbyAlias):
             # TODO: Handle putting the player into a seperate lobby
             return
 
-        setattr(player, "current_game_id", game.id)
-        setattr(player, "is_online", True)
-        
+        setattr(user, "current_game_id", game.id)
 
         session.commit()
 
-        return {'message': 'player_join_lobby(): success', "code": 200}
+        return {'message': 'user_join_lobby(): success', "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'player_join_lobby(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'user_join_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
-def player_disconnect_from_lobby(email, lobbyAlias):
+def user_disconnect_from_lobby(email):
     session = get_session()
     try:
-        lobby = session.execute(
-            select(Lobbies)
-            .where(Lobbies.name == lobbyAlias)
-        ).scalars().first()
-
-        player = session.execute(
-            select(Players)
-            .join(Users, Players.user_id == Users.id)
+        user = session.execute(
+            select(Users)
             .where(
                 Users.email == email,
-                Players.lobby_id == lobby.id
             )
         ).scalars().first()
 
-        if not player:
-            return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'User not found', "code": 400}
+        if not user:
+            return {'message': 'user_disconnect_from_lobby(): failure', 'error': f'User not found', "code": 400}
 
-        setattr(player, "current_game_id", None)
-        setattr(player, "is_online", False)
+        setattr(user, "current_game_id", None)
+        setattr(user, "current_lobby_id", None)
 
         session.commit()
 
-        return {'message': 'player_disconnect_from_lobby(): success', "code": 200}
+        return {'message': 'user_disconnect_from_lobby(): success', "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'player_disconnect_from_lobby(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'user_disconnect_from_lobby(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 

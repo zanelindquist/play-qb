@@ -81,10 +81,9 @@ def on_join_lobby(data):
 
     # Create a player for this lobby (if there isnt one)
     user = get_user_by_email(user_id)
-    player = create_player(user_id, lobby)
     
     # Add player to lobby in database
-    result = player_join_lobby(user_id, lobby)
+    result = user_join_lobby(user_id, lobby)
 
     # Send GameState to the joining player (if possible)
 
@@ -120,7 +119,7 @@ def on_join_lobby(data):
     team_size = GAMEMODES.get(gamemode).get("size")
     my_party_number = party_member_hashes.index(user.get("hash"))
     team_hash = f"{party_hash}-{math.floor(my_party_number / team_size)}"
-    teams = add_player_to_game_scores(game.get("hash"), player.get("hash"), team_hash=team_hash, team_name=team_name)
+    teams = add_player_to_game_scores(game.get("hash"), user.get("hash"), team_hash=team_hash, team_name=team_name)
     # Now set game again because we just modififed the teams on it
     lobby_data = get_lobby_by_alias(lobby)
 
@@ -129,9 +128,9 @@ def on_join_lobby(data):
 
     # Send PlayerInformation about the new player to existing players
     
-    emit("you_joined", {"player": player})
+    emit("you_joined", {"user": user})
     
-    emit("player_joined", {"player": player, "lobby": lobby_data}, room=f"lobby:{lobby}")
+    emit("player_joined", {"user": user, "lobby": lobby_data}, room=f"lobby:{lobby}")
 
 # When a player buzzes
 @socketio.on("buzz", namespace="/game")
@@ -151,10 +150,10 @@ def on_buzz(data): # Timestamp, AnswerContent
     # Increment buzzes_encountered for everyone
     result = increment_score_attribute(game_hash, "buzzes_encountered")    
 
-    player = get_player_by_email_and_lobby(user_id, lobby)
+    user = get_user_by_email(user_id)
 
     # Increment buzzes for just the user
-    increment_score_attribute(game_hash, "buzzes", player_hash=player.get("hash"))
+    increment_score_attribute(game_hash, "buzzes", player_hash=user.get("hash"))
     # TODO: Increment for early buzzes
 
     # TODO: Ajust average time to buzz
@@ -162,7 +161,7 @@ def on_buzz(data): # Timestamp, AnswerContent
     # Broadcast that a player has buzzed
     emit(
         "question_interrupt",
-        {"player": player, "answer_content": "", "timestamp": get_timestamp()},
+        {"user": user, "answer_content": "", "timestamp": get_timestamp()},
         room=f"lobby:{lobby}"
     )
 
@@ -177,12 +176,12 @@ def on_typing(data): # AnswerContent
         return
 
     answer_content = data.get("content");
-    player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={});
+    user = get_user_by_email(user_id);
 
     # Broadcast that a player is typing
     emit(
         "player_typing",
-        {"player": player, "answer_content": answer_content},
+        {"user": user, "answer_content": answer_content},
         room=f"lobby:{lobby}"
     )
 
@@ -209,20 +208,25 @@ def on_submit(data): # FinalAnswer
     else:
         is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
     # IsCorrect= math.floor(random.random() * 2) - 1
-    player = get_player_by_email_and_lobby(user_id, lobby)
+    user = get_user_by_email(user_id)
 
-    data = {"player": player, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
+    data = {"user": user, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
 
     if is_correct == 1:
-        increment_score_attribute(game_hash, "correct", player_hash=player.get("hash"))
+        increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))
         # TODO: Adjust for power
-        increment_score_attribute(game_hash, "points", player_hash=player.get("hash"), amount=10)
+        increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
         
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is true
-        # Get question according to game settings
-        new_question = get_random_question(confidence_threshold=0)
+        # Get question ACCORDING TO LOBBY SETTINGS
+        new_question = get_random_question(
+            type=0, # Tossup
+            level=lobby_data.get("level"), # All, ms, hs, college, open
+            category=CATEGORIES[lobby_data.get("category")]
+        )
+
         data["question"] = new_question
         set_question_to_game(new_question, lobby)
         emit("next_question", data, room=f"lobby:{lobby}")
@@ -232,14 +236,14 @@ def on_submit(data): # FinalAnswer
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
             "question_interrupt",
-            {"player": player, "answer_content": final_answer, "timestamp": get_timestamp()},
+            {"user": user, "answer_content": final_answer, "timestamp": get_timestamp()},
             room=f"lobby:{lobby}"
         )
         
     elif is_correct == -1:
-        increment_score_attribute(game_hash, "incorrect", player_hash=player.get("hash"))
+        increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
         # TODO: Only do neg if the question is not over
-        increment_score_attribute(game_hash, "points", player_hash=player.get("hash"), amount=5)
+        increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
         
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
@@ -326,9 +330,9 @@ def on_game_resume(): # Empty
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
 
-    player = get_player_by_email_and_lobby(user_id, lobby)
+    user = get_user_by_email(user_id)
 
-    emit("game_resumed", {"player": player, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
+    emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("game_pause", namespace="/game")
@@ -336,9 +340,9 @@ def on_game_pause(): # Empty
     lobby = request.environ.get("lobby")
     user_id = request.environ["user_id"]
 
-    player = False;
+    user = get_user_by_email(user_id)
 
-    emit("game_pause", {player}, room=f"lobby:{lobby}")
+    emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
@@ -349,13 +353,10 @@ def on_disconnect():
 
     user = get_user_by_email(user_id)
 
-    # Remove the player scores from the game object
-    player = get_player_by_email_and_lobby(user_id, lobby, rel_depths={"current_game": 0})
-
     # Add the scores to the user's stats
-    stats = remove_player_game_scores(player.get("current_game").get("hash"), player.get("hash"))
+    stats = remove_user_game_scores(user.get("current_game").get("hash"), user.get("hash"))
 
-    total_stats = write_player_stats(player.get("hash"), stats)
+    total_stats = write_user_stats(user.get("hash"), stats)
 
     lobby_data = get_lobby_by_alias(lobby)
 
@@ -365,6 +366,6 @@ def on_disconnect():
     # Give them their stats before they are disconnected
     emit("you_disconnected", {"stats": stats, "total_stats": total_stats})
 
-    result = player_disconnect_from_lobby(user_id, lobby)
+    result = user_disconnect_from_lobby(user_id)
 
     emit("player_disconnected", {"lobby": lobby_data, "user": user}, room=f"lobby:{lobby}")

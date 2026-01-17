@@ -19,7 +19,7 @@ export default function Interrupt ({ style, event }) {
                     size={20}
                 />
             </View>
-            <HelperText style={styles.name}>{event.player.user.username}</HelperText>
+            <HelperText style={styles.name}>{event.player.username}</HelperText>
             <HelperText style={styles.text}>{event.content}</HelperText>
             {
                 (event.answerStatus !== undefined) &&

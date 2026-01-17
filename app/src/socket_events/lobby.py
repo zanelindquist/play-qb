@@ -198,7 +198,6 @@ def on_enter_lobby(data):
     # Tell this player's friends what gamemode they are now in
 
     # Give the player their information (load profiles, ect)
-    player = get_player_by_email_and_lobby(user_id, lobby)
     party_members = get_party_member_info(party_hash)
 
     set_user_online(user_id, True)
@@ -215,7 +214,7 @@ def on_enter_lobby(data):
     # Get friend requests
     friend_requests = get_friend_requests_by_email(user_id)
 
-    emit("prelobby_joined", {"player": player, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
+    emit("prelobby_joined", {"user": user, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
 
 # Partying
 

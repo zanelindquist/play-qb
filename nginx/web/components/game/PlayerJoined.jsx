@@ -18,7 +18,7 @@ export default function PlayerJoined ({ style, event }) {
                 color={theme.primary}
                 size={20}
             />
-            <HelperText style={styles.name}>{event.name}  joined the game!</HelperText>
+            <HelperText style={styles.name}>{event.username}  joined the game!</HelperText>
         </View>
     )
 }

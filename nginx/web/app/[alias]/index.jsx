@@ -53,7 +53,7 @@ const Play = () => {
     const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
-    const [myPlayer, setMyPlayer] = useState(null);
+    const [myUser, setMyUser] = useState(null);
 
     // New question stuff
     const [allEvents, setAllEvents] = useState([]);
@@ -96,8 +96,8 @@ const Play = () => {
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
-            addEventListener("you_joined", ({player}) => {
-                setMyPlayer(player)
+            addEventListener("you_joined", ({user}) => {
+                setMyUser(user)
                 // if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 // setLobby(lobby)
             })
@@ -116,30 +116,30 @@ const Play = () => {
                 showBanner("Failed to join lobby: " + error.message.toLowerCase())
             })
 
-            addEventListener("player_joined", ({player, lobby}) => {
-                player.eventType = "player_joined"
-                addEvent(player)
+            addEventListener("player_joined", ({user, lobby}) => {
+                user.eventType = "player_joined"
+                addEvent(user)
                 // For updating the scores and stuff
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
 
                 setLobby({...lobby})
             })
 
-            addEventListener("question_interrupt", ({player, answer_content, timestamp}) => {
+            addEventListener("question_interrupt", ({user, answer_content, timestamp}) => {
                 setSynctimestamp(timestamp)
-                setBuzzer({current: player})
+                setBuzzer({current: user})
                 setQuestionState("interrupted")
                 // For non-question events, put them second in the list
                 addEvent({
                     eventType: "interrupt",
                     // Set the interrupt status for the buzzer color
                     status: questionStateRef.current == "waiting" ? "late" : "early",
-                    player: player,
+                    player: user,
                     content: answer_content
                 })
             })
 
-            addEventListener("player_typing", ({answer_content}) => {
+            addEventListener("player_typing", ({answer_content, user}) => {
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
                 setInterruptData("content", answer_content)
             })
@@ -159,7 +159,7 @@ const Play = () => {
                 setSynctimestamp(timestamp)
             })
 
-            addEventListener("next_question", ({player, final_answer, scores, is_correct, question, timestamp}) => {
+            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
                     showBanner(question?.error)
@@ -188,18 +188,18 @@ const Play = () => {
                 
             })
 
-            addEventListener("game_paused", ({player}) => {
+            addEventListener("game_paused", ({user}) => {
                 
             })
 
-            addEventListener("game_resumed", ({player, timestamp}) => {
+            addEventListener("game_resumed", ({user, timestamp}) => {
                 setSynctimestamp(timestamp)
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
                 console.log("MODE", lobby.gamemode)
                 // If we are the one who made these chagnes, return
-                if(myPlayer?.user?.id === lobby?.creator_id) return
+                if(myUser?.user?.id === lobby?.creator_id) return
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 setLobby({...lobby})
             })
@@ -356,7 +356,7 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        if (!myPlayer || myPlayer?.user?.id !== lobby?.creator_id) return
+        if (!myUser || myUser?.user?.id !== lobby?.creator_id) return
 
         if (rateLimitRef.current) {
             clearTimeout(rateLimitRef.current)
@@ -382,7 +382,7 @@ const Play = () => {
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == myPlayer?.id)}
+                        disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
@@ -462,7 +462,7 @@ const Play = () => {
                         columns={1}
                         defaultInfo={lobby}
                         // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myPlayer?.user?.id !== lobby?.creator_id}
+                        disabled={myUser?.user?.id !== lobby?.creator_id}
                         nameDisabled={true}
                         title={"Game Settings"}
                         onGameRuleChange={handleGameRuleChange}
