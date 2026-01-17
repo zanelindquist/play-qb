@@ -16,6 +16,7 @@ import { useAlert } from "@/utils/alerts.jsx";
 
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
+import Stats from "../../components/entities/Stats.jsx";
 import theme from "@/assets/themes/theme.js";
 import { useBanner } from "../../utils/banners.jsx";
 
@@ -32,7 +33,7 @@ const CATEGORIES = [
     "fine arts"
 ]
  
-export default function Stats() {
+export default function StatsPage() {
     // Hooks
     const {showBanner} = useBanner()
 
@@ -59,15 +60,9 @@ export default function Stats() {
 
     return (
         <SidebarLayout>
-            <View style={styles.container}>
-                <GlassyView>
-                    <HelperText style={styles.question}>{stats?.length}</HelperText>
-                    <HelperText style={styles.answer}></HelperText>
-                    <View style={styles.categories}>
-
-                    </View>
-                </GlassyView>
-            </View>
+            <Stats
+                stats={stats}
+            />
         </SidebarLayout>
     );
 }

@@ -734,7 +734,7 @@ def get_stats_by_email(email: str) -> list:
         if not user:
             return False;
 
-        return [to_dict_safe(player.stats, rel_depths=REL_DEP["db:stat"], depth=0) for player in user.player_instances]
+        return to_dict_safe(user.stats, rel_depths=REL_DEP["db:stat"])
 
     except Exception as e:
         session.rollback()
