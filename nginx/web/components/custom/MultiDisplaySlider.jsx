@@ -9,7 +9,7 @@ export default function MultiDisplaySlider ({ setScreen, screenNames, onScreenCh
     const [index, setIndex] = useState(screenNames.indexOf(setScreen) < 0 ? 0 : screenNames.indexOf(setScreen));
     const [sliderPosition] = useState(new Animated.Value(0)); // Animated value for slider position
     const [containerWidth, setContainerWidth] = useState(0); // Store the container width
-    const [isLoading, setIsLoading] = useState(true); // Controls loading state
+    const [isLoading, setIsLoading] = useState(false); // Controls loading state
     const [currentScreen, setCurrentScreen] = useState(index); // Tracks the displayed screen after animation
 
     const handlePress = (i) => {

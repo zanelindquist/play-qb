@@ -8,6 +8,7 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
+    Pressable,
     Image
 } from 'react-native';
 import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
@@ -22,6 +23,7 @@ import theme from "@/assets/themes/theme.js";
 import { useBanner } from "../../utils/banners.jsx";
 import TextInputEdit from "../../components/custom/TextInputEdit.jsx";
 import { truncates } from "bcryptjs";
+import GameSettings from "../../components/entities/GameSettings.jsx";
 
 const CATEGORIES = [
     "science",
@@ -43,10 +45,18 @@ export default function AccountPage() {
     // Variables
     const [account, setAccount] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [selectedLobby, setSelectedLobby] = useState(0)
 
     useEffect(() => {
         loadAccount()
     }, [])
+
+    function handleSelectPressed(i) {
+        // If nothing changed, return
+        if(selectedLobby === i) return;
+        setSelectedLobby(i)
+
+    }
 
 
     function loadAccount() {
@@ -67,8 +77,11 @@ export default function AccountPage() {
             <GlassyView>
                 <MultiDisplaySlider
                     screenNames={["Profile", "My Lobbies"]}
-                    isLoading={isLoading}
                 >
+                {
+                    isLoading ?
+                    <HelperText>Loading data...</HelperText>
+                    :
                     <View style={styles.profile}>
                         <View style={styles.left}>
                             <TextInputEdit
@@ -95,9 +108,44 @@ export default function AccountPage() {
                             <HelperText style={styles.title}>{account?.username}</HelperText>
 
                         </View>
+                    </View>                    
+                }
+                {
+                    isLoading ?
+                    <HelperText>Loading data...</HelperText>
+                    :
+                    <View style={styles.lobbies}>
+                        <View style={styles.left}>
+                            <HelperText style={styles.title}>Your lobbies</HelperText>
+                            <View style={styles.lobbiesList}>
+                            {
+                                account.created_lobbies.map((lobby, i) => 
+                                    <Pressable
+                                        style={[styles.lobbyContainer, i === 0 && {borderWidth: 0}, selectedLobby === i && styles.selectedLobby]}
+                                        onPress={() => handleSelectPressed(i)}
+                                    >
+                                        <HelperText style={styles.lobbyAlias}>{lobby.name}</HelperText>
+                                        <View style={styles.playersOnlineContainer}>
+                                            <Icon source={"circle"} color={theme.static.correct}/>
+                                            <HelperText style={styles.playersOnlineText}>{lobby.number_of_online_players}</HelperText>
+                                        </View>
+                                    </Pressable>
+                                )
+                            }
+                            </View>
+                        </View>
+                        <View style={styles.left}>
+                            <GameSettings
+                                defaultInfo={account.created_lobbies[selectedLobby]}
+                                expanded={true}
+                                disabled={true}
+                                useGlassyView={false}
+                                title={account.created_lobbies[selectedLobby]?.name || "Lobby"}
+                            />
+                        </View>
+
                     </View>
-                    
-                    <HelperText>Hi</HelperText>
+                }
                 </MultiDisplaySlider>
 
             </GlassyView>
@@ -118,6 +166,38 @@ const styles = StyleSheet.create({
         gap: 10,
         justifyContent: "space-between",
         width: "100%"
+    },
+    lobbies: {
+        flexDirection: "row",
+        width: "100%",
+        gap: 10,
+        padding: 10,
+    },
+    lobbiesList: {
+        backgroundColor: theme.surface,
+        borderRadius:10
+    },
+    lobbyContainer: {
+        borderColor: theme.outline,
+        borderTopWidth: 1,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 5
+    },
+    selectedLobby: {
+        backgroundColor: theme.elevation.level2
+    },
+    lobbyAlias: {
+        fontSize: "1rem"
+    },
+    playersOnlineContainer: {
+        flexDirection: "row",
+        alignItems: "center"
+    },
+    playersOnlineText: {
+        fontSize: "0.8rem",
+        fontWeight: "bold"
     },
     left:{
         justifySelf: "baseline"

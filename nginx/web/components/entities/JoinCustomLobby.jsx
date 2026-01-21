@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     lobbyAlias: {
         fontSize: "1rem"
     },
-        playersOnlineContainer: {
+    playersOnlineContainer: {
         flexDirection: "row",
         alignItems: "center"
     },
