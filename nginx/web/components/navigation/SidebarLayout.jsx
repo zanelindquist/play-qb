@@ -112,25 +112,31 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                 }}
             >
                 <GlassyView style={styles.topNav}>
-                    <View style={styles.leftNav}>
+                    <View style={styles.middleNav}>
                         <Logo text={true} image={false}/>
+                        <TopNavItem
+                            onPress={() => router.replace("/lobby?mode=solos")}
+                            icon="play"
+                            iconColor={iconColor}
+                        />
                     </View>
 
                     <View style={styles.middleNav}>
                         <TopNavItem
-                            label="Play"
-                            onPress={() => router.replace("/lobby?mode=solos")}
-                            icon="play-outline"
+                            label="Saved"
+                            onPress={() => router.replace("/saved")}
+                            icon="bookmark"
                             iconColor={iconColor}
                         />
-                    </View>
-                    <View style={styles.rightNav} >
                         <TopNavItem
                             label="Stats"
                             onPress={() => router.push("/stats")}
                             icon="poll"
                             iconColor={iconColor}
                         />
+\                   </View>
+                    <View style={styles.rightNav} >
+
                         <TopNavItem
                             label="Account"
                             onPress={() => router.push("/account")}

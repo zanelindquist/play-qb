@@ -68,6 +68,7 @@ export default function GameSettings({
         return (
             <GlassyView>
                 <ActivityIndicator />
+                <HelperText>Loading default information</HelperText>
             </GlassyView>
         )
     }
