@@ -43,6 +43,17 @@ def on_my_stats():
     
     return stats, 200
 
+@bp.route("/my_account", methods=["GET"])
+@jwt_required()
+def on_my_account():
+    email = get_jwt_identity()
+
+    account = get_user_by_email(email, gentle=False, rel_depths={"created_lobbies": 0, "friends": 0})
+    
+    del account["password"]
+
+    return account, 200
+
 
 
 # ===== AUTHORIZED ROUTES =====

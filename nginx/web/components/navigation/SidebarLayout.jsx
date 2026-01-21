@@ -133,7 +133,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                         />
                         <TopNavItem
                             label="Account"
-                            onPress={() => {}}
+                            onPress={() => router.push("/account")}
                             icon="account"
                             iconColor={iconColor}
                         />

@@ -428,7 +428,7 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
         if advanced:
             return to_dict_safe(user, gentle=True, rel_depths=[], depth=3)
         else:
-            return to_dict_safe(user, gentle=gentle, rel_depths=REL_DEP["db:user"], depth=depth)
+            return to_dict_safe(user, gentle=gentle, rel_depths=rel_depths if rel_depths else REL_DEP["db:user"], depth=depth)
     except Exception as e:
         print(e)
         return None
