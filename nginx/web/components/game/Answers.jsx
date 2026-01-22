@@ -17,18 +17,18 @@ export default function Answers ({ style, answers, onExpand, onCollapse, rightIc
     const moreInformation = answers.accept || answers.prompt || answers.reject || answers.suggested_cateogry
 
     function onPress() {
-        setExpanded(!expanded)
-        if(expanded) {
+        if(!expanded) {
             if(onExpand) onExpand(mountHeight.current)
         } else {
             if(onCollapse) onCollapse()
         }
+        setExpanded(!expanded)
     }
 
     return (
         <ExpandableView
             expanded={expanded}
-            style={[styles.expandable, style]}
+            style={[styles.expandable]}
             maxHeight={mountHeight.current}
             duration={300}
         >

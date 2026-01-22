@@ -191,7 +191,7 @@ const Question = ({
     return (
         <ExpandableView
             expanded={ question.expanded || (state == "dead" && !isMinimized)}
-            style={[styles.expandable, style]}
+            style={[styles.expandable]}
             maxHeight={expandedHeight}
             onAnimationFinish={handleAnimationFinish}
         >
@@ -263,7 +263,7 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                {/* <HelperText>{question.answers.main}</HelperText> */}
+                <HelperText>{question.answers.main}</HelperText>
                 {
                     state == "dead" &&
                     <Answers

@@ -400,7 +400,6 @@ const Play = () => {
                                             onDeath={i == 0 ? handleQuestionDeath : null}
                                             state={i == 0 ? questionState : "dead" }
                                             setState={setQuestionState}
-                                            style={styles.question}
                                             key={`q:${e.id}`}
                                         />
                                     )
