@@ -26,8 +26,8 @@ class Stats(Base, CreatedAtColumn):
     games = Column(Integer, default=0)
     average_time_to_buzz = Column(Numeric(5, 4), default=0.5000)
 
-    player_id = Column(Integer, ForeignKey("players.id", ondelete="CASCADE"), nullable=False, unique=True)
-    player = relationship("Players", back_populates="stats")
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user = relationship("Users", back_populates="stats")
 
     def __repr__(self):
         return f"<Stats(id={self.id})>"

@@ -1,0 +1,4 @@
+2026-01-14 23:49:01 --- create_word_histogram(): failure: '<' not supported between instances of 'str' and 'int'
+2026-01-14 23:50:05 --- create_word_histogram(): successfully wrote 36 words to histogram
+2026-01-14 23:51:41 --- create_word_histogram(): successfully wrote 36 words to histogram
+2026-01-14 23:53:14 --- create_word_histogram(): successfully wrote 22200 words to histogram
