@@ -73,12 +73,12 @@ def on_saved():
     data = request.get_json()
     
     offset = data.get("offset")
+    limit = data.get("limit")
     category = data.get("category")
-    limit = 20
 
-    questions = get_saved_questions(email, category, offset=offset, limit=limit)
+    result = get_saved_questions(email, category, offset=offset, limit=limit)
 
-    return {"questions": questions, "category": category, "next_offset": offset + limit}, 200
+    return {"questions": result.get("questions"), "category": category, "next_offset": offset + limit, "total_length": result.get("total")}, 200
 
 
 

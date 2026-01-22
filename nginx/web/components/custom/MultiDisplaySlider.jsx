@@ -72,7 +72,7 @@ export default function MultiDisplaySlider ({ setScreen, screenNames, onScreenCh
 const styles = StyleSheet.create({
     childContainer: {
         flexDirection: "row",
-        justifyContent: "center"
+        justifyContent: "center",
     },
     child: {
         flexShrink: 1

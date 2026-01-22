@@ -102,7 +102,7 @@ export default function GameRule({
                     anchor={
                         <Pressable
                             onPress={() => setDropdown(true)}
-                            style={styles.dropdown}
+                            style={[styles.dropdown]}
                             disabled={disabled}
                         >
                             <HelperText style={styles.dropdownText}>
@@ -122,6 +122,7 @@ export default function GameRule({
                                 setSelectedIndex(i);
                                 setDropdown(false);
                             }}
+                            trailingIcon={o?.icon}
                         />
                     ))}
                 </Menu>
@@ -190,7 +191,10 @@ export default function GameRule({
 
     return (
         <View style={[styles.container, style]}>
-            <Text style={styles.label}>{label}</Text>
+            {
+                label &&
+                <Text style={styles.label}>{label}</Text>
+            }
             {modeComponent}
             {error && <HelperText style={styles.error}>{error}</HelperText>}
         </View>

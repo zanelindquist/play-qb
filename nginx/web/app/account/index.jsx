@@ -116,7 +116,7 @@ export default function AccountPage() {
                     <View style={styles.profile}>
                         <View style={styles.left}>
                             <TextInputEdit
-                                label="Name"
+                                label="Username"
                                 subtitle={"Public display name"}
                                 input={username}
                                 onInput={handleChangeUsername}
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 10,
         justifyContent: "space-between",
-        width: "100%"
+        width: "100%",
     },
     lobbies: {
         flexDirection: "row",
