@@ -112,29 +112,35 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                 }}
             >
                 <GlassyView style={styles.topNav}>
-                    <View style={styles.leftNav}>
-                        <Logo text={true} image={false}/>
+                    <View style={styles.middleNav}>
+                        <Logo text={true} image={false} style={styles.logo}/>
                     </View>
 
                     <View style={styles.middleNav}>
                         <TopNavItem
                             label="Play"
-                            onPress={() => router.replace("/play")}
-                            icon="play-outline"
+                            onPress={() => router.replace("/lobby?mode=solos")}
+                            icon="play"
                             iconColor={iconColor}
                         />
                         <TopNavItem
-                            label="Invite"
-                            onPress={() => {}}
-                            icon="account-group"
+                            label="Saved"
+                            onPress={() => router.replace("/saved")}
+                            icon="bookmark"
                             iconColor={iconColor}
                         />
-                    </View>
-
+                        <TopNavItem
+                            label="Stats"
+                            onPress={() => router.push("/stats")}
+                            icon="poll"
+                            iconColor={iconColor}
+                        />
+\                   </View>
                     <View style={styles.rightNav} >
+
                         <TopNavItem
                             label="Account"
-                            onPress={() => {}}
+                            onPress={() => router.push("/account")}
                             icon="account"
                             iconColor={iconColor}
                         />
@@ -205,6 +211,9 @@ const styles = StyleSheet.create({
     },
     rightNav: {
         flexDirection: "row"
+    },
+    logo: {
+        marginHorizontal: 20
     },
 
     scroll: {

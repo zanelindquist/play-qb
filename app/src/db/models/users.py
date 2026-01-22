@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
@@ -12,19 +12,38 @@ class Users(Base, CreatedAtColumn):
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     email = Column(String(50), nullable=False, unique=True)
     password = Column(String(60), nullable=True)
-    username = Column(String(20), nullable=False)
+    username = Column(String(20), nullable=False, unique=True)
     phone_number = Column(String(14), nullable=True)
     birthday = Column(Date, nullable=False)
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
     is_online = Column(Boolean, default=False)
 
-    player_instances = relationship("Players", back_populates="user")
+    current_lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=True)
+    current_lobby = relationship(
+        "Lobbies",
+        back_populates="users",
+        foreign_keys=[current_lobby_id]
+    )
+
+    current_game_id = Column(Integer, ForeignKey("games.id"), nullable=True)
+    current_game = relationship("Games", back_populates="users")
 
     sent_requests = relationship("Friends", back_populates="sender", foreign_keys="Friends.sender_id")
     received_requests = relationship("Friends", back_populates="receiver", foreign_keys="Friends.receiver_id")
 
-    created_lobbies = relationship("Lobbies", back_populates="creator")
+    stats = relationship(
+        "Stats",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    created_lobbies = relationship(
+        "Lobbies",
+        back_populates="creator",
+        foreign_keys="Lobbies.creator_id"
+    )
 
     @property
     def friends(self):

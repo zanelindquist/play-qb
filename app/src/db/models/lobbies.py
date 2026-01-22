@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
-from .players import Players
+from .users import Users
 
 class Lobbies(Base, CreatedAtColumn):
     __tablename__ = 'lobbies'
@@ -16,8 +16,8 @@ class Lobbies(Base, CreatedAtColumn):
     name = Column(String(40), default="playqb")
     public = Column(Boolean, default=False)
     total_games = Column(Integer, default=0)
-    level = Column(Integer, default=0)
-    category = Column(Integer, default=0)
+    level = Column(Integer, default=0) # All, middle school, high school, college, open
+    category = Column(Integer, default=0) # Everything, sience, history, literature, social science, philosophy, religion, mythology, geography, fine arts, current events, custom
     speed = Column(Integer, default=400)
     gamemode = Column(String(10), default="solos", nullable=False)
     rounds = Column(Integer, default=20)
@@ -27,23 +27,29 @@ class Lobbies(Base, CreatedAtColumn):
     allow_question_pause = Column(Boolean, default=True)
 
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    creator = relationship("Users", back_populates="created_lobbies")
+    creator = relationship(
+        "Users",
+        back_populates="created_lobbies",
+        foreign_keys=[creator_id]
+    )
 
     games = relationship("Games", back_populates="lobby")
-    players = relationship("Players", back_populates="lobby")
+    users = relationship(
+        "Users",
+        back_populates="current_lobby",
+        foreign_keys="Users.current_lobby_id"
+    )
 
     @hybrid_property
     def number_of_online_players(self):
-        return sum(1 for p in self.players if p.is_online)
+        return len(self.users)
 
     @number_of_online_players.expression
     def number_of_online_players(cls):
         return (
-            select(func.count(Players.id))
-            .where(
-                Players.lobby_id == cls.id,
-                Players.is_online.is_(True)
-            )
+            select(func.count(Users.id))
+            .where(Users.current_lobby_id == cls.id)
+            .correlate(cls)
             .scalar_subquery()
         )
 

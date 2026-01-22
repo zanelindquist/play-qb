@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-from webscraper.keywords import *
+from webscraper.classifiers.words.keywords import *
 from webscraper.utils import *
 
 BASE_DIR = os.path.dirname(__file__)

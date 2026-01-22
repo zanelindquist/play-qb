@@ -1,7 +1,11 @@
+# RUN FROM play-qb directory:
+# python -m webscraper.main
+
 
 from .scraping import *
 from .config import *
 from .classifiers.ml.ml import train_and_save_model
+from .classifiers.bayesian.bayesian import *
 
 html = False;
 
@@ -27,7 +31,7 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # print(categorize_question(question, model="1.0ml"))
 
 # Categorize all questions
-# mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.1 ml")
+# mutate_existing_questions(diagnostics="./logs/recategorize.txt", model="1.2 ml")
 
 # result = process_question_answer(question)
 # print(result)
@@ -41,4 +45,10 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # scrape_questions()
 
 # Train ML model
-# train_ml_classifier("1.1 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
+# train_ml_classifier("1.2 ml", confidence_threshold=0.3, diagnostics="./logs/train_ml.txt")
+
+# Bayesian classifier
+# labeled_questions = execute_query("SELECT category FROM questions WHERE hand_labeled = TRUE;")
+
+# create_word_histogram(labeled_questions, diagnostics="./logs/create_histogram.txt")
+# create_category_frequency(labeled_questions)

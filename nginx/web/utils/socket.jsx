@@ -47,7 +47,7 @@ export function useSocket(namespace, lobbyAlias) {
                 socketInstances[namespace] = socket;
 
                 socket.on("connect", () => {
-                    console.log("Socket connected:", socket.id);
+                    console.log(`Socket connected to ${namespace}:`, socket.id);
                     readyCallbacksStore[namespace].forEach(callback => callback(socket));
                     readyCallbacksStore[namespace] = [];
                 });

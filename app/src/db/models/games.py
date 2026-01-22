@@ -1,10 +1,9 @@
 from sqlalchemy import Column, ForeignKey, Table, Integer, String, DateTime, Date, Boolean
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
-from time import timezone
+from datetime import timezone, datetime
 
 class Games(Base, CreatedAtColumn):
     __tablename__ = 'games'
@@ -26,7 +25,7 @@ class Games(Base, CreatedAtColumn):
     current_question_id = Column(Integer, ForeignKey("questions.id"), nullable=True)
     current_question = relationship("Questions", back_populates="games")
     
-    players = relationship("Players", back_populates="current_game")
+    users = relationship("Users", back_populates="current_game")
 
     def __repr__(self):
         return f"<Game(id={self.id}, lobby_id={self.lobby_id})>"
