@@ -93,6 +93,11 @@ function detectCurseWords(text) {
     return CURSE_WORDS.some((word) => normalized.includes(word));
 }
 
+function allowLobbyName(text) {
+    if(text === "" || text.length > 40 || detectCurseWords(text)) return false
+    return !/\s/.test(text);
+}
+
 function generateRandomLobbyName() {
     const first = PEOPLE[random(PEOPLE.length)]
     const second = VERBS[random(VERBS.length)]
@@ -105,4 +110,6 @@ function capitalize(text) {
     return text.split("")[0].toUpperCase() + text.split("").slice(1).join("")
 }
 
-export { detectCurseWords, generateRandomLobbyName, capitalize };
+const allowUsername = allowLobbyName
+
+export { detectCurseWords, generateRandomLobbyName, capitalize, allowLobbyName, allowUsername };

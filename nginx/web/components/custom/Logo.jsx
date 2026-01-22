@@ -4,7 +4,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect, Path } from "react-native-svg";
 import theme from "@/assets/themes/theme";
 import { useRouter } from "expo-router";
 
-export default function Logo({ width, height, text = false, image = true }) {
+export default function Logo({ width, height, text = false, image = true, style }) {
     const start = theme.primary;
     const end = theme.secondary;
 
@@ -12,7 +12,7 @@ export default function Logo({ width, height, text = false, image = true }) {
 
     return (
         <Pressable
-            style={styles.container}
+            style={[styles.container, style]}
             onPress={() => router.replace("/")}    
         >
             {/* <Svg width={128} height={128} viewBox="0 0 128 128">

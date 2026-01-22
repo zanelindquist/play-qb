@@ -5,7 +5,7 @@ import { Text, HelperText, ActivityIndicator } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 import GameRule from "./GameRule";
-import { capitalize, detectCurseWords } from "../../utils/text";
+import { capitalize, allowLobbyName } from "../../utils/text";
 import ExpandableView from "../custom/ExpandableView";
 import CustomCategories from "./CustomCategories";
 import GlassyView from "../custom/GlassyView";
@@ -92,10 +92,6 @@ export default function GameSettings({
         }
     }, [])
 
-    function allowLobbyName(text) {
-        if(text === "" || text.length > 40 || detectCurseWords(text)) return false
-        return !/\s/.test(text);
-    }
 
     function handleGameRuleChange(e) {
         // Skip if not yet mounted (initial render)

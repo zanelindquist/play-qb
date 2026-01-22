@@ -13,17 +13,20 @@ import {
 } from 'react-native';
 import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
 import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
+
+// Hooks
 import { useAlert } from "@/utils/alerts.jsx";
+import { useBanner } from "../../utils/banners.jsx";
 
 import MultiDisplaySlider from "../../components/custom/MultiDisplaySlider.jsx";
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
 import Stats from "../../components/entities/Stats.jsx";
 import theme from "@/assets/themes/theme.js";
-import { useBanner } from "../../utils/banners.jsx";
 import TextInputEdit from "../../components/custom/TextInputEdit.jsx";
 import { truncates } from "bcryptjs";
 import GameSettings from "../../components/entities/GameSettings.jsx";
+import { allowUsername } from "../../utils/text.js";
 
 const CATEGORIES = [
     "science",
@@ -47,6 +50,9 @@ export default function AccountPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [selectedLobby, setSelectedLobby] = useState(0)
 
+    const [username, setUsername] = useState("")
+    const [errorFields, setErrorFields] = useState({})
+
     useEffect(() => {
         loadAccount()
     }, [])
@@ -65,10 +71,35 @@ export default function AccountPage() {
         .then((response) => {
             console.log(response.data)
             setAccount(response.data)
+            setUsername(response.data.username)
             setIsLoading(false)
         })
         .catch((error) => {
             showBanner(error.message)
+        })
+    }
+
+    function handleChangeUsername(value) {
+        setUsername(value)
+
+        if(!allowUsername(value)) {
+            setErrorFields((prev) => {return {...prev, name: "This username is not allowed."}})
+            return
+        }
+
+        postProtectedRoute("/set_username", {
+            username: value
+        })
+        .then((response) => {
+            showBanner("Changed username to: " + value)
+            setErrorFields((prev) => {return {...prev, name: undefined}})
+        })
+        .catch((error) => {
+            if (error.response?.data?.error?.includes("users.unique_username")) {
+                setErrorFields((prev) => {return {...prev, name: "This username is taken."}})
+            } else {
+                showBanner("There was an errror while setting your username")
+            }
         })
     }
 
@@ -87,9 +118,9 @@ export default function AccountPage() {
                             <TextInputEdit
                                 label="Name"
                                 subtitle={"Public display name"}
-                                input={account?.username}
-                                onInput={(value) => handleEdit("name", value)}
-                                // error={errorFields.name}
+                                input={username}
+                                onInput={handleChangeUsername}
+                                error={errorFields.name}
                             ></TextInputEdit>
                             <TextInputEdit
                                 label="Email"
@@ -117,7 +148,7 @@ export default function AccountPage() {
                     <View style={styles.lobbies}>
                         <View style={styles.left}>
                             <HelperText style={styles.title}>Your lobbies</HelperText>
-                            <View style={styles.lobbiesList}>
+                            <ScrollView contentContainerStyle={styles.lobbiesList}>
                             {
                                 account.created_lobbies.map((lobby, i) => 
                                     <Pressable
@@ -132,9 +163,9 @@ export default function AccountPage() {
                                     </Pressable>
                                 )
                             }
-                            </View>
+                            </ScrollView>
                         </View>
-                        <View style={styles.left}>
+                        <View style={styles.right}>
                             <GameSettings
                                 defaultInfo={account.created_lobbies[selectedLobby]}
                                 expanded={true}
@@ -200,7 +231,10 @@ const styles = StyleSheet.create({
         fontWeight: "bold"
     },
     left:{
-        justifySelf: "baseline"
+        flexGrow: 1
+    },
+    right:{
+        flexGrow: 1
     },
     profileDisplay: {
         padding: 20,

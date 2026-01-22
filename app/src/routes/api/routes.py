@@ -54,6 +54,18 @@ def on_my_account():
 
     return account, 200
 
+@bp.route("/set_username", methods=["POST"])
+@jwt_required()
+def on_set_username():
+    email = get_jwt_identity()
+    data = request.get_json()
+    
+    username = data.get("username")
+
+    result = edit_user(email, {"username": username})
+
+    return jsonify(result), result.get("code")
+
 
 
 # ===== AUTHORIZED ROUTES =====

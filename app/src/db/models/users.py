@@ -12,7 +12,7 @@ class Users(Base, CreatedAtColumn):
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     email = Column(String(50), nullable=False, unique=True)
     password = Column(String(60), nullable=True)
-    username = Column(String(20), nullable=False)
+    username = Column(String(20), nullable=False, unique=True)
     phone_number = Column(String(14), nullable=True)
     birthday = Column(Date, nullable=False)
     account_disabled = Column(Boolean, nullable=False, default=False)

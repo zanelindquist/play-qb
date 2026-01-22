@@ -1024,7 +1024,7 @@ def edit_user(email:str, data: dict):
 
     except Exception as e:
         session.rollback()
-        return {"message": "edit_user(): failure","error": e, "code": 500}
+        return {"message": "edit_user(): failure", "error": f"{e}", "code": 500}
     finally:
         session.remove()
 
@@ -1545,6 +1545,20 @@ def validate_password_hash(password):
 def validate_email(email):
     # Simple regex to validate and sanitize email format
     if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
+        raise ValueError("Email is of invalid format.")
+    
+    # Check our database and check if the email is already taken
+    session = get_session()
+
+    result = session.execute(select(Users).where(Users.email == email)).first()
+    if result is not None:
+        raise ValueError("Email is taken.")
+    
+    return email
+
+def validate_username(email):
+    # Simple regex to validate and sanitize email format
+    if not re.match(r"\s", email):
         raise ValueError("Email is of invalid format.")
     
     # Check our database and check if the email is already taken
