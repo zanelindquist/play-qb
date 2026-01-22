@@ -66,6 +66,20 @@ def on_set_username():
 
     return jsonify(result), result.get("code")
 
+@bp.route("/saved", methods=["POST"])
+@jwt_required()
+def on_saved():
+    email = get_jwt_identity()
+    data = request.get_json()
+    
+    offset = data.get("offset")
+    category = data.get("category")
+    limit = 20
+
+    questions = get_saved_questions(email, category, offset=offset, limit=limit)
+
+    return {"questions": questions, "category": category, "next_offset": offset + limit}, 200
+
 
 
 # ===== AUTHORIZED ROUTES =====
