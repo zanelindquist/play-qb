@@ -6,3 +6,4 @@ from .users import Users
 from .questions import Questions
 from .reports import Reports
 from .friends import Friends
+from .saved_questions import SavedQuestions

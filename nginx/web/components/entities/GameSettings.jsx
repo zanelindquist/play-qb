@@ -79,8 +79,6 @@ export default function GameSettings({
 
     // Set mounted flag after initial render
     useEffect(() => {
-        console.log("IS MOUTNED", isMounted)
-
         // Wait a little bit for everything to mount until we can edit stuff
         setTimeout(() => {
             isMounted.current = true

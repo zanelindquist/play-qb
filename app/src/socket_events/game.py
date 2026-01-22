@@ -217,6 +217,10 @@ def on_submit(data): # FinalAnswer
         # TODO: Adjust for power
         increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
         
+        # Save the question to the user's correct questions if they have premium
+        if user.get("premium"):
+            save_question(question.get("id"), user.get("id"), category="correct")
+
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is true
@@ -244,6 +248,10 @@ def on_submit(data): # FinalAnswer
         increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
         # TODO: Only do neg if the question is not over
         increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
+
+        # Save the question to the user's missed questions
+        if user.get("premium"):
+            save_question(question.get("id"), user.get("id"), category="missed")
         
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])

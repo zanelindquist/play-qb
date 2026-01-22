@@ -409,7 +409,41 @@ def create_friend_request_from_email_to_hash(email, hash):
     finally:
         session.commit()
 
+def save_question(question_id, user_id, category="missed"): # category= missed, correct, saved
+    session = get_session()
+    try:
+        saved_question = session.execute(
+            select(SavedQuestions)
+            .where(
+                and_(
+                    SavedQuestions.id == question_id,
+                    SavedQuestions.user_id == user_id,
+                    SavedQuestions.category == category
+                )
+            )
+        ).scalars().first()
 
+        if saved_question:
+            return {'message': 'save_question(): that question is already saved', "code": 403}
+        
+
+        new_saved_question = SavedQuestions(
+            question_id=question_id,
+            user_id=user_id,
+            category=category
+        )
+
+        session.add(new_saved_question)
+        
+        session.commit()
+
+        return {'message': 'save_question(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'save_question(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # RETRIEVING RESOURCES
@@ -454,7 +488,6 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
         return None
     finally:
         session.remove()
-
 
 def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
@@ -741,6 +774,36 @@ def get_stats_by_email(email: str) -> list:
         return {'message': 'get_stats_by_email(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def get_saved_questions(email, category="all", offset=0, limit=20):
+    try:
+        session = get_session()
+        
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        where_clauses = [SavedQuestions.user_id == user.id]
+
+        if category:
+            where_clauses.append(SavedQuestions.category == category)
+
+        saved_questions = session.execute(
+            select(SavedQuestions)
+            .where(
+                *where_clauses
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+
+        return [to_dict_safe(sq.question, rel_depths=REL_DEP["db:question"]) for sq in saved_questions]
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        session.remove()
 
 
 

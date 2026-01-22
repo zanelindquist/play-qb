@@ -1,7 +1,7 @@
 SERIALIZATION_CONFIG = {
     "Users": {
         "fields": [
-            "id", "hash", "username", "is_male", "is_online", "account_disabled", "email_verified", "current_game_id", "current_lobby_id"
+            "id", "hash", "username", "is_male", "is_online", "premium", "account_disabled", "email_verified", "current_game_id", "current_lobby_id"
         ],
         "relationships": {
             "friends": "Users",
@@ -53,6 +53,13 @@ SERIALIZATION_CONFIG = {
             "lobby": "Lobbies",
             "current_question": "Questions"
         }
+    },
+    "SavedQuestions": {
+        "fields": ["id", "hash", "category", "user_id", "question_id"],
+        "relationships": {
+            "question": "Questions",
+            # "user": "Users" # We don't need this since we always fetch by user. Redundant on the front end
+        }
     }
 }
 
@@ -63,5 +70,6 @@ RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:lobby_info": {},
     "db:game": {"current_question": 0},
     "db:users": {},
-    "db:stat": {"player": {"lobby": 0}}
+    "db:stat": {"player": {"lobby": 0}},
+    "db:question": {}
 }

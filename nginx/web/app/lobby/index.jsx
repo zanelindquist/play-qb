@@ -127,7 +127,6 @@ export default function LobbyScreen() {
                 setPlayersOnline(lobby.number_of_online_players)
                 setFriends(friends)
                 setFriendRequests(friend_requests)
-                console.log("FRIENDS", friends, friend_requests)
 
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])

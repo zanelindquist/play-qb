@@ -18,6 +18,7 @@ class Users(Base, CreatedAtColumn):
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
     is_online = Column(Boolean, default=False)
+    premium = Column(Boolean, default=False)
 
     current_lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=True)
     current_lobby = relationship(
