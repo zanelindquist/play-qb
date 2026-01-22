@@ -796,12 +796,41 @@ def get_saved_questions(email, category="all", offset=0, limit=20):
             )
             .limit(limit)
             .offset(offset)
-        )
+        ).scalars().all()
 
-        return [to_dict_safe(sq.question, rel_depths=REL_DEP["db:question"]) for sq in saved_questions]
+        total = session.execute(
+            select(func.count())
+            .select_from(SavedQuestions)
+            .where(
+                *where_clauses
+            )
+        ).scalar_one()
+
+        parsed = []
+
+        for sq in saved_questions:
+            q = to_dict_safe(sq.question, rel_depths=REL_DEP["db:question"])
+            parsed_answers = {}
+            keys = ["main", "accept", "prompt", "reject", "suggested_category"]
+            index = 0;
+            for part in q.get("answers").split(" || "):
+                parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+                index += 1
+
+            # Make the main answer not a list
+            parsed_answers["main"] = parsed_answers["main"][0]
+
+            # Parse answer
+            q["answers"] = parsed_answers
+            q["save_type"] = sq.category
+
+            parsed.append(q)
+
+        return {"questions": parsed, "total": total}
+
     except Exception as e:
         print(e)
-        return []
+        return {'message': 'get_saved_questions(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.remove()
 

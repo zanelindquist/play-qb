@@ -19,6 +19,8 @@ import GlassyView from "../../components/custom/GlassyView.jsx";
 import Question from "../../components/game/Question.jsx"
 import theme from "@/assets/themes/theme.js";
 import { useBanner } from "../../utils/banners.jsx";
+import GameRule from "../../components/entities/GameRule.jsx";
+import PaginationNavigator from "../../components/custom/PaginationNavigator.jsx";
 
 const CATEGORIES = [
     "science",
@@ -41,20 +43,26 @@ export default function StatsPage() {
     const [questions, setQuestions] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [offset, setOffset] = useState(0)
+    const [limit, setLimit] = useState(2)
+    const [nextOffset, setNextOffset] = useState(20)
+    const [queryLength, setQueryLength] = useState(0)
 
     useEffect(() => {
-        loadStats()
+        loadStats(1)
     }, [])
 
 
-    function loadStats() {
+    function loadStats(offsetParam) {
         postProtectedRoute("/saved", {
-            offset,
+            offset: offsetParam,
+            limit: limit
             // category: "all"
         })
         .then((response) => {
             console.log(response.data)
-            setQuestions(response.data)
+            setQuestions(response.data.questions)
+            setNextOffset(response.data.next_offset)
+            setQueryLength(response.data.total_length)
             setIsLoading(false)
         })
         .catch((error) => {
@@ -62,18 +70,69 @@ export default function StatsPage() {
         })
     }
 
+    function handleSavedTypeChange(event) {
+        console.log(event)
+        const type = event.value.title
+    }
+
+    function handlePaginate(offsetParam) {
+        console.log(offsetParam)
+        setOffset(offsetParam)
+        loadStats(offsetParam)
+    }
+
     return (
-        <SidebarLayout>
-            <GlassyView>
+        <SidebarLayout >
+            <View style={styles.container}>
+                <GlassyView style={styles.pannel}>
+                    <View style={styles.left}>
+                        <GameRule 
+                            label={"Saved Type"}
+                            mode="dropdown"
+                            options={[
+                                {"title": "Wrong", icon: "close"},
+                                {"title": "Correct", icon: "check"},
+                                {"title": "Saved", icon: "bookmark"}
+                            ]}
+                            dataName={"save_type"}
+                            onChange={handleSavedTypeChange}
+                            style={styles.saveType}    
+                        />
+                    </View>
+                    <View style={styles.right}>
+                        <PaginationNavigator
+                            startOffset={offset}
+                            limit={limit}
+                            endIndex={queryLength}
+                            onOffsetChange={handlePaginate}
+                        />
+                    </View>
+                </GlassyView>
+                <View
+                    style={styles.questions}
+                >
                 {
                     questions?.length > 0 &&
-                    questions.map((q) => 
+                    questions.map((q, i) => 
                         <Question
-
+                            question={q}
+                            key={i}
+                            rightIcon={
+                                <IconButton
+                                    size={15}
+                                    icon={q.save_type == "correct" ? "check" : (q.save_type == "missed" ? "close" : "bookmark")}
+                                    style={[
+                                        styles.icon,
+                                        {backgroundColor: q.save_type == "correct" ? theme.static.correct : (q.save_type == "missed" ? theme.static.wrong : theme.static.prompt)}
+                                    ]}    
+                                />
+                            }
                         />
                     )
                 }
-            </GlassyView>
+                </View>
+
+            </View>
         </SidebarLayout>
     );
 }
@@ -81,16 +140,40 @@ export default function StatsPage() {
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: "column",
         gap: 20,
         maxWidth: 1100,
-        padding: 20
+        height: "80vh",
+        padding: 20,
+    },
+    pannel: {
+        margin: 10,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    left: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    saveType: {
+        marginVertical: 0,
+        padding: 0
+    },
+    questionScroll: {
+
+    },
+    questions: {
+        gap: 10,
     },
     question: {
         fontSize: 16,
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    icon: {
+        margin: 0
     },
     answer: {
         fontSize: 20,

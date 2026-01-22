@@ -48,6 +48,7 @@ const Question = ({
     onDeath,
     speed = 400,
     style,
+    rightIcon,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     MS_FOR_ANSWER = 5000,
@@ -148,7 +149,6 @@ const Question = ({
             if(!setState) return;
             if(charIndex < fullText.length) setState("running")
             else if (msLeftInWaiting > 0) {
-                console.log("QUESTION SETTING TO WAITING")
                 setState("waiting")
             }
             else setState("dead")
@@ -186,10 +186,12 @@ const Question = ({
         setExpandedHeight(EXPANDED_HEIGHT)
     }
 
+    // TODO: Fix expanding answer errors
+
     return (
         <ExpandableView
             expanded={ question.expanded || (state == "dead" && !isMinimized)}
-            style={styles.expandable}
+            style={[styles.expandable, style]}
             maxHeight={expandedHeight}
             onAnimationFinish={handleAnimationFinish}
         >
@@ -261,28 +263,33 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                <HelperText>{question.answers.main}</HelperText>
+                {/* <HelperText>{question.answers.main}</HelperText> */}
                 {
                     state == "dead" &&
-                    (
-                        <Answers
-                            answers={question.answers}
-                            style={styles.answerComponent}
-                            onExpand={handleAnswerExpanded}
-                            onCollapse={handleAnswerCollapsed}
-                        />
-                    )
+                    <Answers
+                        answers={question.answers}
+                        style={styles.answerComponent}
+                        onExpand={handleAnswerExpanded}
+                        onCollapse={handleAnswerCollapsed}
+                        rightIcon={rightIcon}
+                    />
                 } 
             </View>
-        </GlassyView> :
+        </GlassyView>
+        :
         <GlassyView
             style={styles.collapsedBar}
             onPress={handleDeadPressed}
         >
             <HelperText numberOfLines={1}>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
-            <HelperText style={styles.answer} numberOfLines={1}>
-                {question.answers.main}
-            </HelperText>
+            <View style={styles.right}>
+                <HelperText style={styles.answer} numberOfLines={1}>
+                    {question.answers.main}
+                </HelperText>
+                {
+                    rightIcon
+                }
+            </View>
         </GlassyView>
         }
         </ExpandableView>
@@ -318,6 +325,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginHorizontal: 1,
         borderRadius: 10
+    },
+    right: {
+        flexDirection: "row",
+        gap: 10,
+        alignItems: "center"
     },
     tournament: {
 
