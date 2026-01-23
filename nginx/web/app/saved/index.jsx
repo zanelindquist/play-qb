@@ -22,6 +22,8 @@ import { useBanner } from "../../utils/banners.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import PaginationNavigator from "../../components/custom/PaginationNavigator.jsx";
 import { capitalize } from "../../utils/text.js";
+import GitPlusMinus from "../../components/custom/GitPlusMinus.jsx";
+import GetPremium from "../../components/custom/GetPremium.jsx";
 
 const CATEGORIES = [
     "all",
@@ -43,6 +45,7 @@ export default function StatsPage() {
 
     // Variables
     const [questions, setQuestions] = useState([])
+    const [user, setUser] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [offset, setOffset] = useState(0)
     const [limit, setLimit] = useState(20)
@@ -66,6 +69,7 @@ export default function StatsPage() {
         .then((response) => {
             console.log(response.data)
             setQuestions(response.data.questions)
+            if(!user) setUser(response.data.user)
             setNextOffset(response.data.next_offset)
             setTotalQueryLength(response.data.total_length)
             setIsLoading(false)
@@ -132,23 +136,34 @@ export default function StatsPage() {
                     style={styles.questions}
                 >
                 {
+                    user?.premium ?
                     questions?.length > 0 &&
                     questions.map((q, i) => 
                         <Question
                             question={q}
                             key={i}
                             rightIcon={
-                                <IconButton
-                                    size={15}
-                                    icon={q.saved_type == "correct" ? "check" : (q.saved_type == "missed" ? "close" : "bookmark")}
-                                    style={[
-                                        styles.icon,
-                                        {backgroundColor: q.saved_type == "correct" ? theme.static.correct : (q.saved_type == "missed" ? theme.static.wrong : theme.static.prompt)}
-                                    ]}    
-                                />
+                                <View style={styles.questionRight}>
+                                    <GitPlusMinus 
+                                        plus={q.correct_count}
+                                        minus={q.missed_count}
+                                    />
+                                    <IconButton
+                                        size={15}
+                                        icon={q.saved_type == "correct" ? "check" : (q.saved_type == "missed" ? "close" : "bookmark")}
+                                        style={[
+                                            styles.icon,
+                                            {backgroundColor: q.saved_type == "correct" ? theme.static.correct : (q.saved_type == "missed" ? theme.static.wrong : theme.static.prompt)}
+                                        ]}
+                                    />
+                                </View>
                             }
                         />
                     )
+                    :
+                    <GetPremium
+                        message={"You are missing out!"}
+                    />
                     
                 }
                 </View>
@@ -199,6 +214,11 @@ const styles = StyleSheet.create({
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    questionRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10
     },
     icon: {
         margin: 0

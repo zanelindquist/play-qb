@@ -219,7 +219,7 @@ def on_submit(data): # FinalAnswer
         
         # Save the question to the user's correct questions if they have premium
         if user.get("premium"):
-            save_question(question.get("id"), user.get("id"), category="correct")
+            save_question(question.get("id"), user.get("id"), saved_type="correct")
 
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
@@ -251,7 +251,7 @@ def on_submit(data): # FinalAnswer
 
         # Save the question to the user's missed questions
         if user.get("premium"):
-            save_question(question.get("id"), user.get("id"), category="missed")
+            save_question(question.get("id"), user.get("id"), saved_type="missed")
         
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])

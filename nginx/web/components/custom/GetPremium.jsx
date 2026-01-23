@@ -15,17 +15,29 @@ import { router } from "expo-router";
 import ExpandableView from "../custom/ExpandableView";
 import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
+import Logo from "./Logo";
+import PremiumModal from "../modals/PremiumModal";
 
 
-export default function Template ({
+export default function GetPremium ({
+    message="It looks like you need premium to access these features",
     style
 }) {
+    const {showAlert} = useAlert()
 
-    return (
-        <GlassyView style={[styles.container, style]}>
-        
-        </GlassyView>
-    )
+    const openPremiumModal = React.useCallback(()=> {
+        showAlert(
+            <PremiumModal
+                message={message}
+            />
+            ,
+            ustyles.modals.floatingModal
+        )
+    })
+
+    useEffect(() => {
+        openPremiumModal()
+    }, [])
 }
 
 const styles = StyleSheet.create({

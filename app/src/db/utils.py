@@ -409,28 +409,37 @@ def create_friend_request_from_email_to_hash(email, hash):
     finally:
         session.commit()
 
-def save_question(question_id, user_id, category="missed"): # category= missed, correct, saved
+def save_question(question_id, user_id, saved_type="missed"): # category= missed, correct, saved
     session = get_session()
     try:
         saved_question = session.execute(
             select(SavedQuestions)
             .where(
                 and_(
-                    SavedQuestions.id == question_id,
+                    SavedQuestions.question_id == question_id,
                     SavedQuestions.user_id == user_id,
-                    SavedQuestions.category == category
                 )
             )
         ).scalars().first()
 
         if saved_question:
+            if saved_type == "correct" and saved_question.saved_type == "missed":
+                setattr(saved_question, "saved_type", "correct")
+            # Increment the categories
+            if saved_type == "missed":
+                setattr(saved_question, "missed_count", saved_question.missed_count + 1)
+            elif saved_type == "correct":
+                setattr(saved_question, "correct_count", saved_question.correct_count + 1)
+            session.commit()
             return {'message': 'save_question(): that question is already saved', "code": 403}
         
 
         new_saved_question = SavedQuestions(
             question_id=question_id,
             user_id=user_id,
-            category=category
+            saved_type=saved_type,
+            missed_count=1 if saved_type == "missed" else 0,
+            correct_count=1 if saved_type == "correct" else 0
         )
 
         session.add(new_saved_question)
@@ -790,7 +799,7 @@ def get_saved_questions(email, saved_type="all", category="all", offset=0, limit
             where_clauses.append(SavedQuestions.saved_type == saved_type)
 
         # Build base statement with all filters
-        base_stmt = select(SavedQuestions).where(*where_clauses)
+        base_stmt = select(SavedQuestions).where(*where_clauses).order_by(SavedQuestions.created_at.desc())
 
         # Only join if filtering by question category
         if category != "all":
@@ -823,6 +832,8 @@ def get_saved_questions(email, saved_type="all", category="all", offset=0, limit
             # Parse answer
             q["answers"] = parsed_answers
             q["saved_type"] = sq.saved_type
+            q["correct_count"] = sq.correct_count
+            q["missed_count"] = sq.missed_count
 
             parsed.append(q)
 
