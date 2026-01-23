@@ -21,8 +21,10 @@ import theme from "@/assets/themes/theme.js";
 import { useBanner } from "../../utils/banners.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import PaginationNavigator from "../../components/custom/PaginationNavigator.jsx";
+import { capitalize } from "../../utils/text.js";
 
 const CATEGORIES = [
+    "all",
     "science",
     "history",
     "literature",
@@ -43,26 +45,29 @@ export default function StatsPage() {
     const [questions, setQuestions] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [offset, setOffset] = useState(0)
-    const [limit, setLimit] = useState(2)
+    const [limit, setLimit] = useState(20)
+    const [savedType, setSavedType] = useState("all")
+    const [category, setCategory] = useState("all")
     const [nextOffset, setNextOffset] = useState(20)
-    const [queryLength, setQueryLength] = useState(0)
+    const [totalQueryLength, setTotalQueryLength] = useState(0)
 
     useEffect(() => {
-        loadStats(1)
-    }, [])
+        loadStats()
+    }, [offset, limit, savedType, category])
 
 
-    function loadStats(offsetParam) {
+    function loadStats() {
         postProtectedRoute("/saved", {
-            offset: offsetParam,
-            limit: limit
-            // category: "all"
+            offset: offset,
+            limit: limit,
+            saved_type: savedType,
+            category: category
         })
         .then((response) => {
             console.log(response.data)
             setQuestions(response.data.questions)
             setNextOffset(response.data.next_offset)
-            setQueryLength(response.data.total_length)
+            setTotalQueryLength(response.data.total_length)
             setIsLoading(false)
         })
         .catch((error) => {
@@ -71,39 +76,54 @@ export default function StatsPage() {
     }
 
     function handleSavedTypeChange(event) {
-        console.log(event)
-        const type = event.value.title
+        const type = event.value.title.toLowerCase()
+        setSavedType(type)
+    }
+
+    function handleCategoryChange(event) {
+        const category = event.value.title.toLowerCase()
+        setCategory(category)
     }
 
     function handlePaginate(offsetParam) {
-        console.log(offsetParam)
         setOffset(offsetParam)
-        loadStats(offsetParam)
     }
 
     return (
-        <SidebarLayout >
+        <SidebarLayout>
             <View style={styles.container}>
                 <GlassyView style={styles.pannel}>
                     <View style={styles.left}>
-                        <GameRule 
+                        <GameRule
                             label={"Saved Type"}
                             mode="dropdown"
                             options={[
-                                {"title": "Wrong", icon: "close"},
+                                {"title": "All", icon: "circle"},
+                                {"title": "Missed", icon: "close"},
                                 {"title": "Correct", icon: "check"},
                                 {"title": "Saved", icon: "bookmark"}
                             ]}
-                            dataName={"save_type"}
+                            dataName={"saved_type"}
                             onChange={handleSavedTypeChange}
+                            style={styles.saveType}    
+                        />
+                        <GameRule
+                            label={"Category"}
+                            mode="dropdown"
+                            options={
+                                CATEGORIES.map((c)=> {return {title: capitalize(c)}})
+                            }
+                            dataName={"saved_type"}
+                            onChange={handleCategoryChange}
                             style={styles.saveType}    
                         />
                     </View>
                     <View style={styles.right}>
+                        <HelperText style={styles.question}>{Math.ceil(totalQueryLength / limit)} page{Math.ceil(totalQueryLength / limit) > 1 && "s"}</HelperText>
                         <PaginationNavigator
                             startOffset={offset}
                             limit={limit}
-                            endIndex={queryLength}
+                            endIndex={totalQueryLength}
                             onOffsetChange={handlePaginate}
                         />
                     </View>
@@ -120,15 +140,16 @@ export default function StatsPage() {
                             rightIcon={
                                 <IconButton
                                     size={15}
-                                    icon={q.save_type == "correct" ? "check" : (q.save_type == "missed" ? "close" : "bookmark")}
+                                    icon={q.saved_type == "correct" ? "check" : (q.saved_type == "missed" ? "close" : "bookmark")}
                                     style={[
                                         styles.icon,
-                                        {backgroundColor: q.save_type == "correct" ? theme.static.correct : (q.save_type == "missed" ? theme.static.wrong : theme.static.prompt)}
+                                        {backgroundColor: q.saved_type == "correct" ? theme.static.correct : (q.saved_type == "missed" ? theme.static.wrong : theme.static.prompt)}
                                     ]}    
                                 />
                             }
                         />
                     )
+                    
                 }
                 </View>
 
@@ -144,9 +165,11 @@ const styles = StyleSheet.create({
         maxWidth: 1100,
         height: "80vh",
         padding: 20,
+        marginBottom: 40
     },
     pannel: {
         margin: 10,
+        paddingHorizontal: 20,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center"
@@ -154,6 +177,11 @@ const styles = StyleSheet.create({
     left: {
         flexDirection: "row",
         justifyContent: "space-between",
+        alignItems: "center",
+        gap: 20
+    },
+    right: {
+        flexDirection: "row",
         alignItems: "center"
     },
     saveType: {
@@ -189,12 +217,4 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         flexWrap: "wrap"
     },
-    category: {
-        fontSize: 20,
-        width: "23%",
-        color: theme.onSurface,
-        backgroundColor: theme.surface,
-        padding: 20,
-        borderRadius: 5
-    }
 })
