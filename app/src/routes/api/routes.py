@@ -74,11 +74,12 @@ def on_saved():
     
     offset = data.get("offset")
     limit = data.get("limit")
+    saved_type = data.get("saved_type")
     category = data.get("category")
 
-    result = get_saved_questions(email, category, offset=offset, limit=limit)
+    result = get_saved_questions(email, saved_type=saved_type, category=category, offset=offset, limit=limit)
 
-    return {"questions": result.get("questions"), "category": category, "next_offset": offset + limit, "total_length": result.get("total")}, 200
+    return {"questions": result.get("questions"), "saved_type": saved_type, "next_offset": offset + limit, "total_length": result.get("total")}, 200
 
 
 

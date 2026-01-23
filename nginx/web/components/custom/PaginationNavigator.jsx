@@ -57,9 +57,8 @@ const styles = StyleSheet.create({
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: 10,
+      padding: 5,
       borderRadius: 10,
-      margin: 10,
     },
     weekDisplay: {
       fontSize: 16,

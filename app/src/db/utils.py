@@ -775,7 +775,7 @@ def get_stats_by_email(email: str) -> list:
     finally:
         session.commit()
 
-def get_saved_questions(email, category="all", offset=0, limit=20):
+def get_saved_questions(email, saved_type="all", category="all", offset=0, limit=20):
     try:
         session = get_session()
         
@@ -786,25 +786,25 @@ def get_saved_questions(email, category="all", offset=0, limit=20):
 
         where_clauses = [SavedQuestions.user_id == user.id]
 
-        if category:
-            where_clauses.append(SavedQuestions.category == category)
+        if saved_type != "all":
+            where_clauses.append(SavedQuestions.saved_type == saved_type)
 
-        saved_questions = session.execute(
-            select(SavedQuestions)
-            .where(
-                *where_clauses
-            )
-            .limit(limit)
-            .offset(offset)
-        ).scalars().all()
+        # Build base statement with all filters
+        base_stmt = select(SavedQuestions).where(*where_clauses)
 
+        # Only join if filtering by question category
+        if category != "all":
+            base_stmt = base_stmt.join(SavedQuestions.question).where(Questions.category == category)
+
+        # Get total count
         total = session.execute(
-            select(func.count())
-            .select_from(SavedQuestions)
-            .where(
-                *where_clauses
-            )
+            select(func.count()).select_from(base_stmt.subquery())
         ).scalar_one()
+
+        # Execute paginated query
+        saved_questions = session.execute(
+            base_stmt.limit(limit).offset(offset)
+        ).scalars().all()
 
         parsed = []
 
@@ -822,7 +822,7 @@ def get_saved_questions(email, category="all", offset=0, limit=20):
 
             # Parse answer
             q["answers"] = parsed_answers
-            q["save_type"] = sq.category
+            q["saved_type"] = sq.saved_type
 
             parsed.append(q)
 
