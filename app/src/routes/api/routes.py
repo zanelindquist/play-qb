@@ -71,6 +71,8 @@ def on_set_username():
 def on_saved():
     email = get_jwt_identity()
     data = request.get_json()
+
+    user = get_user_by_email(email)
     
     offset = data.get("offset")
     limit = data.get("limit")
@@ -79,7 +81,7 @@ def on_saved():
 
     result = get_saved_questions(email, saved_type=saved_type, category=category, offset=offset, limit=limit)
 
-    return {"questions": result.get("questions"), "saved_type": saved_type, "next_offset": offset + limit, "total_length": result.get("total")}, 200
+    return {"questions": result.get("questions"), "user": user, "saved_type": saved_type, "next_offset": offset + limit, "total_length": result.get("total")}, 200
 
 
 

@@ -12,6 +12,8 @@ class SavedQuestions(Base, CreatedAtColumn):
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     saved_type = Column(String(10), default="missed", nullable=False) # all, missed, correct, saved
+    missed_count = Column(Integer, default=0)
+    correct_count = Column(Integer, default=0)
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user = relationship("Users")
