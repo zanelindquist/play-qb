@@ -113,7 +113,7 @@ const Play = () => {
             })
 
             addEventListener("join_lobby_failed", ({error}) => {
-                showBanner("Failed to join lobby: " + error.message.toLowerCase())
+                showBanner("Failed to join lobby: " + error.message.toLowerCase(), {backgroundColor: theme.error})
             })
 
             addEventListener("player_joined", ({user, lobby}) => {
@@ -162,7 +162,7 @@ const Play = () => {
             addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
-                    showBanner(question?.error)
+                    showBanner(question?.error, {backgroundColor: theme.error})
                     return
                 }
 

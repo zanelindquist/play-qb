@@ -1,3 +1,5 @@
+// TODO: REFACTOR CODE TO CORRECTLY USE REFS OR STATES
+
 import { getProtectedRoute, postProtectedRoute , handleExpiredAccessToken } from "@/utils/requests.jsx"
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -54,7 +56,7 @@ export default function StatsPage() {
     const [nextOffset, setNextOffset] = useState(20)
     const [totalQueryLength, setTotalQueryLength] = useState(0)
 
-    const [unsaveTimeout, setUnsaveTimeout] = useState(null)
+    const unsaveTimeoutRef = useRef(null)
     const restoreCallbackRef = useRef(null)
 
     useEffect(() => {
@@ -78,7 +80,7 @@ export default function StatsPage() {
             setIsLoading(false)
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 
@@ -102,41 +104,38 @@ export default function StatsPage() {
             // Set our restore callback so that it will set the questions back to their previous state
             restoreCallbackRef.current = () => {
                 setQuestions(prev)
-                clearTimeout(unsaveTimeout)
+                clearTimeout(unsaveTimeoutRef.current)
             }
 
             return prev.filter(p => p.hash !== hash)
         })
 
         // Tell them that we unsaved the question and give them a chance to get it back
-        showBanner("Unsaved question with hash " + hash,
+        showBanner("Unsaved question",
             {
                 duration: 5000,
                 callToAction: {
                     name: "Undo",
                     callback: restoreCallbackRef.current,
-                    callbackMessage: "Question restored"
+                    callbackMessage: "Question restored",
                 },
+                backgroundColor: theme.error
             }
         )
 
         // But we don't actually delete the question until the banner has expired
-        setUnsaveTimeout(
-            setTimeout(() => {
-                console.log("DELETED")
-
-                return
-                postProtectedRoute("/unsave_question", {
-                    hash
-                })
-                .then((response) => {
-                    console.log(response.data)
-                })
-                .catch((error) => {
-                    showBanner(error.message)
-                })
-            }, 5000)
-        )
+        unsaveTimeoutRef.current = setTimeout(() => {
+            postProtectedRoute("/unsave_question", {
+                hash
+            })
+            .then((response) => {
+                console.log(response.data)
+            })
+            .catch((error) => {
+                showBanner(error.message, {backgroundColor: theme.error})
+            })
+        }, 5000)
+        
     }
 
     return (

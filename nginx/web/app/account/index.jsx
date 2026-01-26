@@ -75,7 +75,7 @@ export default function AccountPage() {
             setIsLoading(false)
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 
@@ -98,7 +98,7 @@ export default function AccountPage() {
             if (error.response?.data?.error?.includes("users.unique_username")) {
                 setErrorFields((prev) => {return {...prev, name: "This username is taken."}})
             } else {
-                showBanner("There was an errror while setting your username")
+                showBanner("There was an errror while setting your username", {backgroundColor: theme.error})
             }
         })
     }

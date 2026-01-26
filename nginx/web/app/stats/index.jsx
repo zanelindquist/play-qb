@@ -54,7 +54,7 @@ export default function StatsPage() {
             setIsLoading(false)
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 
