@@ -352,6 +352,26 @@ def on_game_pause(): # Empty
 
     emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
 
+# Occurs only when a player pauses the game
+@socketio.on("save_question", namespace="/game")
+def on_save_question(data): # Question hash
+    lobby = request.environ.get("lobby")
+    user_id = request.environ["user_id"]
+
+    user = get_user_by_email(user_id)
+
+    if not data.get("hash"):
+        emit("saved_question_failed", {"message": "Question hash not provided"})
+        return
+
+    question = get_question_by_hash(data.get("hash"))
+
+    result = save_question(question.get("id"), user.get("id"), saved_type="saved")
+
+    emit("saved_question", {"question": question, "result": result})
+
+
+
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
     user_id = request.environ["user_id"]

@@ -225,6 +225,10 @@ const Play = () => {
                 setLobby({...lobby})
             })
 
+            addEventListener("saved_question", ({question}) => {
+                showBanner("Saved question")
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
         })
@@ -374,6 +378,10 @@ const Play = () => {
         }
     }
 
+    function handleQuestionSave(hash) {
+        console.log("saved")
+        send("save_question", {hash})
+    }
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -400,6 +408,7 @@ const Play = () => {
                                             onDeath={i == 0 ? handleQuestionDeath : null}
                                             state={i == 0 ? questionState : "dead" }
                                             setState={setQuestionState}
+                                            onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
                                         />
                                     )

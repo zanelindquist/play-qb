@@ -12,12 +12,15 @@ import Friend from '../entities/Friend';
 import AddFriend from './AddFriendModal';
 
 
-export default function PremiumModal({message, close}) {
+export default function PremiumModal({message, description, close}) {
     return (
         <GlassyView style={[styles.container, ustyles.flex.flexColumn]}>
-            <View style={ustyles.flex.flexRowSpaceBetween}>
-                <HelperText style={[ustyles.text.shadowText, ustyles.text.header]}>{message}</HelperText>
-                <IconButton size={30} iconColor={theme.primary} icon={"plus"} style={ustyles.icon.icon}/>
+            <View style={ustyles.flex.flexRowSpaceBetweenNoAlign}>
+                <View style={ustyles.flex.flexColumn}>
+                    <HelperText style={[ustyles.text.shadowText, ustyles.text.header]}>{message}</HelperText>
+                    <HelperText style={[ustyles.text.shadowText, ustyles.text.text]}>{description}</HelperText>
+                </View>
+                <IconButton size={20} icon={"close"} style={ustyles.icon.plain} onPress={close}/>
             </View>
             <View style={ustyles.flex.flexRowSpaceBetween}>
                 <HelperText style={[ustyles.text.shadowText, ustyles.text.text]}>Try your first month free, and then 4.99/mo after that.</HelperText>
