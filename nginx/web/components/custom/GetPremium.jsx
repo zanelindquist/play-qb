@@ -21,6 +21,7 @@ import PremiumModal from "../modals/PremiumModal";
 
 export default function GetPremium ({
     message="It looks like you need premium to access these features",
+    description="",
     style
 }) {
     const {showAlert} = useAlert()
@@ -29,6 +30,7 @@ export default function GetPremium ({
         showAlert(
             <PremiumModal
                 message={message}
+                description={description}
             />
             ,
             ustyles.modals.floatingModal

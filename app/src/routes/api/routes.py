@@ -83,6 +83,16 @@ def on_saved():
 
     return {"questions": result.get("questions"), "user": user, "saved_type": saved_type, "next_offset": offset + limit, "total_length": result.get("total")}, 200
 
+@bp.route("/unsave_question", methods=["POST"])
+@jwt_required()
+def on_unsave_question():
+    email = get_jwt_identity()
+    data = request.get_json()
+
+    result = unsave_question(email, data.get("hash"))
+
+    return {"message": "Question unsaved"}, 200
+
 
 
 # ===== AUTHORIZED ROUTES =====

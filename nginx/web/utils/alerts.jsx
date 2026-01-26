@@ -44,11 +44,11 @@ const AlertProvider = ({ children }) => {
 };
 
 const CustomAlert = ({ content, onClose, modalStyle }) => {
+    console.log(modalStyle)
     return (
         <Portal style={styles.portal}>
             <Modal
                 visible
-
             >
                 <Pressable
                     onPress={onClose}

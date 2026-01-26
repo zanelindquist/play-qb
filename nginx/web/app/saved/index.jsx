@@ -1,6 +1,6 @@
 import { getProtectedRoute, postProtectedRoute , handleExpiredAccessToken } from "@/utils/requests.jsx"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View,
     TouchableOpacity,
@@ -54,6 +54,9 @@ export default function StatsPage() {
     const [nextOffset, setNextOffset] = useState(20)
     const [totalQueryLength, setTotalQueryLength] = useState(0)
 
+    const [unsaveTimeout, setUnsaveTimeout] = useState(null)
+    const restoreCallbackRef = useRef(null)
+
     useEffect(() => {
         loadStats()
     }, [offset, limit, savedType, category])
@@ -91,6 +94,49 @@ export default function StatsPage() {
 
     function handlePaginate(offsetParam) {
         setOffset(offsetParam)
+    }
+
+    function handleQuestionUnsave(hash) {
+        // Remove the question
+        setQuestions((prev) => {
+            // Set our restore callback so that it will set the questions back to their previous state
+            restoreCallbackRef.current = () => {
+                setQuestions(prev)
+                clearTimeout(unsaveTimeout)
+            }
+
+            return prev.filter(p => p.hash !== hash)
+        })
+
+        // Tell them that we unsaved the question and give them a chance to get it back
+        showBanner("Unsaved question with hash " + hash,
+            {
+                duration: 5000,
+                callToAction: {
+                    name: "Undo",
+                    callback: restoreCallbackRef.current,
+                    callbackMessage: "Question restored"
+                },
+            }
+        )
+
+        // But we don't actually delete the question until the banner has expired
+        setUnsaveTimeout(
+            setTimeout(() => {
+                console.log("DELETED")
+
+                return
+                postProtectedRoute("/unsave_question", {
+                    hash
+                })
+                .then((response) => {
+                    console.log(response.data)
+                })
+                .catch((error) => {
+                    showBanner(error.message)
+                })
+            }, 5000)
+        )
     }
 
     return (
@@ -136,12 +182,12 @@ export default function StatsPage() {
                     style={styles.questions}
                 >
                 {
-                    user?.premium ?
                     questions?.length > 0 &&
                     questions.map((q, i) => 
                         <Question
                             question={q}
-                            key={i}
+                            onSave={handleQuestionUnsave}
+                            key={q.hash}
                             rightIcon={
                                 <View style={styles.questionRight}>
                                     <GitPlusMinus 
@@ -160,15 +206,17 @@ export default function StatsPage() {
                             }
                         />
                     )
-                    :
-                    <GetPremium
-                        message={"You are missing out!"}
-                    />
-                    
                 }
                 </View>
 
             </View>
+            {
+                user && !user.premium &&
+                <GetPremium
+                    message="You are missing out!"
+                    description="Purchase premium to auto save correct and incorrect answers and gain analytics."
+                />
+            }
         </SidebarLayout>
     );
 }

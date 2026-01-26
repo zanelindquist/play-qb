@@ -559,6 +559,23 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
     except Exception as e:
         return {"code": 400, "error": str(e)}
 
+def get_question_by_hash(hash):
+    try:
+        session = get_session()
+        question = None
+
+        question = session.execute(
+            select(Questions)
+            .where(Questions.hash == hash)
+        ).scalars().first()
+
+        return to_dict_safe(question)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
 def get_lobby_by_alias(lobbyAlias):
     session = get_session()
     try:
@@ -1289,7 +1306,32 @@ def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
         return {'message': 'Unfriended ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'remove_friend_by_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def unsave_question(email: str, question_hash: str) -> bool:
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        question = get_question_by_hash(question_hash)
+
+        # See if there is already a friend request
+        question = session.execute(
+            delete(SavedQuestions)
+            .where(
+                SavedQuestions.user_id == user.get("id"),
+                SavedQuestions.question_id == question.get("id"),
+                SavedQuestions.saved_type == "saved"
+            )
+        )
+
+        session.commit()
+
+        return {'message': "Question unsaved", "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'unsave_question(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 

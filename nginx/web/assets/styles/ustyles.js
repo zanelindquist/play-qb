@@ -11,8 +11,17 @@ export default {
             alignItems: "center",
             justifyContent: "space-between",
         },
+        flexRowSpaceBetweenNoAlign: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+        },
         flexColumn: {
             flexDirection: "column",
+            gap: 20
+        },
+        flexColumn: {
+            flexDirection: "column",
+            justifyContent: "space-between",
             gap: 20
         },
         flexColumnCenterItems: {
@@ -44,6 +53,9 @@ export default {
             width: 30,
             borderRadius: 999,
             backgroundColor: theme.onPrimary
+        },
+        plain: {
+            backgroundColor: "transparent"
         }
     }),
     modals: StyleSheet.create({
