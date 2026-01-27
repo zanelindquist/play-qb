@@ -174,7 +174,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             {/* Scroll area */}
             <ScrollView
                 style={[styles.scroll, { paddingTop: navBarHeight }]}
-                contentContainerStyle={[styles.scrollContent]}
+                contentContainerStyle={[styles.scrollContent, style]}
             >
                 {isLoading ? <ActivityIndicator /> : children}
             </ScrollView>

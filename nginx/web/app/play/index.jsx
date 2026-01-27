@@ -156,10 +156,8 @@ const Play = () => {
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        console.log("Buzzer:", buzzer, questionState)
         if(buzzer || questionState == "dead") return;
-        console.log("Sending buzz")
-        send("buzz", {BuzzTimestamp: Date.now()})
+        send("buzz", {buzz_timestamp: Date.now(), question_state: questionState})
     }
 
     function onTyping(text) {
