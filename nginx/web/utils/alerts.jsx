@@ -86,9 +86,6 @@ export { CustomAlert, useAlert, AlertProvider };
 const styles = StyleSheet.create({
     portal: {
 
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0,0,0,0.9)"
     },
     modal: {
         width: "100vw",
@@ -101,6 +98,8 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         margin: "auto",
         width: "80%",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.1)",
     },
     title: {
         fontSize: 18,

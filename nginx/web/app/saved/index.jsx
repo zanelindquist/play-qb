@@ -196,7 +196,7 @@ export default function StatsPage() {
                     questions.map((q, i) => 
                         <Question
                             question={q}
-                            onSave={handleQuestionUnsave}
+                            onSave={q.saved_type == "saved" && handleQuestionUnsave}
                             saveIcon={"bookmark-off"}
                             key={`${q.hash}-${i}`}
                             rightIcon={

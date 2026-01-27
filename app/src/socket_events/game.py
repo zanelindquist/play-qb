@@ -146,15 +146,20 @@ def on_buzz(data): # Timestamp, AnswerContent
     if not lobby:
         emit("reconnect")
         return
+    
+    question_state = data.get("question_state")
 
-    # Increment buzzes_encountered for everyone
-    result = increment_score_attribute(game_hash, "buzzes_encountered")    
+    # Increment buzzes_encountered for everyone in the room
+    increment_score_attribute(game_hash, "buzzes_encountered")
 
     user = get_user_by_email(user_id)
 
     # Increment buzzes for just the user
     increment_score_attribute(game_hash, "buzzes", player_hash=user.get("hash"))
+
     # TODO: Increment for early buzzes
+    if question_state == "running":
+        increment_score_attribute(game_hash, "early", player_hash=user.get("hash"))
 
     # TODO: Ajust average time to buzz
 
