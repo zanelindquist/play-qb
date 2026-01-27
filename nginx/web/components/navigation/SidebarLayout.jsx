@@ -34,6 +34,7 @@ import Footer from "./Footer";
 import GlassyView from "../custom/GlassyView";
 import TopNavItem from "./TopNavItem";
 import Logo from "../custom/Logo";
+import { useBanner } from "@/utils/banners";
 
 const iconColor = theme.primary;
 
@@ -46,6 +47,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
+    const {showBanner} = useBanner()
     const segments = useSegments();
     const { disconnect } = useSocket("lobby");
 
@@ -87,6 +89,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             disconnect();
             console.log("Logged out");
             router.replace("/signin");
+            showBanner("You were logged out")
         });
     }
 

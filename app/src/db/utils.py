@@ -412,7 +412,8 @@ def create_friend_request_from_email_to_hash(email, hash):
 def save_question(question_id, user_id, saved_type="missed"): # category= missed, correct, saved
     session = get_session()
     try:
-        saved_question = session.execute(
+        # There could be two: one for tracking correct answers, and one as just a saved
+        saved_questions = session.execute(
             select(SavedQuestions)
             .where(
                 and_(
@@ -420,19 +421,35 @@ def save_question(question_id, user_id, saved_type="missed"): # category= missed
                     SavedQuestions.user_id == user_id,
                 )
             )
-        ).scalars().first()
+        ).scalars().all()
 
-        if saved_question:
-            if saved_type == "correct" and saved_question.saved_type == "missed":
-                setattr(saved_question, "saved_type", "correct")
+        answer_tracking_question = None
+        saved_question = None
+        for sq in saved_questions:
+            if sq.saved_type == "saved":
+                saved_question = sq
+            else:
+                answer_tracking_question = sq
+
+        if answer_tracking_question and saved_type != "saved":
+            # If there is a saved question already, but the new saved type = saved and the old saved type is not missed, make a new question
+            # If the new saved type is saved and the category is missed or correct, we want to add a new question anyway
+            
+            # If they just got the answer correct and there is already an instance of them getting it wrong, then change teh SavedQuestion to correct
+            if saved_type == "correct" and answer_tracking_question.saved_type == "missed":
+                setattr(answer_tracking_question, "saved_type", "correct")
+
             # Increment the categories
             if saved_type == "missed":
-                setattr(saved_question, "missed_count", saved_question.missed_count + 1)
+                setattr(answer_tracking_question, "missed_count", answer_tracking_question.missed_count + 1)
             elif saved_type == "correct":
-                setattr(saved_question, "correct_count", saved_question.correct_count + 1)
+                setattr(answer_tracking_question, "correct_count", answer_tracking_question.correct_count + 1)
             session.commit()
-            return {'message': 'save_question(): that question is already saved', "code": 403}
+
+            return
         
+        if saved_question and saved_type == "saved":
+            return {'message': 'save_question(): that question is already saved', "code": 403}
 
         new_saved_question = SavedQuestions(
             question_id=question_id,
