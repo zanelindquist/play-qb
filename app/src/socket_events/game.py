@@ -146,15 +146,20 @@ def on_buzz(data): # Timestamp, AnswerContent
     if not lobby:
         emit("reconnect")
         return
+    
+    question_state = data.get("question_state")
 
-    # Increment buzzes_encountered for everyone
-    result = increment_score_attribute(game_hash, "buzzes_encountered")    
+    # Increment buzzes_encountered for everyone in the room
+    increment_score_attribute(game_hash, "buzzes_encountered")
 
     user = get_user_by_email(user_id)
 
     # Increment buzzes for just the user
     increment_score_attribute(game_hash, "buzzes", player_hash=user.get("hash"))
+
     # TODO: Increment for early buzzes
+    if question_state == "running":
+        increment_score_attribute(game_hash, "early", player_hash=user.get("hash"))
 
     # TODO: Ajust average time to buzz
 
@@ -217,6 +222,10 @@ def on_submit(data): # FinalAnswer
         # TODO: Adjust for power
         increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
         
+        # Save the question to the user's correct questions if they have premium
+        if user.get("premium"):
+            save_question(question.get("id"), user.get("id"), saved_type="correct")
+
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is true
@@ -244,6 +253,10 @@ def on_submit(data): # FinalAnswer
         increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
         # TODO: Only do neg if the question is not over
         increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
+
+        # Save the question to the user's missed questions
+        if user.get("premium"):
+            save_question(question.get("id"), user.get("id"), saved_type="missed")
         
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
@@ -343,6 +356,26 @@ def on_game_pause(): # Empty
     user = get_user_by_email(user_id)
 
     emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
+
+# Occurs only when a player pauses the game
+@socketio.on("save_question", namespace="/game")
+def on_save_question(data): # Question hash
+    lobby = request.environ.get("lobby")
+    user_id = request.environ["user_id"]
+
+    user = get_user_by_email(user_id)
+
+    if not data.get("hash"):
+        emit("saved_question_failed", {"message": "Question hash not provided"})
+        return
+
+    question = get_question_by_hash(data.get("hash"))
+
+    result = save_question(question.get("id"), user.get("id"), saved_type="saved")
+
+    emit("saved_question", {"question": question, "result": result})
+
+
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():

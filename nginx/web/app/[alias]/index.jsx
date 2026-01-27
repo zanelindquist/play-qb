@@ -113,7 +113,7 @@ const Play = () => {
             })
 
             addEventListener("join_lobby_failed", ({error}) => {
-                showBanner("Failed to join lobby: " + error.message.toLowerCase())
+                showBanner("Failed to join lobby: " + error.message.toLowerCase(), {backgroundColor: theme.error})
             })
 
             addEventListener("player_joined", ({user, lobby}) => {
@@ -162,7 +162,7 @@ const Play = () => {
             addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
-                    showBanner(question?.error)
+                    showBanner(question?.error, {backgroundColor: theme.error})
                     return
                 }
 
@@ -223,6 +223,10 @@ const Play = () => {
                 addEvent(user)
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 setLobby({...lobby})
+            })
+
+            addEventListener("saved_question", ({question}) => {
+                showBanner("Saved question")
             })
 
             // Now that the listners are registered, we are ready to join the lobby
@@ -374,6 +378,10 @@ const Play = () => {
         }
     }
 
+    function handleQuestionSave(hash) {
+        console.log("saved")
+        send("save_question", {hash})
+    }
 
     return (
         <SidebarLayout style={styles.sidebar}>
@@ -400,7 +408,7 @@ const Play = () => {
                                             onDeath={i == 0 ? handleQuestionDeath : null}
                                             state={i == 0 ? questionState : "dead" }
                                             setState={setQuestionState}
-                                            style={styles.question}
+                                            onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
                                         />
                                     )

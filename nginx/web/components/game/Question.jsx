@@ -31,6 +31,7 @@ import GlassyView from "../custom/GlassyView";
 import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
+import ustyles from "../../assets/styles/ustyles";
 
 const LEVELS = ["Middle School", "High School", "Collegiate", "Open"]
 
@@ -48,6 +49,9 @@ const Question = ({
     onDeath,
     speed = 400,
     style,
+    rightIcon,
+    onSave = null,
+    saveIcon,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     MS_FOR_ANSWER = 5000,
@@ -74,6 +78,9 @@ const Question = ({
 
     // Status bar
     const [reRenderStatusBar, setReRenderStatusBar] = useState(0);
+
+    // Other
+    const [isSaved, setIsSaved] = useState(false)
 
     // When the state changes
     useEffect(() => {
@@ -148,7 +155,6 @@ const Question = ({
             if(!setState) return;
             if(charIndex < fullText.length) setState("running")
             else if (msLeftInWaiting > 0) {
-                console.log("QUESTION SETTING TO WAITING")
                 setState("waiting")
             }
             else setState("dead")
@@ -186,10 +192,17 @@ const Question = ({
         setExpandedHeight(EXPANDED_HEIGHT)
     }
 
+    function handleSave() {
+        onSave(question.hash)
+        setIsSaved(true)
+    }
+
+    // TODO: Fix expanding answer errors
+
     return (
         <ExpandableView
             expanded={ question.expanded || (state == "dead" && !isMinimized)}
-            style={styles.expandable}
+            style={[styles.expandable]}
             maxHeight={expandedHeight}
             onAnimationFinish={handleAnimationFinish}
         >
@@ -226,9 +239,18 @@ const Question = ({
                         ]}
                     />
                 </View>
-
-                <View style={styles.questionTopline}>
+                <View style={ustyles.flex.flexRowSpaceBetween}>
                     <HelperText>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
+                    {
+                        onSave &&
+                        <IconButton
+                            icon={isSaved ? "check" : saveIcon || "bookmark"}
+                            style={{backgroundColor: isSaved ? theme.static.prompt : theme.surface}}
+                            size={20}
+                            onPress={handleSave}
+                            disabled={isSaved}
+                        />
+                    }
                 </View>
                 <View>
                     <HelperText style={styles.questionText}>
@@ -264,25 +286,30 @@ const Question = ({
                 <HelperText>{question.answers.main}</HelperText>
                 {
                     state == "dead" &&
-                    (
-                        <Answers
-                            answers={question.answers}
-                            style={styles.answerComponent}
-                            onExpand={handleAnswerExpanded}
-                            onCollapse={handleAnswerCollapsed}
-                        />
-                    )
+                    <Answers
+                        answers={question.answers}
+                        style={styles.answerComponent}
+                        onExpand={handleAnswerExpanded}
+                        onCollapse={handleAnswerCollapsed}
+                        rightIcon={rightIcon}
+                    />
                 } 
             </View>
-        </GlassyView> :
+        </GlassyView>
+        :
         <GlassyView
             style={styles.collapsedBar}
             onPress={handleDeadPressed}
         >
-            <HelperText numberOfLines={1}>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
-            <HelperText style={styles.answer} numberOfLines={1}>
-                {question.answers.main}
-            </HelperText>
+            <HelperText numberOfLines={1} style={ustyles.text.shadowText}>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
+            <View style={styles.right}>
+                <HelperText style={[styles.answer, ustyles.text.shadowText]} numberOfLines={1}>
+                    {question.answers.main}
+                </HelperText>
+                {
+                    rightIcon
+                }
+            </View>
         </GlassyView>
         }
         </ExpandableView>
@@ -318,6 +345,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginHorizontal: 1,
         borderRadius: 10
+    },
+    right: {
+        flexDirection: "row",
+        gap: 10,
+        alignItems: "center"
     },
     tournament: {
 

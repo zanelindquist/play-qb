@@ -409,7 +409,67 @@ def create_friend_request_from_email_to_hash(email, hash):
     finally:
         session.commit()
 
+def save_question(question_id, user_id, saved_type="missed"): # category= missed, correct, saved
+    session = get_session()
+    try:
+        # There could be two: one for tracking correct answers, and one as just a saved
+        saved_questions = session.execute(
+            select(SavedQuestions)
+            .where(
+                and_(
+                    SavedQuestions.question_id == question_id,
+                    SavedQuestions.user_id == user_id,
+                )
+            )
+        ).scalars().all()
 
+        answer_tracking_question = None
+        saved_question = None
+        for sq in saved_questions:
+            if sq.saved_type == "saved":
+                saved_question = sq
+            else:
+                answer_tracking_question = sq
+
+        if answer_tracking_question and saved_type != "saved":
+            # If there is a saved question already, but the new saved type = saved and the old saved type is not missed, make a new question
+            # If the new saved type is saved and the category is missed or correct, we want to add a new question anyway
+            
+            # If they just got the answer correct and there is already an instance of them getting it wrong, then change teh SavedQuestion to correct
+            if saved_type == "correct" and answer_tracking_question.saved_type == "missed":
+                setattr(answer_tracking_question, "saved_type", "correct")
+
+            # Increment the categories
+            if saved_type == "missed":
+                setattr(answer_tracking_question, "missed_count", answer_tracking_question.missed_count + 1)
+            elif saved_type == "correct":
+                setattr(answer_tracking_question, "correct_count", answer_tracking_question.correct_count + 1)
+            session.commit()
+
+            return
+        
+        if saved_question and saved_type == "saved":
+            return {'message': 'save_question(): that question is already saved', "code": 403}
+
+        new_saved_question = SavedQuestions(
+            question_id=question_id,
+            user_id=user_id,
+            saved_type=saved_type,
+            missed_count=1 if saved_type == "missed" else 0,
+            correct_count=1 if saved_type == "correct" else 0
+        )
+
+        session.add(new_saved_question)
+        
+        session.commit()
+
+        return {'message': 'save_question(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'save_question(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # RETRIEVING RESOURCES
@@ -454,7 +514,6 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
         return None
     finally:
         session.remove()
-
 
 def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
@@ -516,6 +575,23 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
+
+def get_question_by_hash(hash):
+    try:
+        session = get_session()
+        question = None
+
+        question = session.execute(
+            select(Questions)
+            .where(Questions.hash == hash)
+        ).scalars().first()
+
+        return to_dict_safe(question)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
 
 def get_lobby_by_alias(lobbyAlias):
     session = get_session()
@@ -741,6 +817,67 @@ def get_stats_by_email(email: str) -> list:
         return {'message': 'get_stats_by_email(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def get_saved_questions(email, saved_type="all", category="all", offset=0, limit=20):
+    try:
+        session = get_session()
+        
+        user = session.execute(
+            select(Users)
+            .where(Users.email == email)
+        ).scalars().first()
+
+        where_clauses = [SavedQuestions.user_id == user.id]
+
+        if saved_type != "all":
+            where_clauses.append(SavedQuestions.saved_type == saved_type)
+
+        # Build base statement with all filters
+        base_stmt = select(SavedQuestions).where(*where_clauses).order_by(SavedQuestions.created_at.desc())
+
+        # Only join if filtering by question category
+        if category != "all":
+            base_stmt = base_stmt.join(SavedQuestions.question).where(Questions.category == category)
+
+        # Get total count
+        total = session.execute(
+            select(func.count()).select_from(base_stmt.subquery())
+        ).scalar_one()
+
+        # Execute paginated query
+        saved_questions = session.execute(
+            base_stmt.limit(limit).offset(offset)
+        ).scalars().all()
+
+        parsed = []
+
+        for sq in saved_questions:
+            q = to_dict_safe(sq.question, rel_depths=REL_DEP["db:question"])
+            parsed_answers = {}
+            keys = ["main", "accept", "prompt", "reject", "suggested_category"]
+            index = 0;
+            for part in q.get("answers").split(" || "):
+                parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+                index += 1
+
+            # Make the main answer not a list
+            parsed_answers["main"] = parsed_answers["main"][0]
+
+            # Parse answer
+            q["answers"] = parsed_answers
+            q["saved_type"] = sq.saved_type
+            q["correct_count"] = sq.correct_count
+            q["missed_count"] = sq.missed_count
+
+            parsed.append(q)
+
+        return {"questions": parsed, "total": total}
+
+    except Exception as e:
+        print(e)
+        return {'message': 'get_saved_questions(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.remove()
 
 
 
@@ -1186,7 +1323,32 @@ def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
         return {'message': 'Unfriended ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'remove_friend_by_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def unsave_question(email: str, question_hash: str) -> bool:
+    session = get_session()
+    try:
+        user = get_user_by_email(email)
+        question = get_question_by_hash(question_hash)
+
+        # See if there is already a friend request
+        question = session.execute(
+            delete(SavedQuestions)
+            .where(
+                SavedQuestions.user_id == user.get("id"),
+                SavedQuestions.question_id == question.get("id"),
+                SavedQuestions.saved_type == "saved"
+            )
+        )
+
+        session.commit()
+
+        return {'message': "Question unsaved", "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'unsave_question(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 

@@ -55,7 +55,7 @@ export default function Classify() {
             setQuestionMS(Date.now())
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 
@@ -69,7 +69,7 @@ export default function Classify() {
             loadQuestion()
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 

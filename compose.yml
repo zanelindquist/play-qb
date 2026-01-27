@@ -27,8 +27,10 @@ services:
     image: nginx:latest
     container_name: qb-nginx_proxy
     ports:
-      # - "80:80"
+      - "80:80"
       - "443:443"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:80:80"
     depends_on:
       - app
     volumes:

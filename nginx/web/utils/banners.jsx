@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import theme from "../assets/themes/theme";
+import { Button } from "react-native-paper";
 
 const { width } = Dimensions.get("window");
 const BANNER_HEIGHT = 70;
@@ -34,7 +35,7 @@ export function BannerProvider({ children }) {
     const insets = useSafeAreaInsets();
 
     const translateY = useRef(
-        new Animated.Value(-BANNER_HEIGHT - insets.top)
+        new Animated.Value(-BANNER_HEIGHT - insets.top),
     ).current;
 
     const [visible, setVisible] = useState(false);
@@ -66,7 +67,13 @@ export function BannerProvider({ children }) {
         const timer = setTimeout(hideBanner, options.duration || 3000);
 
         return () => clearTimeout(timer);
-    }, [visible]);
+    }, [visible, options]);
+
+    function handleCTA() {
+        options.callToAction.callback()
+        setMessage(options.callToAction.callbackMessage)
+        setOptions({duration: 3000})
+    }
 
     return (
         <BannerContext.Provider value={{ showBanner }}>
@@ -86,7 +93,16 @@ export function BannerProvider({ children }) {
                     ]}
                 >
                     <Text style={styles.text}>{message}</Text>
-
+                    {options.callToAction && (
+                        <Button
+                            style={styles.callToAction}
+                            textColor={theme.onSurface}
+                            mode="contained"
+                            onPress={handleCTA}
+                        >
+                            {options.callToAction.name}
+                        </Button>
+                    )}
                     <TouchableOpacity onPress={hideBanner}>
                         <Text style={styles.close}>✕</Text>
                     </TouchableOpacity>
@@ -113,6 +129,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         flex: 1,
         marginRight: 12,
+    },
+    callToAction: {
+        backgroundColor: theme.surface,
+        color: theme.onSurface,
+        marginHorizontal: 20,
     },
     close: {
         color: "white",
