@@ -51,6 +51,7 @@ const Question = ({
     style,
     rightIcon,
     onSave = null,
+    saveIcon,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     MS_FOR_ANSWER = 5000,
@@ -243,8 +244,8 @@ const Question = ({
                     {
                         onSave &&
                         <IconButton
-                            icon={"bookmark"}
-                            style={{backgroundColor: isSaved ? theme.elevation.level5 : theme.surface}}
+                            icon={isSaved ? "check" : saveIcon || "bookmark"}
+                            style={{backgroundColor: isSaved ? theme.static.prompt : theme.surface}}
                             size={20}
                             onPress={handleSave}
                             disabled={isSaved}

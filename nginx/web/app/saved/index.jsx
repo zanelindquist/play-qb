@@ -40,24 +40,38 @@ const CATEGORIES = [
     "current events",
     "fine arts"
 ]
+
+const TYPE_OPTIONS = [
+    {"title": "All", icon: "circle"},
+    {"title": "Missed", icon: "close"},
+    {"title": "Correct", icon: "check"},
+    {"title": "Saved", icon: "bookmark"}
+]
+
+const LIMIT = 20
  
 export default function StatsPage() {
     // Hooks
     const {showBanner} = useBanner()
+    const params = useLocalSearchParams()
 
     // Variables
     const [questions, setQuestions] = useState([])
     const [user, setUser] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [offset, setOffset] = useState(0)
-    const [limit, setLimit] = useState(20)
-    const [savedType, setSavedType] = useState("all")
-    const [category, setCategory] = useState("all")
-    const [nextOffset, setNextOffset] = useState(20)
+    const [limit, setLimit] = useState(LIMIT)
+    const [savedType, setSavedType] = useState(params.type || "all")
+    const [category, setCategory] = useState(params.category?.replace("%20", " ") || "all")
+    const [nextOffset, setNextOffset] = useState(LIMIT)
     const [totalQueryLength, setTotalQueryLength] = useState(0)
 
     const unsaveTimeoutRef = useRef(null)
     const restoreCallbackRef = useRef(null)
+
+    useEffect(()=> {
+        console.log("ST", savedType)
+    }, [savedType])
 
     useEffect(() => {
         loadStats()
@@ -65,6 +79,7 @@ export default function StatsPage() {
 
 
     function loadStats() {
+        console.log("LOAD STATS")
         postProtectedRoute("/saved", {
             offset: offset,
             limit: limit,
@@ -72,7 +87,6 @@ export default function StatsPage() {
             category: category
         })
         .then((response) => {
-            console.log(response.data)
             setQuestions(response.data.questions)
             if(!user) setUser(response.data.user)
             setNextOffset(response.data.next_offset)
@@ -146,12 +160,8 @@ export default function StatsPage() {
                         <GameRule
                             label={"Saved Type"}
                             mode="dropdown"
-                            options={[
-                                {"title": "All", icon: "circle"},
-                                {"title": "Missed", icon: "close"},
-                                {"title": "Correct", icon: "check"},
-                                {"title": "Saved", icon: "bookmark"}
-                            ]}
+                            options={TYPE_OPTIONS}
+                            defaultValue={Math.max(TYPE_OPTIONS.map((t) => t.title.toLowerCase()).indexOf(savedType), 0) }
                             dataName={"saved_type"}
                             onChange={handleSavedTypeChange}
                             style={styles.saveType}    
@@ -162,6 +172,7 @@ export default function StatsPage() {
                             options={
                                 CATEGORIES.map((c)=> {return {title: capitalize(c)}})
                             }
+                            defaultValue={Math.max(CATEGORIES.indexOf(category), 0) }
                             dataName={"saved_type"}
                             onChange={handleCategoryChange}
                             style={styles.saveType}    
@@ -186,7 +197,8 @@ export default function StatsPage() {
                         <Question
                             question={q}
                             onSave={handleQuestionUnsave}
-                            key={q.hash}
+                            saveIcon={"bookmark-off"}
+                            key={`${q.hash}-${i}`}
                             rightIcon={
                                 <View style={styles.questionRight}>
                                     <GitPlusMinus 
