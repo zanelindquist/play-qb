@@ -6,6 +6,11 @@ import theme from "../themes/theme";
 export default {
     // Container styles/nesting
     flex: StyleSheet.create({
+        flexRow: {
+            flexDirection: "row",
+            gap: 10,
+            flexWrap: "wrap"
+        },
         flexRowSpaceBetween: {
             flexDirection: "row",
             alignItems: "center",
@@ -19,10 +24,16 @@ export default {
             flexDirection: "column",
             gap: 20
         },
-        flexColumn: {
+        flexColumnSpaceBetween: {
             flexDirection: "column",
             justifyContent: "space-between",
-            gap: 20
+            height: "100%"
+        },
+        flexColumnSpaceBetweenCenter: {
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "center",
+            height: "100%"
         },
         flexColumnCenterItems: {
             flexDirection: "column",
@@ -45,6 +56,9 @@ export default {
             textShadowColor: "rgba(0,0,0,0.8)",
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 2,
+        },
+        center: {
+            textAlign: "center"
         }
     }),
     icon: StyleSheet.create({

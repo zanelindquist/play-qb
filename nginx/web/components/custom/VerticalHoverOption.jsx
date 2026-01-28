@@ -11,11 +11,16 @@ import GradientText from "../custom/GradientText";
 import { router } from "expo-router";
 
 import theme from "../../assets/themes/theme";
+import ustyle from "../../assets/styles/ustyles"
 
 const HOVER_DELAY = 50
 
-export default function BentoGameMode ({
-    gamemode,
+export default function VerticalHoverOption ({
+    title,
+    description,
+    color,
+    icon,
+    href,
     style
 }) {
     const [isHovering, setIsHovering] = useState(false);
@@ -30,8 +35,8 @@ export default function BentoGameMode ({
 
     return (
         <GlassyView
-            style={[styles.bentoBox, style]}
-            onPress={() => router.replace(gamemode.href)}
+            style={styles.container}
+            onPress={() => router.replace(href)}
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}
             gradient={
@@ -42,59 +47,40 @@ export default function BentoGameMode ({
                 }
             }
         >
-            <View style={[styles.leftAccent, {backgroundColor: gamemode.color}]}></View>
-            <View style={styles.icon}>
-                <Icon
-                    source={gamemode.icon}
-                    size={50}
-                    color={gamemode.color}
-                />
-            </View>
-
-            <View style={styles.right}>
+            <View style={ustyle.flex.flexColumnSpaceBetween}>
+                <View style={ustyle.flex.flexColumnCenterItems}>
+                    <Icon
+                        source={icon}
+                        size={50}
+                        color={theme.primary}
+                    />
                     <HelperText
                         style={[styles.title, {color: theme.onSurface}]}
-                    >{gamemode.name}</HelperText>
+                    >{title}</HelperText>
+                </View>
 
-                <HelperText style={styles.subtitle}>{gamemode.description}</HelperText>
+
+                <HelperText style={styles.subtitle}>{description}</HelperText>
             </View>
         </GlassyView>
     )
 }
 
 const styles = StyleSheet.create({
-    bentoBox: {
-        padding: 0,
-        flexGrow: 1,
-        flexShrink: 1,
-        width: "33.3%",
-        height: 150,
-        flexDirection: "row",
-        gap: 10,
-        borderRadius: 10,
-        // justifyContent: "center",
-        // alignItems: "center"
-    },
-    leftAccent: {
-        width: 15,
-        height: "100%",
+    container: {
+        flex: 1,
+        height: 300,
+        minWidth: 170,
+        padding: 10
     },
     icon: {
         paddingTop: 20
     },
-    right: {
-        flexDirection: "column",
-        gap: 10,
-        paddingTop: 30,
-        flexShrink: 1,
-    },
-    logoTitle: {
-        flexDirection: "row",
-        alignItems: "center"
-    },
     title: {
         fontSize: 40,
         fontWeight: 700,
+        textAlign: "center",
+        lineHeight: 50,
         textShadowColor: "rgba(0,0,0,0.5)",
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
