@@ -19,6 +19,7 @@ function handleExpiredAccessToken(showAlert, router) {
 }
 
 function handleGeneralRequestError(error) {
+    console.log("ERROR", error)
     if (error.response && error.response.status === 401 && error.response.data.msg === "Token has expired") {
         throw new Error("Access token has expired.")
     } else {
