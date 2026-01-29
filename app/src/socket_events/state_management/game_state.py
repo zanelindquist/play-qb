@@ -1,0 +1,140 @@
+# Package imports
+import time
+
+# Source code imports
+import src.db.utils as db
+
+
+ANSWER_MS = 5000
+
+
+games = {
+    # "game_hash": {
+    #     "questions": [],
+    #     "current_question": {...},
+    #     "question_interrupts": [
+    #         {
+    #             "start_timestamp": 178908979,
+    #             "end_timestamp": 178903478,
+    #             "after_character": 287,
+    #             "proportion_through": 0.89,
+    #             "first_buzz": True,
+    #             "user": {...},
+    #         },
+    #         ...
+    #     ],
+    #     "question_count": 1,
+    #     "total_rounds": 20
+    #     "users": {
+    #         "hash": {
+    #             ...
+    #         }
+    #     },
+    # }
+}
+
+game_template = {
+    "questions": [],
+    "current_question": None,
+    "question_interrupts": [],
+    "question_count": 1,
+    "total_rounds": 20,
+    "users": {},
+}
+
+def create_game_memory_instance(game_hash: str, settings: dict = {}) -> dict:
+    if games.get(game_hash):
+        raise Exception("create_game_memory_instance(): game instance already exists")
+    
+    # Infuse user passed settings (like total rounds) if they passed any
+    games[game_hash] = {**game_template, **settings}
+
+    return games.get(game_hash)
+
+def get_game(game_hash: str) -> dict:
+    game = games.get(game_hash)
+
+    if not game:
+        raise Exception("get_game(): game does not exist")
+    
+    return game
+
+def add_user_to_game(user_hash: str, game_hash: str) -> dict:
+    game = get_game(game_hash)
+    
+    user = db.get_user_by_hash(user_hash)
+    
+    game["users"][user_hash] = user
+
+    return game
+
+def remove_user_from_game(user_hash: str, game_hash: str) -> dict:
+    game = get_game(game_hash)
+    
+    del game["users"][user_hash]
+
+    return game
+
+def next_question(question_dict: dict, game_hash: str) -> dict:
+    game = get_game(game_hash)
+    
+    game["question_count"] += 1
+    game["current_question"] = question_dict
+    game["questions"].append(question_dict)
+    
+    return game
+
+def start_interrupt(user_hash: str, game_hash: str) -> dict:
+    game = get_game(game_hash)
+
+    # See if another user already has a buzz with no end_timestamp
+    """
+        p = the user has submitted
+        q = there is still time to answer
+        r = there is an unfinished buzz
+
+        ~p & q -> r
+    """
+    unfinished_buzz = True in [
+        not interrupt.get("end_timestamp")
+        and
+        interrupt.get("start_timestamp") + ANSWER_MS > int(time.time() * 1000)
+        for interrupt in game["question_interrupts"]
+    ]
+
+    if unfinished_buzz:
+        return 409
+
+    user = db.get_user_by_hash(user_hash)
+
+    # TODO: after character and proportion through the question
+
+    game["question_interrupts"].append({
+        "start_timestamp": int(time.time() * 1000),
+        "end_timestamp": None,
+        "after_character": 0,
+        "proportion_through": 0,
+        "first_buzz": len(game["question_interrupts"]) == 0,
+        "user": user,
+    })
+
+    return game
+
+def submit_interrupt(user_hash: str, game_hash: str) -> dict:
+    game = get_game(game_hash)
+
+    unfinished_interrupt = next((
+        interrupt for interrupt in game["question_interrupts"]
+        if interrupt["user"]["hash"] == user_hash and not interrupt["end_timestamp"]
+    ), None)
+
+    if not unfinished_interrupt:
+        raise Exception("submit_interrupt(): No unfinished interrupt to alter")
+    
+    unfinished_interrupt["end_timestamp"] = int(time.time() * 1000)
+
+    # See if this is the last question in the game
+    if game["question_count"] == game["total_rounds"]:
+        return {"game": game, "message": "end of game", "code": 200}
+
+    return game

@@ -54,7 +54,7 @@ const Question = ({
     saveIcon,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    MS_FOR_ANSWER = 5000,
+    ANSWER_MS = 5000,
 }) => {
     // Text variables
     const fullText = question.question || "";
@@ -90,7 +90,7 @@ const Question = ({
                 if(charIndex === prev[prev.length - 1]) return prev;
                 return [...prev, charIndex]
             })
-            setMsLeft(MS_FOR_ANSWER)
+            setMsLeft(ANSWER_MS)
             const interval = setInterval(() => {
                 setMsLeft((prev) => {
                     if (prev <= 0) {
@@ -229,7 +229,7 @@ const Question = ({
                             }
                             : state === "interrupted"
                             ? {
-                                width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
+                                width: `${(msLeft / ANSWER_MS) * 100}%`,
                                 backgroundColor: theme.primary,
                             }
                             : {

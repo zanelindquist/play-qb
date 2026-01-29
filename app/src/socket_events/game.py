@@ -12,6 +12,7 @@ import time
 from src.db.utils import *
 from .constructor import socketio
 from .lobby import *
+import state_management.game_state as game_mem
 
 def get_timestamp():
     return int(time.time() * 1000)
@@ -148,9 +149,12 @@ def on_buzz(data): # Timestamp, AnswerContent
         return
     
     question_state = data.get("question_state")
+    first_buzz = data.getr("first_buzz")
 
-    # Increment buzzes_encountered for everyone in the room
-    increment_score_attribute(game_hash, "buzzes_encountered")
+    # If this is the first buzz, then 
+    if first_buzz:
+        # Increment buzzes_encountered for everyone in the room
+        increment_score_attribute(game_hash, "buzzes_encountered")
 
     user = get_user_by_email(user_id)
 

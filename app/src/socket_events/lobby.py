@@ -104,6 +104,7 @@ def leave_party(user_hash: str) -> None:
 def get_timestamp():
     return int(time.time() * 1000)
 
+
 # ===== INCOMMING EVENT HANDLERS =====
 
 @socketio.on("connect", "/lobby")
