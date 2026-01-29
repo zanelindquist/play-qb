@@ -11,7 +11,7 @@ import GradientText from "../custom/GradientText";
 import { router } from "expo-router";
 
 import theme from "../../assets/themes/theme";
-import ustyle from "../../assets/styles/ustyles"
+import ustyles from "../../assets/styles/ustyles"
 
 const HOVER_DELAY = 50
 
@@ -47,15 +47,15 @@ export default function VerticalHoverOption ({
                 }
             }
         >
-            <View style={ustyle.flex.flexColumnSpaceBetween}>
-                <View style={ustyle.flex.flexColumnCenterItems}>
+            <View style={ustyles.flex.flexColumnSpaceBetween}>
+                <View style={ustyles.flex.flexColumnCenterItems}>
                     <Icon
                         source={icon}
                         size={50}
                         color={theme.primary}
                     />
                     <HelperText
-                        style={[styles.title, {color: theme.onSurface}]}
+                        style={[ustyles.text.massive, {color: theme.onSurface}]}
                     >{title}</HelperText>
                 </View>
 
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 300,
         minWidth: 170,
-        padding: 10
+        padding: 20
     },
     icon: {
         paddingTop: 20

@@ -19,6 +19,8 @@ class Users(Base, CreatedAtColumn):
     email_verified = Column(Boolean, nullable=False, default=False)
     is_online = Column(Boolean, default=False)
     premium = Column(Boolean, default=False)
+    xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
 
     current_lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=True)
     current_lobby = relationship(

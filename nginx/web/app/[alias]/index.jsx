@@ -47,22 +47,23 @@ const Play = () => {
     const alias = query.alias || "";
     const router = useRouter()
 
+    // Hooks
     const {showAlert} = useAlert();
     const {showBanner} = useBanner()
     const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect} = useSocket("game", alias);
-    const [hasRegisteredOnReady, setHasRegisteredOnReady] = useState(false)
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myUser, setMyUser] = useState(null);
 
-    // New question stuff
+    // Question variables
     const [allEvents, setAllEvents] = useState([]);
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
+    const [isFirstBuzz, setIsFirstBuzz] = useState()
 
-    // Game state
+    // Lobby state
     const [lobby, setLobby] = useState(null)
     const [showSettings, setShowSettings] = useState(false)
     

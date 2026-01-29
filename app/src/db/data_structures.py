@@ -1,7 +1,7 @@
 SERIALIZATION_CONFIG = {
     "Users": {
         "fields": [
-            "id", "hash", "username", "is_male", "is_online", "premium", "account_disabled", "email_verified", "current_game_id", "current_lobby_id", "created_at"
+            "id", "hash", "username", "is_male", "is_online", "premium", "xp", "level", "account_disabled", "email_verified", "current_game_id", "current_lobby_id", "created_at"
         ],
         "relationships": {
             "friends": "Users",
@@ -41,7 +41,7 @@ SERIALIZATION_CONFIG = {
     #     },
     # },
     "Lobbies": {
-        "fields": ["id", "hash", "creator_id", "public", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players", "created_at"],
+        "fields": ["id", "hash", "creator_id", "public", "is_ranked", "name", "total_games", "level", "category", "speed", "gamemode", "rounds", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "number_of_online_players", "created_at"],
         "relationships": {
             "games": "Games",
             "creator": "Users"

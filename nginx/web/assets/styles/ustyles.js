@@ -43,6 +43,15 @@ export default {
     }),
     // Text styles, sizes
     text: StyleSheet.create({
+        massive: {
+            fontSize: 40,
+            fontWeight: 700,
+            textAlign: "center",
+            lineHeight: 50,
+            textShadowColor: "rgba(0,0,0,0.5)",
+            textShadowOffset: { width: 1, height: 1 },
+            textShadowRadius: 2,
+        },
         title: {
             fontSize: 30
         },
