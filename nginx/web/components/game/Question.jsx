@@ -47,6 +47,7 @@ const Question = ({
     onInterruptOver,
     onFinish,
     onDeath,
+    onCharChange,
     speed = 400,
     style,
     rightIcon,
@@ -124,6 +125,7 @@ const Question = ({
                         if (onFinish) onFinish();
                         clearInterval(interval);
                     }
+                    if(onCharChange) onCharChange(currentIndex)
                 }
             }, msPerChar);
             return () => clearInterval(interval);

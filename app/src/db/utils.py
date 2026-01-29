@@ -273,7 +273,7 @@ def create_user(data):
         session.add(stats)
         session.commit()
 
-        return {'message': 'create_user(): success', "code": 201}
+        return {'message': 'create_user(): success', "user": to_dict_safe(new_user), "code": 201}
     
     except Exception as e:
         print(e)
@@ -354,10 +354,10 @@ def create_lobby(settings):
     finally:
         session.commit()
 
-def create_friend_request_from_email_to_hash(email, hash):
+def create_friend_request(user_hash, hash):
     session = get_session()
     try:
-        user = get_user_by_email(email)
+        user = get_user_by_hash(user_hash)
         target = get_user_by_hash(hash)
 
         if not user or not target:
@@ -405,7 +405,7 @@ def create_friend_request_from_email_to_hash(email, hash):
         return {'message': 'Friend request sent to ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'create_friend_request(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -652,15 +652,15 @@ def get_game_by_lobby_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_friends_by_email(email, online=False, party=False):
+def get_friends_by_hash(hash, online=False, party=False):
     session = get_session()
 
-    if not email:
-        raise Exception("get_friends_by_email(): No email provided")
+    if not hash:
+        raise Exception("get_friends_by_hash(): No hash provided")
     
     user = session.execute(
         select(Users)
-        .where(Users.email == email)
+        .where(Users.hash == hash)
     ).scalars().first()
 
     if not user:
@@ -700,15 +700,15 @@ def get_friends_by_email(email, online=False, party=False):
         to_dict_safe(friend) for friend in filtered_friends
     ]
 
-def get_friend_requests_by_email(email):
+def get_friend_requests_by_hash(hash):
     session = get_session()
 
-    if not email:
-        raise Exception("get_friends_by_email(): No email provided")
+    if not hash:
+        raise Exception("get_friends_by_hash(): No hash provided")
     
     user = session.execute(
         select(Users)
-        .where(Users.email == email)
+        .where(Users.hash == hash)
     ).scalars().first()
 
     if not user:
@@ -799,12 +799,12 @@ def attatch_players_to_teams(teams: dict):
 
     return mutated_teams
 
-def get_stats_by_email(email: str) -> list:
+def get_stats_by_hash(hash: str) -> list:
     session = get_session()
     try:
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         if not user:
@@ -814,17 +814,17 @@ def get_stats_by_email(email: str) -> list:
 
     except Exception as e:
         session.rollback()
-        return {'message': 'get_stats_by_email(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'hash(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
-def get_saved_questions(email, saved_type="all", category="all", offset=0, limit=20):
+def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=20):
     try:
         session = get_session()
         
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         where_clauses = [SavedQuestions.user_id == user.id]
@@ -883,13 +883,13 @@ def get_saved_questions(email, saved_type="all", category="all", offset=0, limit
 
 # EDITING RESOURCES
 
-def set_user_online(email: str, online=True):
+def set_user_online(hash: str, online=True):
     try:
         session = get_session()
 
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         setattr(user, "is_online", online)
@@ -923,7 +923,11 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = N
             "buzzes_encountered": 0,
             "early": 0,
             "bonuses": 0,
-            "questions_encountered": 0
+            "questions_encountered": 0,
+            
+            "rounds": 0,
+            "games": 0,
+            "average_time_to_buzz": 0,
         }
         
         # 1. Get the game from the hash
@@ -1100,8 +1104,8 @@ def write_user_stats(player_hash: str, stats: dict) -> dict:
             # Forget it if there is no change
             if stats[key] == 0:
                 continue
-            new_total = getattr(user.stats, key) + stats.get(key)
-            all_stats[key] = new_total
+            new_total = getattr(user.stats, key) + Decimal(stats.get(key))
+            all_stats[key] = float(new_total)
             setattr(user.stats, key, new_total)
 
         session.commit()
@@ -1110,6 +1114,7 @@ def write_user_stats(player_hash: str, stats: dict) -> dict:
 
     except Exception as e:
         session.rollback()
+        print(e)
         return {'message': 'write_user_stats(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
@@ -1140,13 +1145,13 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
     finally:
         session.commit()
 
-def edit_user(email:str, data: dict):
+def edit_user(hash:str, data: dict):
     try:
         session = get_session()
 
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         if not user:
@@ -1327,10 +1332,10 @@ def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
     finally:
         session.commit()
 
-def unsave_question(email: str, question_hash: str) -> bool:
+def unsave_question(hash: str, question_hash: str) -> bool:
     session = get_session()
     try:
-        user = get_user_by_email(email)
+        user = get_user_by_hash(hash)
         question = get_question_by_hash(question_hash)
 
         # See if there is already a friend request
@@ -1566,7 +1571,7 @@ def strip_answerline_junk(answer: str) -> str:
 
 # Game state management
 
-def user_join_lobby(email, lobbyAlias):
+def user_join_lobby(hash, lobbyAlias):
     session = get_session()
     try:
         lobby = session.execute(
@@ -1582,7 +1587,7 @@ def user_join_lobby(email, lobbyAlias):
         user = session.execute(
             select(Users)
             .where(
-                Users.email == email,
+                Users.hash == hash,
             )
         ).scalars().first()
 
@@ -1614,13 +1619,13 @@ def user_join_lobby(email, lobbyAlias):
     finally:
         session.commit()
 
-def user_disconnect_from_lobby(email):
+def user_disconnect_from_lobby(hash):
     session = get_session()
     try:
         user = session.execute(
             select(Users)
             .where(
-                Users.email == email,
+                Users.hash == hash,
             )
         ).scalars().first()
 

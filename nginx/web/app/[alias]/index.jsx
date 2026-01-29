@@ -61,7 +61,7 @@ const Play = () => {
     const [questionState, setQuestionState] = useState("running");
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
-    const [isFirstBuzz, setIsFirstBuzz] = useState()
+    const charIndexRef = useRef(0)
 
     // Lobby state
     const [lobby, setLobby] = useState(null)
@@ -254,7 +254,7 @@ const Play = () => {
     function onBuzz() {
         // Can't buzz when there is already an interruption
         if(buzzer || questionState == "dead") return;
-        send("buzz", {timestamp: Date.now()})
+        send("buzz", {timestamp: Date.now(), after_character: charIndexRef.current})
     }
 
     function onTyping(text) {
@@ -407,6 +407,7 @@ const Play = () => {
                                             onInterruptOver={i == 0 ? handleInterruptOver : null}
                                             onFinish={i == 0 ? handleQuestionFinish : null}
                                             onDeath={i == 0 ? handleQuestionDeath : null}
+                                            onCharChange={(i) => charIndexRef.current = i}
                                             state={i == 0 ? questionState : "dead" }
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}

@@ -40,7 +40,7 @@ def login():
 
     if bcrypt.check_password_hash(user.get("password"), password):
         # Generate an access token to send to the user
-        access_token = create_access_token(identity=str(email))
+        access_token = create_access_token(identity=str(user.get("hash")))
         return jsonify({"access_token": access_token}), 200
     else:
         return jsonify({"error": "Password is incorrect"}), 401
@@ -98,7 +98,7 @@ def google_auth_login():
             return jsonify({"error": "Email does not exist"}), 400
 
         # If the user exists here, we log them in
-        access_token = create_access_token(identity=str(email))
+        access_token = create_access_token(identity=str(user.get("hash")))
         
         # Optionally store refresh_token for later use
         # refresh_token = tokens.get("refresh_token")
@@ -137,7 +137,7 @@ def register():
     if(result.get("error")):
         return jsonify(result), code
     
-    result["access_token"] = create_access_token(identity=str(email))
+    result["access_token"] = create_access_token(identity=str(result["user"]["hash"]))
 
     # Process the data or respond
     return jsonify(result), code
@@ -191,7 +191,7 @@ def google_auth_register():
 
         if user is not None:
             # If the user exists, just log them in, but tell them the user exists
-            access_token = create_access_token(identity=str(email))
+            access_token = create_access_token(identity=str(user.get("hash")))
             return jsonify({"access_token": access_token, "message": "User already exists"}), 200
         
         result = create_user({
@@ -207,7 +207,7 @@ def google_auth_register():
             return jsonify(result), code
 
         # Now that the user is created, log them in, we log them in
-        access_token = create_access_token(identity=str(email))
+        access_token = create_access_token(identity=str(result["user"]["hash"]))
         
         # Optionally store refresh_token for later use
         # refresh_token = tokens.get("refresh_token")

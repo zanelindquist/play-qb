@@ -12,7 +12,7 @@ import time
 from src.db.utils import *
 from .constructor import socketio
 from .lobby import *
-import state_management.game_state as game_mem
+import src.socket_events.state_management.game_state as game_mem
 
 def get_timestamp():
     return int(time.time() * 1000)
@@ -50,20 +50,23 @@ def connect(auth):
     
     try:
         decoded = decode_token(token)
-        identity = decoded.get("sub")
+        email = decoded.get("sub")
     except Exception as e:
         print("Invalid token")
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
-    request.environ["user_id"] = identity;
+    # Set the user_hash as the hash instead
 
-    print(f"Socket connected to /game: user={identity}")
+    
+    request.environ["user_hash"] = email;
+
+    print(f"Socket connected to /game: user={email}")
 
 # When a player joins the lobby
 @socketio.on("join_lobby", namespace="/game")
 def on_join_lobby(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = data.get("lobbyAlias")
     request.environ["lobby"] = lobby
     join_room(f"lobby:{lobby}")
@@ -81,10 +84,10 @@ def on_join_lobby(data):
     # TODO: See if the user has permission to enter this lobby (dont let people intrude on private or custom games)
 
     # Create a player for this lobby (if there isnt one)
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
     
     # Add player to lobby in database
-    result = user_join_lobby(user_id, lobby)
+    result = user_join_lobby(user_hash, lobby)
 
     # Send GameState to the joining player (if possible)
 
@@ -93,6 +96,8 @@ def on_join_lobby(data):
     # the data type of the returning information?
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
+
+    mem_game = game_mem.create_game_memory_instance(game.get("hash"), {"total_rounds": game.get("rounds")})
 
     gamemode = lobby_data.get("gamemode").lower()
 
@@ -137,7 +142,7 @@ def on_join_lobby(data):
 @socketio.on("buzz", namespace="/game")
 def on_buzz(data): # Timestamp, AnswerContent
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     game_hash = request.environ.get("game_hash")
 
     if not game_hash:
@@ -148,24 +153,45 @@ def on_buzz(data): # Timestamp, AnswerContent
         emit("reconnect")
         return
     
+    game_m = game_mem.get_game(game_hash)
+
+    if not game_m.get("current_question"):
+        return
+
     question_state = data.get("question_state")
-    first_buzz = data.getr("first_buzz")
+    character_buzz = data.get("after_character")
 
     # If this is the first buzz, then 
-    if first_buzz:
+    if len(game_m.get("question_interrupts")) == 0:
         # Increment buzzes_encountered for everyone in the room
         increment_score_attribute(game_hash, "buzzes_encountered")
 
-    user = get_user_by_email(user_id)
-
-    # Increment buzzes for just the user
-    increment_score_attribute(game_hash, "buzzes", player_hash=user.get("hash"))
+    user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
 
     # TODO: Increment for early buzzes
     if question_state == "running":
-        increment_score_attribute(game_hash, "early", player_hash=user.get("hash"))
+        increment_score_attribute(game_hash, "early", player_hash=user_hash)
+
+    # Buzz into memory
+    interrupt = game_mem.start_interrupt(user_hash, game_hash, after_character=character_buzz)
 
     # TODO: Ajust average time to buzz
+    proportion_to_buzz = character_buzz / len(game_m["current_question"]["question"])
+
+    buzz_time_change = (proportion_to_buzz - user.get("stats").get("average_time_to_buzz")) / (user.get("stats").get("buzzes") + 1)
+
+    print("BTC", buzz_time_change)
+
+    # mu n+1 = (x - mu) / (n + 1)
+    increment_score_attribute(
+        game_hash,
+        "average_time_to_buzz",
+        player_hash=user_hash,
+        amount=buzz_time_change
+    )
+
+    # Increment buzzes for just the user
+    increment_score_attribute(game_hash, "buzzes", player_hash=user_hash)
 
     # Broadcast that a player has buzzed
     emit(
@@ -178,14 +204,14 @@ def on_buzz(data): # Timestamp, AnswerContent
 @socketio.on("typing", namespace="/game")
 def on_typing(data): # AnswerContent
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
 
     if not lobby:
         emit("reconnect")
         return
 
     answer_content = data.get("content");
-    user = get_user_by_email(user_id);
+    user = get_user_by_hash(user_hash);
 
     # Broadcast that a player is typing
     emit(
@@ -198,7 +224,7 @@ def on_typing(data): # AnswerContent
 @socketio.on("submit", namespace="/game")
 def on_submit(data): # FinalAnswer
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     game_hash = request.environ.get("game_hash")
 
     if not game_hash:
@@ -216,8 +242,12 @@ def on_submit(data): # FinalAnswer
         is_correct = -1
     else:
         is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
-    # IsCorrect= math.floor(random.random() * 2) - 1
-    user = get_user_by_email(user_id)
+    
+    user = get_user_by_hash(user_hash)
+
+    interrupt = game_mem.submit_interrupt(user_hash, game_hash, is_correct=is_correct)
+
+    is_early = interrupt.get("is_early")
 
     data = {"user": user, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
 
@@ -254,9 +284,9 @@ def on_submit(data): # FinalAnswer
         )
         
     elif is_correct == -1:
-        increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
-        # TODO: Only do neg if the question is not over
-        increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
+        if is_early:
+            increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
+            increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
 
         # Save the question to the user's missed questions
         if user.get("premium"):
@@ -269,9 +299,9 @@ def on_submit(data): # FinalAnswer
 
 @socketio.on("change_game_settings", "/game")
 def on_change_game_settings(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ.get("lobby")
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     # Early request from the front end from race condition, not intentional, but we have to guard against it
     if not lobby:
@@ -307,12 +337,8 @@ def on_change_game_settings(data):
 @socketio.on("next_question", namespace="/game")
 def on_next_question(data):
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     game_hash = request.environ.get("game_hash")
-
-    if not game_hash:
-        emit("return_to_lobby")
-        return;
 
     if not game_hash:
         emit("return_to_lobby")
@@ -321,6 +347,7 @@ def on_next_question(data):
     if not lobby:
         emit("reconnect")
         return
+
 
     # TODO: See if player has authority to skip question
 
@@ -336,6 +363,10 @@ def on_next_question(data):
         category=CATEGORIES[lobby_data.get("category")]
     )
 
+    game_m = game_mem.get_game(game_hash)
+
+    game_mem.next_question(question, game_hash)
+
     # Set this question as the game's question
     set_question_to_game(question, lobby)
 
@@ -345,9 +376,9 @@ def on_next_question(data):
 @socketio.on("game_resume", namespace="/game")
 def on_game_resume(): # Empty
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
@@ -355,9 +386,9 @@ def on_game_resume(): # Empty
 @socketio.on("game_pause", namespace="/game")
 def on_game_pause(): # Empty
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
 
@@ -365,9 +396,9 @@ def on_game_pause(): # Empty
 @socketio.on("save_question", namespace="/game")
 def on_save_question(data): # Question hash
     lobby = request.environ.get("lobby")
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     if not data.get("hash"):
         emit("saved_question_failed", {"message": "Question hash not provided"})
@@ -383,17 +414,16 @@ def on_save_question(data): # Question hash
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
+    game_hash = request.environ["game_hash"]
     lobby = request.environ.get("lobby")
 
-    print(f"Received disconnect from /game {user_id}")
-
-    user = get_user_by_email(user_id)
+    print(f"Received disconnect from /game {user_hash}")
 
     # Add the scores to the user's stats
-    stats = remove_user_game_scores(user.get("current_game").get("hash"), user.get("hash"))
+    stats = remove_user_game_scores(game_hash, user_hash)
 
-    total_stats = write_user_stats(user.get("hash"), stats)
+    total_stats = write_user_stats(user_hash, stats)
 
     lobby_data = get_lobby_by_alias(lobby)
 
@@ -403,6 +433,8 @@ def on_disconnect():
     # Give them their stats before they are disconnected
     emit("you_disconnected", {"stats": stats, "total_stats": total_stats})
 
-    result = user_disconnect_from_lobby(user_id)
+    result = user_disconnect_from_lobby(user_hash)
+
+    user = get_user_by_hash(user_hash)
 
     emit("player_disconnected", {"lobby": lobby_data, "user": user}, room=f"lobby:{lobby}")
