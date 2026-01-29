@@ -43,6 +43,11 @@ export default function Analytics ({
                     value={(stats.correct / stats.buzzes  * 100).toFixed(1) + " %"}
                 />
                 <Stat
+                    name="Buzz Time"
+                    description="The average perentage through each question that you buzz"
+                    value={(stats.average_time_to_buzz  * 100).toFixed(1) + " %"}
+                />
+                <Stat
                     name="Buzz %"
                     description="The percentage of the time the player chooses to buzz"
                     value={(stats.buzzes / stats.questions_encountered  * 100).toFixed(1) + " %"}

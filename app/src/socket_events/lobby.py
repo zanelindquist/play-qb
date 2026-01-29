@@ -119,47 +119,51 @@ def on_connect(auth):
     
     try:
         decoded = decode_token(token)
-        identity = decoded.get("sub")
+        user_hash = decoded.get("sub")
     except Exception as e:
         print("Invalid token")
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
-    # Set the user_id
-    request.environ["user_id"] = identity;
+    user = get_user_by_hash(user_hash)
+
+    if not user:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return
+    
+    # Set the user_hash
+    request.environ["user_hash"] = user_hash;
 
     # Set the lobby alias for now
     request.environ["prelobby"] = "solos"
 
-    user = get_user_by_email(identity)
-
-    join_room(f"user:{user.get("hash")}")
+    join_room(f"user:{user_hash}")
 
     # Set the party to just the user right now
-    party_hash = create_party(user.get("hash"))
+    party_hash = create_party(user_hash)
     join_room(f"party:{party_hash}")
     request.environ["party"] = party_hash
 
-    print(f"Socket connected to /lobby: user={identity}")
+    print(f"Socket connected to /lobby: user={user_hash}")
 
 @socketio.on("disconnect", "/lobby")
 def on_disconnect():
-    user_id = request.environ.get("user_id")
+    user_hash = request.environ.get("user_hash")
     lobby = request.environ.get("lobby")
     party_hash = request.environ.get("party")
 
-    print(f"Received disconnect from /lobby: user={user_id}")
+    print(f"Received disconnect from /lobby: user={user_hash}")
 
-    set_user_online(user_id, False)
+    set_user_online(user_hash, False)
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     leave_party(user.get("hash"))
 
     emit("user_disconnected", {"user_hash": user.get("hash")}, room=f"party:{party_hash}")
 
     # Get user friends
-    added_friends = get_friends_by_email(user_id, online=False)
+    added_friends = get_friends_by_hash(user_hash, online=False)
 
     # Tell the user's friends that they are now offline
     for friend in added_friends:
@@ -169,10 +173,10 @@ def on_disconnect():
 # This is where we get information about a lobby
 @socketio.on("enter_lobby", "/lobby")
 def on_enter_lobby(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     if not party_hash:
         # Set the party to just the user right now
@@ -201,11 +205,11 @@ def on_enter_lobby(data):
     # Give the player their information (load profiles, ect)
     party_members = get_party_member_info(party_hash)
 
-    set_user_online(user_id, True)
+    set_user_online(user_hash, True)
     user["is_online"] = True
 
     # Get user friends
-    added_friends = get_friends_by_email(user_id, online=False)
+    added_friends = get_friends_by_hash(user_hash, online=False)
 
     # Tell the user's friends that they are now online
     for friend in added_friends:
@@ -213,7 +217,7 @@ def on_enter_lobby(data):
             emit("friend_now_online", {"friend": user}, room=f"user:{friend.get("hash")}")
 
     # Get friend requests
-    friend_requests = get_friend_requests_by_email(user_id)
+    friend_requests = get_friend_requests_by_hash(user_hash)
 
     emit("prelobby_joined", {"user": user, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
 
@@ -221,13 +225,13 @@ def on_enter_lobby(data):
 
 @socketio.on("search_friends", "/lobby")
 def on_search_friends(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
     query = data.get("query")
 
-    friends = get_friends_by_email(user_id, online=True, party=parties[party_hash])
+    friends = get_friends_by_hash(user_hash, online=True, party=parties[party_hash])
 
     # Apply the query
     friends = search_filter(friends, ["username"], query)
@@ -236,7 +240,7 @@ def on_search_friends(data):
 
 @socketio.on("invite_friend", "/lobby")
 def on_invite_friend(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -251,13 +255,13 @@ def on_invite_friend(data):
         emit("invite_friend", {"message": "add_friend(): friend already in party", "code": 409})
         return
     
-    inviter = get_user_by_email(user_id)
+    inviter = get_user_by_hash(user_hash)
 
     emit("invited", {"from_user": inviter, "party_hash": party_hash}, room=f"user:{invited_hash}")
 
 @socketio.on("accepted_invite", "/lobby")
 def on_accepted_invite(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 
     new_party_hash = data.get("party_hash")
@@ -265,7 +269,7 @@ def on_accepted_invite(data):
         emit("accepted_invite", {"message": "accepted_invite(): party_hash not provided", "code": 400})
         return
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
     user_hash = user.get("hash")
 
     old_party_hash = request.environ.get("party")
@@ -298,19 +302,18 @@ def on_accepted_invite(data):
 
 @socketio.on("leave_party", "/lobby")
 def on_leave_party(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
-    user_hash = user.get("hash")
+    user = get_user_by_email(user_hash)
 
     # Leave old party
     leave_party(user_hash)
     leave_room(f"party:{party_hash}")
 
     # Join new personal party
-    new_party_hash = create_party(user.get("hash"))
+    new_party_hash = create_party(user_hash)
     new_party = parties[new_party_hash]
     join_room(f"party:{new_party_hash}")
     request.environ["party"] = new_party_hash
@@ -332,11 +335,11 @@ def on_leave_party(data):
 # Entering the game
 @socketio.on("party_member_ready", "/lobby")
 def on_party_member_ready(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     is_ready = data.get("ready")
 
@@ -349,11 +352,11 @@ def on_party_member_ready(data):
 
 @socketio.on("clients_ready", "/lobby")
 def on_party_member_ready(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     party_hash = get_party_by_user(user.get("hash"))
     party = parties[party_hash]
@@ -387,11 +390,11 @@ def on_party_member_ready(data):
 
 @socketio.on("change_gamemode", "/lobby")
 def on_changed_gamemode(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     # Make sure the user is the party leader
 
@@ -412,14 +415,12 @@ def on_changed_gamemode(data):
 
 @socketio.on("custom_settings_changed", "/lobby")
 def on_custom_settings_changed(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_id)
-
     # Make sure the user is the party leader
-    if user.get("hash") != parties[party_hash]["leader_hash"]:
+    if user_hash != parties[party_hash]["leader_hash"]:
         return;
 
     # Simply just tell the other party members what the leader changed
@@ -430,7 +431,7 @@ def on_custom_settings_changed(data):
 
 @socketio.on("search_users", "/lobby")
 def on_search_users(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 
     query = data.get("query")
@@ -444,7 +445,7 @@ def on_search_users(data):
 
 @socketio.on("add_friend", "/lobby")
 def on_add_friend(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 
     hash = data.get("hash")
@@ -453,12 +454,12 @@ def on_add_friend(data):
         emit("added_friend", {"message": "add_friend(): hash not provided", "code": 400})
         return
 
-    result = create_friend_request_from_email_to_hash(user_id, hash)
+    result = create_friend_request(user_hash, hash)
 
-    added_friends = get_friends_by_email(user_id, online=False)
+    added_friends = get_friends_by_hash(user_hash, online=False)
 
     # Get friend requests
-    friend_requests = get_friend_requests_by_email(user_id)
+    friend_requests = get_friend_requests_by_hash(user_hash)
 
     # Tell the user
     emit("added_friend", {"message": result.get("message"), "friends": added_friends, "friend_requests": friend_requests})
@@ -475,9 +476,9 @@ def on_add_friend(data):
         if not target.get("is_online"):
             return
         
-        sender = get_user_by_email(user_id)
+        sender = get_user_by_hash(user_hash)
 
-        friend_requests = get_friend_requests_by_email(target.get("email"))
+        friend_requests = get_friend_requests_by_hash(target.get("email"))
         
         # Update their friend requests
         emit("added_friend", {"message": f"New friend request from {sender.get("username")}", "friend_requests": friend_requests}, room=f"user:{hash}")
@@ -490,14 +491,14 @@ def on_add_friend(data):
         if not sender.get("is_online"):
             return;
         # Update friends
-        added_friends = get_friends_by_email(sender.get("email"), online=False)
+        added_friends = get_friends_by_hash(sender.get("hash"), online=False)
 
-        target = get_user_by_email(user_id)
+        target = get_user_by_hash(user_hash)
         emit("added_friend", {"message": f"{target.get("username")} accepted your friend request", "friends": added_friends}, room=f"user:{hash}")
 
 @socketio.on("remove_friend", "/lobby")
 def on_remove_friend(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 
     hash = data.get("hash")
@@ -506,9 +507,9 @@ def on_remove_friend(data):
         emit("removed_friend", {"message": "remove_friend(): hash not provided", "code": 400})
         return
 
-    result = remove_friend_by_email_to_hash(user_id, hash)
+    result = remove_friend_by_email_to_hash(user_hash, hash)
 
-    added_friends = get_friends_by_email(user_id, online=False)
+    added_friends = get_friends_by_hash(user_hash, online=False)
 
     # Tell the user
     emit("removed_friend", {"message": result.get("message"), "friends": added_friends})
@@ -517,10 +518,10 @@ def on_remove_friend(data):
 
 @socketio.on("search_lobbies", "/lobby")
 def on_search_users(data):
-    user_id = request.environ["user_id"]
+    user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 
-    user = get_user_by_email(user_id)
+    user = get_user_by_hash(user_hash)
 
     query = data.get("query")
     if not query:

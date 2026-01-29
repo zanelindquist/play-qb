@@ -1,3 +1,6 @@
+# TODO: Link these functions with the in-place game events
+
+
 # Package imports
 import time
 
@@ -44,10 +47,11 @@ game_template = {
 
 def create_game_memory_instance(game_hash: str, settings: dict = {}) -> dict:
     if games.get(game_hash):
+        return games.get(game_hash)
         raise Exception("create_game_memory_instance(): game instance already exists")
     
     # Infuse user passed settings (like total rounds) if they passed any
-    games[game_hash] = {**game_template, **settings}
+    games[game_hash] = game_template | settings
 
     return games.get(game_hash)
 
@@ -84,7 +88,7 @@ def next_question(question_dict: dict, game_hash: str) -> dict:
     
     return game
 
-def start_interrupt(user_hash: str, game_hash: str) -> dict:
+def start_interrupt(user_hash: str, game_hash: str, after_character: int = 0) -> dict:
     game = get_game(game_hash)
 
     # See if another user already has a buzz with no end_timestamp
@@ -107,20 +111,26 @@ def start_interrupt(user_hash: str, game_hash: str) -> dict:
 
     user = db.get_user_by_hash(user_hash)
 
-    # TODO: after character and proportion through the question
+    proportion_through = after_character / len(game["current_question"]["question"])
 
-    game["question_interrupts"].append({
+    print(proportion_through)
+
+    interrupt = {
         "start_timestamp": int(time.time() * 1000),
         "end_timestamp": None,
-        "after_character": 0,
-        "proportion_through": 0,
+        "after_character": after_character,
+        "proportion_through": proportion_through,
         "first_buzz": len(game["question_interrupts"]) == 0,
+        "is_early": proportion_through <= 0.999,
+        "is_correct": None,
         "user": user,
-    })
+    }
 
-    return game
+    game["question_interrupts"].append(interrupt)
 
-def submit_interrupt(user_hash: str, game_hash: str) -> dict:
+    return interrupt
+
+def submit_interrupt(user_hash: str, game_hash: str, is_correct: bool=True) -> dict:
     game = get_game(game_hash)
 
     unfinished_interrupt = next((
@@ -132,9 +142,10 @@ def submit_interrupt(user_hash: str, game_hash: str) -> dict:
         raise Exception("submit_interrupt(): No unfinished interrupt to alter")
     
     unfinished_interrupt["end_timestamp"] = int(time.time() * 1000)
+    unfinished_interrupt["is_correct"] = is_correct
 
     # See if this is the last question in the game
     if game["question_count"] == game["total_rounds"]:
         return {"game": game, "message": "end of game", "code": 200}
 
-    return game
+    return unfinished_interrupt
