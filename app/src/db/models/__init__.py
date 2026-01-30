@@ -7,3 +7,5 @@ from .questions import Questions
 from .reports import Reports
 from .friends import Friends
 from .saved_questions import SavedQuestions
+from .user_category_skill import UserCategorySkill
+from .rating_params import RatingParams

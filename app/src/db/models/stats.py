@@ -1,5 +1,6 @@
-from sqlalchemy import Column, ForeignKey, Numeric, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, ForeignKey, Numeric, Float, Integer, String, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
@@ -27,7 +28,12 @@ class Stats(Base, CreatedAtColumn):
     average_time_to_buzz = Column(Numeric(5, 4), default=0.5000)
 
     # Ranked information
-    
+    visible_rank = Column(String(20), default="Plastic I")
+    rank_points = Column(Integer, default=0)
+
+    skill_mu = Column(Float, default=1500, nullable=False)
+    skill_sigma = Column(Float, default=350, nullable=False)
+    last_active_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     user = relationship("Users", back_populates="stats")
