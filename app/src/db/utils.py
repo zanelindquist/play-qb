@@ -1713,6 +1713,10 @@ def set_question_to_game(question, lobbyAlias):
         session.commit()
 
 
+# ===== RANKED SYSTEM =====
+
+
+
 # =====SANITATION AND VALIDATION=====
 
 # Account creation
