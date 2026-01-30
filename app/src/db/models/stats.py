@@ -26,6 +26,9 @@ class Stats(Base, CreatedAtColumn):
     games = Column(Integer, default=0)
     average_time_to_buzz = Column(Numeric(5, 4), default=0.5000)
 
+    # Ranked information
+    
+
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     user = relationship("Users", back_populates="stats")
 
