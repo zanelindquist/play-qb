@@ -48,7 +48,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Games": {
-        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "lobby_id", "current_question_id", "created_at"],
+        "fields": ["id", "hash", "active", "question_number", "game_mode", "rounds", "teams", "lobby_id", "current_question_id", "created_at", "active_at"],
         "relationships": {
             "lobby": "Lobbies",
             "current_question": "Questions"

@@ -44,8 +44,8 @@ export default function Analytics ({
                 />
                 <Stat
                     name="Buzz Time"
-                    description="The average perentage through each question that you buzz"
-                    value={(stats.average_time_to_buzz  * 100).toFixed(1) + " %"}
+                    description="The average time it takes for the player to buzz into a question. An average question is about 19 seconds on normal speed."
+                    value={(stats.average_time_to_buzz  * 19).toFixed(1) + "s"} // 19 Is about the average duration of a question
                 />
                 <Stat
                     name="Buzz %"

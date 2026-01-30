@@ -97,6 +97,9 @@ def on_join_lobby(data):
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
 
+    # See if we should update the game active_at while we're at it
+    update_game_active_at(game.get("hash"), game.get("active_at"))
+
     mem_game = game_mem.create_game_memory_instance(game.get("hash"), {"total_rounds": game.get("rounds")})
 
     gamemode = lobby_data.get("gamemode").lower()

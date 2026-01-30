@@ -55,10 +55,12 @@ CATEGORIES = [
     "current events"
     "custom",
 ];
+
+# TODO: protect ranked lobbies
 PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
 
 # Cleaning up database
-LOBBY_DELETE_DAYS = 0
+LOBBY_DELETE_DAYS = 10
 
 def normalize(s: str) -> str:
     text = re.sub(r"\s+", " ", s.lower().strip())
@@ -1202,6 +1204,36 @@ def classify_question(hash: str, category: str) -> dict:
     finally:
         session.remove()
 
+def update_game_active_at(hash: str, active_at: datetime): 
+    session = get_session()
+    try:
+        active_at_dt = datetime.fromisoformat(active_at)
+        cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS - 2)
+
+        # We don't need to update it then
+        if (active_at_dt > cutoff):
+            return
+
+
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == hash)
+        ).scalars().first()
+
+        setattr(game, "active_at", datetime.now(timezone.utc))
+
+        session.commit()
+
+        return {"message": "update_game_active_at(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {"message": "update_game_active_at(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
+
 
 # DELETING RESOURCES
 
@@ -1267,21 +1299,31 @@ def remove_user_game_scores(game_hash: str, player_hash: str):
 
 def delete_inactive_lobbies():
     # TODO: We need to remove the Players table before this probably
-    return;
     session = get_session()
     try:
         cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS)
 
-        print("cutoff:", cutoff)
-        print("min active_at:", session.execute(
-            select(func.min(Games.active_at))
-        ).scalar())
+        to_delete = session.execute(
+            select(func.count())
+            .select_from(Games)
+            .where(Games.active_at < cutoff)
+        ).scalar()
 
         # Delete inactive games
+        # This will help when there are potentially a lot of games on common servers so that we don't get dead buildup
         games = session.execute(
             delete(Games)
-            .where(Games.active_at <= cutoff)
+            .where(Games.active_at < cutoff)
         )
+
+        to_delete_lobbies = session.execute(
+            select(func.count())
+            .select_from(Lobbies)
+            .where(
+                ~Lobbies.games.any(),                 # no gamess exist
+                ~Lobbies.name.in_(PROTECTED_LOBBIES)  # not protected
+            )
+        ).scalar()
 
         # Now delete lobbies with no games
         session.execute(
@@ -1293,12 +1335,14 @@ def delete_inactive_lobbies():
 
         session.commit()
 
-        return stats
+        print(f"Deleted {to_delete} games and {to_delete_lobbies} lobbies")
+
+        return {'message': 'delete_inactive_lobbies(): success', "code": 200}
 
     except Exception as e:
         session.rollback()
         print(e)
-        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'delete_inactive_lobbies(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
