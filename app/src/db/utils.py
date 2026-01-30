@@ -13,10 +13,13 @@ from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, cas
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
-from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
+from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 from .db import engine
 from .models.hash import *
+import src.db.ranked as ranked
+from src.db.classes import *
+
 
 # Answer judging constants
 BRACKETED = re.compile(r"\[.*?\]")
@@ -55,9 +58,21 @@ CATEGORIES = [
     "current events"
     "custom",
 ];
+CATEGORY_CODES = [
+    "science",
+    "history",
+    "literature",
+    "social science",
+    "philosophy",
+    "religion",
+    "mythology",
+    "geography",
+    "fine arts",
+    "current events"
+]
 
 # TODO: protect ranked lobbies
-PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
+PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5", "custom", "ranked"]
 
 # Cleaning up database
 LOBBY_DELETE_DAYS = 10
@@ -246,6 +261,11 @@ def search_filter(items, keys, query):
 
     return filtered
 
+def get_category_code(category: str):
+    return CATEGORY_CODES.index(category)
+
+def get_category_from_code(index: int):
+    return CATEGORY_CODES[index]
 
 
 # CREATING RESOURCES
@@ -881,6 +901,25 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
     finally:
         session.remove()
 
+def get_rating_params() -> RatingParameters:
+    try:
+        session = get_session()
+        
+        params = session.execute(
+            select(RatingParams)
+        ).scalars().all()
+
+        dict_params = {}
+
+        for param in params:
+            dict_params[param.name] = param.value
+
+        return RatingParameters(dict_params)
+
+    except Exception as e:
+        return {'message': 'get_saved_questions(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.remove()
 
 
 # EDITING RESOURCES
@@ -1715,6 +1754,70 @@ def set_question_to_game(question, lobbyAlias):
 
 # ===== RANKED SYSTEM =====
 
+def update_rank_on_question_answer(user_hash: str, question: dict, is_correct: bool, answer_time: float) -> dict:
+    session = get_session()
+    try:
+        # Get data to start
+        user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
+        rating_params = get_rating_params()
+
+        stats = session.execute(
+            select(Stats)
+            .where(Stats.user_id == user.get("id"))
+        ).scalars().first()
+
+        # Load global skill
+        g = ranked.Skill(stats.skill_mu, stats.skill_sigma)
+
+        # Load category skill
+        category_skill = session.execute(
+            select(UserCategorySkill)
+            .where(
+                UserCategorySkill.user_id == user.get("id"),
+                UserCategorySkill.category_code == get_category_code(question.get("category").lower())
+            )
+        ).scalars().first()
+
+        # If there isn't category skill, then we need to create one
+
+        if not category_skill:
+            category_skill = UserCategorySkill(
+                user_id=user.get("id"),
+                category_code=get_category_code(question.get("category")),
+                questions_seen=1
+            )
+
+            session.add(category_skill)
+            session.flush()
+
+        c = ranked.Skill(category_skill.mu, category_skill.sigma)
+
+        # Load question difficulty
+        q = ranked.Skill(question.get("difficulty_mu"), question.get("difficulty_sigma"))
+
+        # Calculate effective skill
+        effective_skill = ranked.effective_skill(g, c)
+
+        # Compute updated_skill
+        updated = ranked.update_skill(effective_skill, q, is_correct, answer_time, beta=rating_params.beta)
+
+        # Save the updated score to the database
+
+        print("UPDATED", updated)
+
+        setattr(stats, "skill_mu", updated.mu)
+        setattr(stats, "skill_sigma", updated.sigma)
+        setattr(stats, "last_active_at", datetime.now(timezone.utc))
+
+        session.commit()
+
+        return {'message': 'update_rank_on_question_answer(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'update_rank_on_question_answer(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # =====SANITATION AND VALIDATION=====

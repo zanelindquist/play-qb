@@ -17,7 +17,7 @@ class UserCategorySkill(Base, CreatedAtColumn):
     sigma = Column(Float, default=350, nullable=False)
     questions_seen = Column(Integer, default=0)
 
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     def __repr__(self):
         return f"<UserCategorySkill(id={self.id})>"

@@ -113,8 +113,6 @@ def start_interrupt(user_hash: str, game_hash: str, after_character: int = 0) ->
 
     proportion_through = after_character / len(game["current_question"]["question"])
 
-    print(proportion_through)
-
     interrupt = {
         "start_timestamp": int(time.time() * 1000),
         "end_timestamp": None,
@@ -122,6 +120,7 @@ def start_interrupt(user_hash: str, game_hash: str, after_character: int = 0) ->
         "proportion_through": proportion_through,
         "first_buzz": len(game["question_interrupts"]) == 0,
         "is_early": proportion_through <= 0.999,
+        "is_power": proportion_through < 0.45,
         "is_correct": None,
         "user": user,
     }

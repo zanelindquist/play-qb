@@ -14,7 +14,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Stats": {
-        "fields": ["id", "user_ud", "hash", "points", "correct", "power", "incorrect", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz", "questions_encountered", "buzzes_encountered"],
+        "fields": ["id", "user_ud", "hash", "points", "correct", "power", "incorrect", "bonuses", "rounds", "buzzes", "games", "average_time_to_buzz", "questions_encountered", "buzzes_encountered", "visible_rank", "rank_points", "skill_mu", "skill_sigma", "last_active_at"],
         "relationships": {
             "user": "Users"
         },
@@ -26,7 +26,7 @@ SERIALIZATION_CONFIG = {
         },
     },
     "Questions": {
-        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "category", "category_confidence", "question", "answers", "prompts", "created_at"],
+        "fields": ["id", "hash", "tournament", "type", "year", "level", "difficulty", "category", "category_confidence", "question", "answers", "prompts", "created_at", "difficulty_mu", "difficulty_sigma", "times_asked"],
         "relationships": {
             "reports": "Reports"
         },
@@ -60,6 +60,12 @@ SERIALIZATION_CONFIG = {
             "question": "Questions",
             # "user": "Users" # We don't need this since we always fetch by user. Redundant on the front end
         }
+    },
+    "UserCategorySkill": {
+        "fields": ["id", "hash", "category_code", "mu", "sigma", "questions_seen", "user_id"]
+    },
+    "RatingParams": {
+        "fields": ["id", "name", "value"]
     }
 }
 
