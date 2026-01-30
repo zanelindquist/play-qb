@@ -24,7 +24,7 @@ class Questions(Base, CreatedAtColumn):
     hand_labeled = Column(Boolean, default=False)
 
     # Ranked information
-    difficulty_mu = Column(Float, default=0, nullable=False)
+    difficulty_mu = Column(Float, default=1500, nullable=False)
     difficulty_sigma = Column(Float, default=400, nullable=False)
     times_asked = Column(Integer, default=0)
 

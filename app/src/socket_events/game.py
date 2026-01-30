@@ -183,8 +183,6 @@ def on_buzz(data): # Timestamp, AnswerContent
 
     buzz_time_change = (proportion_to_buzz - user.get("stats").get("average_time_to_buzz")) / (user.get("stats").get("buzzes") + 1)
 
-    print("BTC", buzz_time_change)
-
     # mu n+1 = (x - mu) / (n + 1)
     increment_score_attribute(
         game_hash,
@@ -237,11 +235,12 @@ def on_submit(data): # FinalAnswer
     # Logic for determining if an answer is acceptable or not
 
     # Get lobby's game's current question
-    gamestate = get_game_by_lobby_alias(lobby);
-    question = gamestate.get("current_question")
+    game = get_game_by_hash(game_hash)
+    question = game.get("current_question")
     final_answer = data.get("final_answer")
+
     is_correct = 0
-    if not question:
+    if not question or not final_answer:
         is_correct = -1
     else:
         is_correct = check_question(question, final_answer) # -1 for incorrect, 0 for prompt, and 1 for correct
@@ -254,10 +253,18 @@ def on_submit(data): # FinalAnswer
 
     data = {"user": user, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
 
+    # TODO update telling if a lobby is ranked
+    if lobby == "ranked":
+        update_rank_on_question_answer(user_hash, question, is_correct, interrupt.get("proportion_through"))
+
     if is_correct == 1:
         increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))
-        # TODO: Adjust for power
-        increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
+        # Update if its power
+        if interrupt.get("is_power"):
+            increment_score_attribute(game_hash, "power", player_hash=user.get("hash"))
+            increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=15)
+        else:
+            increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
         
         # Save the question to the user's correct questions if they have premium
         if user.get("premium"):

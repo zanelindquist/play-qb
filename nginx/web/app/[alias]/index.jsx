@@ -30,6 +30,8 @@ import GameSettings from "../../components/entities/GameSettings.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
+import ustyles from "../../assets/styles/ustyles.js";
+import GradientFlair from "../../components/custom/GradientFlair.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -386,6 +388,7 @@ const Play = () => {
 
     return (
         <SidebarLayout style={styles.sidebar}>
+            {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
             <View style={styles.container}>
                 <View style={styles.gameContent}>
                     <AnswerInput
@@ -450,6 +453,7 @@ const Play = () => {
                     </ScrollView>
                 </View>
                 <View style={styles.optionsContainer}>
+                    <HelperText style={ustyles.text.header}>{alias}</HelperText>
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
@@ -490,6 +494,10 @@ const styles = StyleSheet.create({
         display: "flex",
         flexDirection: "row",
         gap: 10,
+    },
+    lobbyName: {
+        alignSelf: "center",
+        width: "50vw"
     },
     gameContent: {
         margin: 10,

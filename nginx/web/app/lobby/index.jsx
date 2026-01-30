@@ -78,6 +78,11 @@ const GAMEMODES = [
         description: "Create a custom game and play with your friends.",
         icon: "hammer-wrench",
     },
+    {
+        name: "ranked",
+        description: "Test your skill against other players and climb up the global leaderboard.",
+        icon: "medal",
+    },
 ];
 
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]

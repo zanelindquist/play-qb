@@ -36,7 +36,7 @@ import ustyles from "../../assets/styles/ustyles";
 const LEVELS = ["Middle School", "High School", "Collegiate", "Open"]
 
 const collapsedHeight = 40;
-const EXPANDED_HEIGHT = 400;
+const EXPANDED_HEIGHT = 500;
 
 
 const Question = ({
@@ -285,7 +285,7 @@ const Question = ({
                     }
                     s
                 </HelperText>
-                <HelperText>{question.answers.main}</HelperText>
+                {/* <HelperText>{question.answers.main}</HelperText> */}
                 {
                     state == "dead" &&
                     <Answers
