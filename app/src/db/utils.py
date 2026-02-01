@@ -1754,7 +1754,7 @@ def set_question_to_game(question, lobbyAlias):
 
 # ===== RANKED SYSTEM =====
 
-def update_rank_on_question_answer(user_hash: str, question: dict, is_correct: bool, answer_time: float) -> dict:
+def update_rank(user_hash: str, question: dict, is_correct: bool, answer_time: float, is_non_answer: bool = False) -> dict:
     session = get_session()
     try:
         # Get data to start
@@ -1793,32 +1793,50 @@ def update_rank_on_question_answer(user_hash: str, question: dict, is_correct: b
         c = ranked.Skill(category_skill.mu, category_skill.sigma)
 
         # Load question difficulty
-        q = ranked.Skill(question.get("difficulty_mu"), question.get("difficulty_sigma"))
+        q = ranked.Difficulty(question.get("difficulty_mu"), question.get("difficulty_sigma"))
 
-        # Calculate effective skill
+        # Calculate effective skill by combining the user's overall and category skill
         effective_skill = ranked.effective_skill(g, c)
 
         # Compute updated_skill
-        updated = ranked.update_skill(effective_skill, q, is_correct, answer_time, beta=rating_params.beta)
+        updated = None
+        if is_non_answer: 
+            updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=answer_time, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
+        else:
+            updated = ranked.update_skill(effective_skill, q, is_correct, answer_time, beta=rating_params.beta)
 
-        # Save the updated score to the database
-
+        # TODO update user category skill too
         print("UPDATED", updated)
 
+        # Save the updated score to the database
         setattr(stats, "skill_mu", updated.mu)
         setattr(stats, "skill_sigma", updated.sigma)
         setattr(stats, "last_active_at", datetime.now(timezone.utc))
 
+        # Update question difficulty
+        if not is_non_answer:
+            updated_question = ranked.update_question_difficulty(q, updated, is_correct, answer_time, beta=rating_params.beta, gamma=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
+
+            print("UPDATED QUESTION", updated_question)
+
+            # Update question
+            question = session.execute(
+                select(Questions)
+                .where(Questions.hash == question.get("hash"))
+            ).scalars().first()
+
         session.commit()
 
-        return {'message': 'update_rank_on_question_answer(): success', "code": 200}
+        new_user_rank = ranked.get_rank(updated)
+        rank_change = ranked.skill_diff(g, updated)
+
+        return {'message': 'update_rank(): success', "user": {"hash": user.get("hash"), "rank": new_user_rank.to_dict(), "rank_change": rank_change}, "code": 200}
     except Exception as e:
         session.rollback()
         print(e)
-        return {'message': 'update_rank_on_question_answer(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'update_rank(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
-
 
 # =====SANITATION AND VALIDATION=====
 

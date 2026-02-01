@@ -120,6 +120,7 @@ def on_connect(auth):
     try:
         decoded = decode_token(token)
         user_hash = decoded.get("sub")
+        
     except Exception as e:
         print("Invalid token")
         emit("failed_connection", {"message": "Invalid token", "code": 401})
