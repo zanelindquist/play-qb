@@ -68,6 +68,7 @@ const Play = () => {
     // Lobby state
     const [lobby, setLobby] = useState(null)
     const [showSettings, setShowSettings] = useState(false)
+    const [myRankInfo, setMyRankInfo] = useState(null)
     
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
@@ -232,6 +233,13 @@ const Play = () => {
                 showBanner("Saved question")
             })
 
+            addEventListener("rank_changed", (change) => {
+                console.log(change)
+
+                setMyRankInfo(change)
+                
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
         })
@@ -391,6 +399,10 @@ const Play = () => {
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
             <View style={styles.container}>
                 <View style={styles.gameContent}>
+                    {
+                        myRankInfo &&
+                        <HelperText></HelperText>
+                    }
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
@@ -476,7 +488,7 @@ const Play = () => {
                         columns={1}
                         defaultInfo={lobby}
                         // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myUser?.user?.id !== lobby?.creator_id}
+                        disabled={myUser?.id !== lobby?.creator_id}
                         nameDisabled={true}
                         title={"Game Settings"}
                         onGameRuleChange={handleGameRuleChange}

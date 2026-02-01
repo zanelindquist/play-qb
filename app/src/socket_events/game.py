@@ -58,7 +58,6 @@ def connect(auth):
     
     # Set the user_hash as the hash instead
 
-    
     request.environ["user_hash"] = email;
 
     print(f"Socket connected to /game: user={email}")
@@ -105,6 +104,11 @@ def on_join_lobby(data):
     gamemode = lobby_data.get("gamemode").lower()
 
     request.environ["game_hash"] = game.get("hash")
+
+    # Set these in a session so that we can use them on disconnect
+    session["user_hash"] = user_hash
+    session["lobby"] = lobby
+    session["game_hash"] = game.get("hash")
 
     # Determine which team this user should be in
 
@@ -254,8 +258,10 @@ def on_submit(data): # FinalAnswer
     data = {"user": user, "final_answer": final_answer, "is_correct": is_correct, "timestamp": get_timestamp()}
 
     # TODO update telling if a lobby is ranked
+    rank_change_information = None
     if lobby == "ranked":
-        update_rank_on_question_answer(user_hash, question, is_correct, interrupt.get("proportion_through"))
+        result = update_rank(user_hash, question, is_correct, interrupt.get("proportion_through"))
+        rank_change_information = result.get("user")
 
     if is_correct == 1:
         increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))
@@ -279,6 +285,9 @@ def on_submit(data): # FinalAnswer
             level=lobby_data.get("level"), # All, ms, hs, college, open
             category=CATEGORIES[lobby_data.get("category")]
         )
+
+        # If the user got the question correct, then let's give them a rank changed event
+        emit("rank_changed", rank_change_information)
 
         data["question"] = new_question
         set_question_to_game(new_question, lobby)
@@ -375,6 +384,21 @@ def on_next_question(data):
 
     game_m = game_mem.get_game(game_hash)
 
+    # If the lobby is ranked, then we want to adjust user rank for users who don't answer a question
+    #TODO: tell if lobby is ranked
+    if lobby == "ranked":
+        # The user not answering (at least at any point in the question if someone got us early) tells us that the user does not know the answer to the question at that timestep
+        
+        # Handle no interrupts
+        interrupts = game_m.get("question_interrupts") or [{"proportion_through": 1.0}]
+        proportion_through = interrupts[-1].get("proportion_through")
+
+        interruptor_hashes = [interrupt.get("user").get("hash") for interrupt in game_m.get("question_interrupts")]
+        non_answering_users = [user for user in game_m.get("users") if user.get("hash") not in interruptor_hashes]
+
+        for user in non_answering_users:
+            result = update_rank(user.get("hash"), game_m.get("current_question"), is_correct=False, buzz_fraction=proportion_through, is_non_answer=True)
+
     game_mem.next_question(question, game_hash)
 
     # Set this question as the game's question
@@ -424,9 +448,10 @@ def on_save_question(data): # Question hash
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
-    user_hash = request.environ["user_hash"]
-    game_hash = request.environ["game_hash"]
-    lobby = request.environ.get("lobby")
+    # Use session here because request.environ is already gone on DC
+    user_hash = session["user_hash"]
+    game_hash = session["game_hash"]
+    lobby = session.get("lobby")
 
     print(f"Received disconnect from /game {user_hash}")
 

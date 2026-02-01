@@ -10,6 +10,16 @@ import src.db.utils as db
 
 ANSWER_MS = 5000
 
+class GameMemory:
+    def __init__(self, game_hash, settings={}):
+        self.questions = [],
+        self.current_question = None,
+        self.question_interrupts = [],
+        self.question_count = 1,
+        self.total_rounds = 20,
+        self.users = {},
+
+
 
 games = {
     # "game_hash": {
