@@ -79,11 +79,11 @@ const Play = () => {
         // Handle key presses
         function handleKeyDown(e) {
             if(e.code === "Space") e.preventDefault()
-            if(questionState == "interrupted") return;
+            if(questionStateRef.current == "interrupted") return;
 
             switch(e.code) {
                 case "Space":
-                    if(buzzer || questionState == "dead") return; 
+                    if(buzzer || questionStateRef.current == "dead") return; 
                     // Buzz logic
                     onBuzz()
                 break;
@@ -95,7 +95,7 @@ const Play = () => {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [buzzer, questionState])
+    }, [buzzer])
 
     // Register socket event listners
     useEffect(() => {
@@ -256,14 +256,10 @@ const Play = () => {
         questionStateRef.current = questionState
     }, [questionState])
 
-    const testSocket = () => {
-        send("test", { message: "Hello from RN!" });
-    };
-
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        if(buzzer || questionState == "dead") return;
+        if(buzzer || questionStateRef.current == "dead") return;
         send("buzz", {timestamp: Date.now(), after_character: charIndexRef.current})
     }
 
