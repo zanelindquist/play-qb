@@ -5,15 +5,39 @@ SQRT_2PI = math.sqrt(2 * math.pi)
 
 RANK_STEP_SIZE = 100
 RANKS = [
-    {"name": "Dirt", "rr": 0},
-    {"name": "Plastic", "rr": 700},
-    {"name": "Tin", "rr": 1000},
-    {"name": "Bronze", "rr": 1300},
-    {"name": "Silver", "rr": 1600},
-    {"name": "Gold", "rr": 1900},
-    {"name": "Diamond", "rr": 2200},
-    {"name": "Immortal", "rr": 2500}
-]
+    { "rank_code": 0,  "name": "Dirt I", "rr": 0 },
+    { "rank_code": 1,  "name": "Dirt II", "rr": 100 },
+    { "rank_code": 2,  "name": "Dirt III", "rr": 200 },
+
+    { "rank_code": 3,  "name": "Plastic I", "rr": 700 },
+    { "rank_code": 4,  "name": "Plastic II", "rr": 800 },
+    { "rank_code": 5,  "name": "Plastic III", "rr": 900 },
+
+    { "rank_code": 6,  "name": "Tin I", "rr": 1000 },
+    { "rank_code": 7,  "name": "Tin II", "rr": 1100 },
+    { "rank_code": 8,  "name": "Tin III", "rr": 1200 },
+
+    { "rank_code": 9,  "name": "Bronze I", "rr": 1300 },
+    { "rank_code": 10, "name": "Bronze II", "rr": 1400 },
+    { "rank_code": 11, "name": "Bronze III", "rr": 1500 },
+
+    { "rank_code": 12, "name": "Silver I", "rr": 1600 },
+    { "rank_code": 13, "name": "Silver II", "rr": 1700 },
+    { "rank_code": 14, "name": "Silver III", "rr": 1800 },
+
+    { "rank_code": 15, "name": "Gold I", "rr": 1900 },
+    { "rank_code": 16, "name": "Gold II", "rr": 2000 },
+    { "rank_code": 17, "name": "Gold III", "rr": 2100 },
+
+    { "rank_code": 18, "name": "Diamond I", "rr": 2200 },
+    { "rank_code": 19, "name": "Diamond II", "rr": 2300 },
+    { "rank_code": 20, "name": "Diamond III", "rr": 2400 },
+
+    { "rank_code": 21, "name": "Immortal I", "rr": 2500 },
+    { "rank_code": 22, "name": "Immortal II", "rr": 2600 },
+    { "rank_code": 23, "name": "Immortal III", "rr": 2700 }
+];
+
 
 QUESTION_DIFFICULTIES = {
     0: {"name": "Middle School", "mu": 1300, "sigma": 200},
@@ -57,19 +81,19 @@ class Difficulty:
 
     
 class Rank:
-    def __init__(self, name: str, rr: float, numeral: str = "I", skill_mu: float = 0, skill_sigma: float = 0):
-        self.name = name
+    def __init__(self, rank: str, rr: float, residual_rr: float = 0, skill_mu: float = 0, skill_sigma: float = 0):
+        self.rank = rank
         self.rr = rr
-        self.numeral = numeral
-        self.rank = f"{name} {numeral}"
+        self.rank_code = next((r for r in RANKS if r.get("name") == rank ), RANKS[0]).get("rank_code")
+        self.residual_rr = residual_rr
         self.skill_mu = skill_mu
         self.skill_sigma = skill_sigma
 
     def __repr__(self):
-        return f"<{self.name}(rr={self.rr})>"
+        return f"<{self.rank}(rr={self.rr})>"
     
     def to_dict(self):
-        return {"rank": f"{self.name} {self.numeral}", "rr": self.rr, "skill_mu": self.skill_mu, "skill_sigma": self.skill_sigma}
+        return self.__dict__
 
 
 def normal_pdf(x: float) -> float:
@@ -244,18 +268,12 @@ def effective_skill(global_skill: Skill, category_skill: Skill, global_weight=0.
 def get_rank(skill: Skill) -> Rank:
     rank_points = max(0, skill.mu - 2 * skill.sigma)
 
-    raw_rank = next((rank for rank in reversed(RANKS) if rank["rr"] < rank_points), RANKS[0])
+    rank = next((rank for rank in reversed(RANKS) if rank["rr"] < rank_points), RANKS[0])
 
     # Add roman numerals
-    numeral = "III"
-    residual_rr = rank_points - raw_rank["rr"]
+    residual_rr = rank_points - rank["rr"]
 
-    if residual_rr < RANK_STEP_SIZE / 3:
-        numeral = "I"
-    elif residual_rr < 2 * RANK_STEP_SIZE / 3:
-        numeral = "II"
-
-    return Rank(raw_rank["name"], rank_points, numeral=numeral, skill_mu=skill.mu, skill_sigma=skill.sigma)
+    return Rank(rank["name"], rank_points, residual_rr=residual_rr, skill_mu=skill.mu, skill_sigma=skill.sigma)
 
 def skill_diff(a: Skill, b: Skill) -> Rank:
     a_rank = get_rank(a)

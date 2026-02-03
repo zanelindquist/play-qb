@@ -417,8 +417,9 @@ def on_next_question(data):
         for user_hash in non_answering_users:
             result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=proportion_through, is_non_answer=True)
             rank_change_information = result.get("user")
-
-            emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
+            
+            if rank_change_information:
+                emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
 
     game_mem.next_question(question, game_hash)
 
