@@ -9,7 +9,7 @@ import random
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists
+from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists, update
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
@@ -119,7 +119,7 @@ def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
     """
         
     if obj is None:
-        return
+        return None
     
     # Set the model name to the capitalized name of the table obj is from
     model_name = inspect(obj).mapper.local_table.name.capitalize()
@@ -145,7 +145,6 @@ def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
             c.key: getattr(obj, c.key)
             for c in inspect(obj).mapper.column_attrs
         }
-
 
     for rel, rel_table in relationships.items():
         if depth > 0 or (isinstance(rel_depths, dict) and rel in rel_depths.keys()) or rel_depths == "LENGTH":
@@ -498,7 +497,7 @@ def save_question(question_id, user_id, saved_type="missed"): # category= missed
 
 # All of thse functions must return dicts, not SQL Alchemy objects
 
-def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+def get_user_by_email(email, gentle=True, advanced=False, rel_depths=None, depth=0):
     try:
         session = get_session()
         user = None
@@ -517,7 +516,7 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     finally:
         session.remove()
 
-def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+def get_user_by_hash(hash, gentle=True, advanced=False, rel_depths=None, depth=0):
     try:
         session = get_session()
         user = None
@@ -1754,7 +1753,7 @@ def set_question_to_game(question, lobbyAlias):
 
 # ===== RANKED SYSTEM =====
 
-def update_rank(user_hash: str, question: dict, is_correct: bool, answer_time: float, is_non_answer: bool = False) -> dict:
+def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction: float, is_non_answer: bool = False) -> dict:
     session = get_session()
     try:
         # Get data to start
@@ -1777,9 +1776,7 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, answer_time: f
                 UserCategorySkill.category_code == get_category_code(question.get("category").lower())
             )
         ).scalars().first()
-
         # If there isn't category skill, then we need to create one
-
         if not category_skill:
             category_skill = UserCategorySkill(
                 user_id=user.get("id"),
@@ -1790,34 +1787,59 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, answer_time: f
             session.add(category_skill)
             session.flush()
 
+        # Category skill
         c = ranked.Skill(category_skill.mu, category_skill.sigma)
+        # Calculate effective skill by combining the user's overall and category skill
+        effective_skill = ranked.effective_skill(g, c, global_weight=rating_params.alpha)
 
         # Load question difficulty
-        q = ranked.Difficulty(question.get("difficulty_mu"), question.get("difficulty_sigma"))
-
-        # Calculate effective skill by combining the user's overall and category skill
-        effective_skill = ranked.effective_skill(g, c)
+        q = ranked.Difficulty(question.get("difficulty_mu"), question.get("difficulty_sigma"), buzz_fraction=buzz_fraction)
 
         # Compute updated_skill
         updated = None
         if is_non_answer: 
-            updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=answer_time, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
+            updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
         else:
-            updated = ranked.update_skill(effective_skill, q, is_correct, answer_time, beta=rating_params.beta)
+            updated = ranked.update_skill(effective_skill, q, is_correct, buzz_fraction, beta=rating_params.beta)
 
         # TODO update user category skill too
-        print("UPDATED", updated)
+        delta_mu = updated.mu - effective_skill.mu
+        delta_sigma = updated.sigma - effective_skill.sigma
+
+        # Throttle for not seeing a ton of questions
+        cat_conf = min(1.0, category_skill.questions_seen / 20)
+        # Rating_params.alpha is the proportion that goes towards global skill
+        WEIGHT = rating_params.alpha / 2 + rating_params.alpha / 2 * (1 - cat_conf)
+
+        # Update global skill
+        g_new = ranked.Skill(g.mu, g.sigma)
+        g_new.mu += WEIGHT * delta_mu
+        g_new.sigma = max(
+            1.0,
+            g_new.sigma + WEIGHT * delta_sigma
+        )
+
+        # Update category skill
+        c_new = ranked.Skill(c.mu, c.sigma)
+        c_new.mu += (1 - WEIGHT) * delta_mu
+        c_new.sigma = max(
+            1.0,
+            c_new.sigma + (1 - WEIGHT) * delta_sigma
+        )
 
         # Save the updated score to the database
         setattr(stats, "skill_mu", updated.mu)
         setattr(stats, "skill_sigma", updated.sigma)
         setattr(stats, "last_active_at", datetime.now(timezone.utc))
 
-        # Update question difficulty
-        if not is_non_answer:
-            updated_question = ranked.update_question_difficulty(q, updated, is_correct, answer_time, beta=rating_params.beta, gamma=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
+        setattr(category_skill, "mu", c_new.mu)
+        setattr(category_skill, "sigma", c_new.sigma)
+        setattr(category_skill, "questions_seen", category_skill.questions_seen + 1)
 
-            print("UPDATED QUESTION", updated_question)
+        # Update question difficulty only if someone answered it
+        # TODO: use question non-answer as weak evidence for a question's difficulty
+        if not is_non_answer:
+            updated_question = ranked.update_question_difficulty(q, updated, is_correct, buzz_fraction, beta=rating_params.beta, gamma=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
 
             # Update question
             question = session.execute(
@@ -1825,18 +1847,58 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, answer_time: f
                 .where(Questions.hash == question.get("hash"))
             ).scalars().first()
 
+            setattr(question, "difficulty_mu", updated_question.mu)
+            setattr(question, "difficulty_sigma", updated_question.sigma)
+
         session.commit()
 
-        new_user_rank = ranked.get_rank(updated)
-        rank_change = ranked.skill_diff(g, updated)
+        # Get and display the user's new skill level
+        new_skill = ranked.Skill(stats.skill_mu, stats.skill_sigma)
+        new_cat_rank = ranked.get_rank(
+            ranked.Skill(category_skill.mu, category_skill.sigma)
+        )
 
-        return {'message': 'update_rank(): success', "user": {"hash": user.get("hash"), "rank": new_user_rank.to_dict(), "rank_change": rank_change}, "code": 200}
+        new_user_rank = ranked.get_rank(new_skill)
+        rank_change = ranked.skill_diff(g, new_skill)
+
+        # Update the user's new rank and rr
+        setattr(stats, "visible_rank", new_user_rank.rank)
+        setattr(stats, "rank_points", new_user_rank.rr)
+
+        session.commit()
+
+        user = get_user_by_hash(user_hash, {"stats": 0})
+
+        return {'message': 'update_rank(): success', "user": {"hash": user.get("hash"), "rank": new_user_rank.to_dict(), "rank_change": rank_change, "category_rank": new_cat_rank.to_dict()}, "code": 200}
     except Exception as e:
         session.rollback()
         print(e)
         return {'message': 'update_rank(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
+
+def reset_user_ranks():
+    session = get_session()
+    rating_params = get_rating_params()
+
+    # Remove stats
+    session.execute(
+        update(Stats)
+        .values(
+            skill_mu=rating_params.initial_mu,
+            skill_sigma=rating_params.initial_sigma
+        )
+    )
+
+    # Remove category stats
+    session.execute(
+        delete(UserCategorySkill)
+    )
+
+    session.commit()
+
+    print(f"Successfully reset ranks to values: mu={rating_params.initial_mu}, sigma={rating_params.initial_sigma}")
+
 
 # =====SANITATION AND VALIDATION=====
 

@@ -32,6 +32,8 @@ import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
 import ustyles from "../../assets/styles/ustyles.js";
 import GradientFlair from "../../components/custom/GradientFlair.jsx";
+import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
+import RankUser from "../../components/entities/RankUser.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -69,6 +71,9 @@ const Play = () => {
     const [lobby, setLobby] = useState(null)
     const [showSettings, setShowSettings] = useState(false)
     const [myRankInfo, setMyRankInfo] = useState(null)
+    const scoreRef = useRef(null);
+    const rankedPointsRef = useRef(null);
+
     
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
@@ -188,8 +193,8 @@ const Play = () => {
                 }
             })
 
-            addEventListener("reward_points", ({scores}) => {
-                
+            addEventListener("reward_points", ({points}) => {
+                scoreRef.current?.trigger(points);
             })
 
             addEventListener("game_paused", ({user}) => {
@@ -201,7 +206,6 @@ const Play = () => {
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
-                console.log("MODE", lobby.gamemode)
                 // If we are the one who made these chagnes, return
                 if(myUser?.user?.id === lobby?.creator_id) return
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
@@ -234,10 +238,11 @@ const Play = () => {
             })
 
             addEventListener("rank_changed", (change) => {
-                console.log(change)
+                console.log("CHANGE", change.rank_change.rr_diff.toFixed(2))
+
+                scoreRef.current?.trigger(change.rank_change.rr_diff.toFixed(2))
 
                 setMyRankInfo(change)
-                
             })
 
             // Now that the listners are registered, we are ready to join the lobby
@@ -281,7 +286,8 @@ const Play = () => {
         
     }
 
-    function onGamePause() {
+    function handleGamePause() {
+        scoreRef.current?.trigger(15);
 
     }
 
@@ -367,7 +373,7 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        if (!myUser || myUser?.user?.id !== lobby?.creator_id) return
+        if (myUser?.id !== lobby?.creator_id) return
 
         if (rateLimitRef.current) {
             clearTimeout(rateLimitRef.current)
@@ -375,6 +381,7 @@ const Play = () => {
 
 
         rateLimitRef.current = setTimeout(() => {
+            console.log(rules.speed)
             send("change_game_settings", { settings: rules })
         }, 100)
 
@@ -386,7 +393,6 @@ const Play = () => {
     }
 
     function handleQuestionSave(hash) {
-        console.log("saved")
         send("save_question", {hash})
     }
 
@@ -462,15 +468,24 @@ const Play = () => {
                 </View>
                 <View style={styles.optionsContainer}>
                     <HelperText style={ustyles.text.header}>{alias}</HelperText>
+                    <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText>
+                    <RankUser user={myUser}/>
+                    <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText>
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
                     }
                     {
                         lobby && lobby.games ? 
-                        <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        <View style={styles.playerScoresContainer}>
+                            <View style={styles.scoreIndicator}>
+                                <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                            </View>
+                            <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        </View>
                         :
                         <GlassyView>
                             <HelperText>Lobby or lobb.games undefined</HelperText>
@@ -533,6 +548,16 @@ const styles = StyleSheet.create({
         flexDirection: "column",
         gap: 10,
         minWidth: 250,
+    },
+    playerScoresContainer: {
+        position: "relative"
+    },
+    scoreIndicator: {
+        position: "absolute",
+        top: -10,
+        left: -10,
+        zIndex: 1,
+        transform: [{rotateZ: "-15deg"}]
     },
     scorebox: {
         // width: 300
