@@ -34,6 +34,7 @@ import ustyles from "../../assets/styles/ustyles.js";
 import GradientFlair from "../../components/custom/GradientFlair.jsx";
 import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
+import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -401,10 +402,9 @@ const Play = () => {
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
             <View style={styles.container}>
                 <View style={styles.gameContent}>
-                    {
-                        myRankInfo &&
-                        <HelperText></HelperText>
-                    }
+                    <RankedProgressBar
+                        rankInfo={myRankInfo}
+                    />
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
