@@ -15,6 +15,13 @@ RANKS = [
     {"name": "Immortal", "rr": 2500}
 ]
 
+QUESTION_DIFFICULTIES = {
+    0: {"name": "Middle School", "mu": 1300, "sigma": 200},
+    1: {"name": "High School", "mu": 1800, "sigma": 200},
+    2: {"name": "Collegiate", "mu": 2200, "sigma": 200},
+    3: {"name": "Open", "mu": 2900, "sigma": 200},
+}
+
 # Skill is used for players
 class Skill:
     def __init__(self, mu: float, sigma: float):
@@ -151,12 +158,13 @@ def non_answer_update_skill(
 
     # Timing weight
     weight = buzz_fraction ** power
+    print(buzz_fraction, weight)
 
     # Mean update (negative)
     delta_mu = -(skill.sigma**2 / sigma_x) * v * weight
 
     # Cap penalty for safety
-    # delta_mu = max(delta_mu, -max_mu_drop)
+    delta_mu = max(delta_mu, -max_mu_drop)
 
     # Variance reduction (very mild)
     w = v * (v + z)
@@ -174,18 +182,18 @@ def update_question_difficulty(
     correct: bool,
     buzz_fraction: float,
     beta: float,
-    gamma: float = 2.0,
+    power: float = 2.0,
     min_sigma: float = 50.0
 ):
     """
     Bayesian update of question difficulty with time-weighted evidence.
     """
 
-    # Make sure it's not comples
+    # Make sure it's not complex
     buzz_fraction = min(max(buzz_fraction, 0.0), 1.0)
 
     # Evidence weight (early buzz = strong signal)
-    weight = (1.0001 - buzz_fraction) ** gamma
+    weight = (1.0001 - buzz_fraction) ** power
 
     # If basically a giveaway, ignore
     if weight < 1e-3:

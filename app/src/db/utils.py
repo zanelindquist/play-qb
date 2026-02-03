@@ -1836,19 +1836,21 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
         setattr(category_skill, "sigma", c_new.sigma)
         setattr(category_skill, "questions_seen", category_skill.questions_seen + 1)
 
-        # Update question difficulty only if someone answered it
-        # TODO: use question non-answer as weak evidence for a question's difficulty
-        if not is_non_answer:
-            updated_question = ranked.update_question_difficulty(q, updated, is_correct, buzz_fraction, beta=rating_params.beta, gamma=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
+        # Update question difficulty
+        updated_question = ranked.update_question_difficulty(q, updated, is_correct, buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
 
-            # Update question
-            question = session.execute(
-                select(Questions)
-                .where(Questions.hash == question.get("hash"))
-            ).scalars().first()
+        print("WB UPDATED Q", updated_question)   
 
-            setattr(question, "difficulty_mu", updated_question.mu)
-            setattr(question, "difficulty_sigma", updated_question.sigma)
+        # TODO: MAKE SURE UPDATING QUESTION IS ACURATE 
+
+        # Update question
+        # question = session.execute(
+        #     select(Questions)
+        #     .where(Questions.hash == question.get("hash"))
+        # ).scalars().first()
+
+        # setattr(question, "difficulty_mu", updated_question.mu)
+        # setattr(question, "difficulty_sigma", updated_question.sigma)
 
         session.commit()
 
@@ -1899,6 +1901,29 @@ def reset_user_ranks():
 
     print(f"Successfully reset ranks to values: mu={rating_params.initial_mu}, sigma={rating_params.initial_sigma}")
 
+def reset_question_difficulties():
+    session = get_session()
+
+    level_difficulties = ranked.QUESTION_DIFFICULTIES
+
+    for level in level_difficulties.keys():
+        data = level_difficulties[level]
+        session.execute(
+            update(Questions)
+            .values(
+                difficulty_mu=data.get("mu"),
+                difficulty_sigma=data.get("sigma")
+            )
+            .where(Questions.level == level)
+        )
+
+    session.commit()
+
+    print(f"Successfully question difficulties")
+    
+
+# reset_user_ranks()
+# reset_question_difficulties()
 
 # =====SANITATION AND VALIDATION=====
 
