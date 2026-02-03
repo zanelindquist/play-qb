@@ -74,6 +74,7 @@ const Question = ({
     const [isFinished, setIsFinished] = useState(false);
     const [isDead, setIsDead] = useState(false);
     const [msLeft, setMsLeft] = useState(0);
+    const [remainingWaitTime, setRemainingWaitTime] = useState(MS_UNTIL_DEAD)
 
     // Reading constants
     const charsPerMinute = speed * 5;
@@ -103,7 +104,7 @@ const Question = ({
             setMsLeft(ANSWER_MS);
         }
         else if (state === "waiting") {
-            setMsLeft(MS_UNTIL_DEAD);
+            setMsLeft(remainingWaitTime);
         } else if (state === "dead") {
             setCharIndex(fullText.length)
         }
@@ -130,6 +131,8 @@ const Question = ({
                         setIsDead(true);
                         onDeath?.();
                     }
+                    // Update the remaining wait time because we want to save this amount for multiple buzzes
+                    setRemainingWaitTime(next)
                     return next;
                 });
             } else if (currentState === "running") {
