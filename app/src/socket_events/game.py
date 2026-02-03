@@ -50,7 +50,7 @@ def connect(auth):
     
     try:
         decoded = decode_token(token)
-        email = decoded.get("sub")
+        user_hash = decoded.get("sub")
     except Exception as e:
         print("Invalid token")
         emit("failed_connection", {"message": "Invalid token", "code": 401})
@@ -58,9 +58,12 @@ def connect(auth):
     
     # Set the user_hash as the hash instead
 
-    request.environ["user_hash"] = email;
+    request.environ["user_hash"] = user_hash;
 
-    print(f"Socket connected to /game: user={email}")
+    # Put the user in their own room
+    join_room(f"user:{user_hash}")
+
+    print(f"Socket connected to /game: user={user_hash}")
 
 # When a player joins the lobby
 @socketio.on("join_lobby", namespace="/game")
@@ -82,7 +85,6 @@ def on_join_lobby(data):
     
     # TODO: See if the user has permission to enter this lobby (dont let people intrude on private or custom games)
 
-    # Create a player for this lobby (if there isnt one)
     user = get_user_by_hash(user_hash)
     
     # Add player to lobby in database
@@ -100,6 +102,9 @@ def on_join_lobby(data):
     update_game_active_at(game.get("hash"), game.get("active_at"))
 
     mem_game = game_mem.create_game_memory_instance(game.get("hash"), {"total_rounds": game.get("rounds")})
+
+    # Add the user to the game
+    game_mem.add_user_to_game(user, game.get("hash"))
 
     gamemode = lobby_data.get("gamemode").lower()
 
@@ -160,6 +165,8 @@ def on_buzz(data): # Timestamp, AnswerContent
         emit("reconnect")
         return
     
+    user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
+
     game_m = game_mem.get_game(game_hash)
 
     if not game_m.get("current_question"):
@@ -172,8 +179,6 @@ def on_buzz(data): # Timestamp, AnswerContent
     if len(game_m.get("question_interrupts")) == 0:
         # Increment buzzes_encountered for everyone in the room
         increment_score_attribute(game_hash, "buzzes_encountered")
-
-    user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
 
     # TODO: Increment for early buzzes
     if question_state == "running":
@@ -263,14 +268,20 @@ def on_submit(data): # FinalAnswer
         result = update_rank(user_hash, question, is_correct, interrupt.get("proportion_through"))
         rank_change_information = result.get("user")
 
+        # If the user got the question correct, then let's give them a rank changed event
+        if is_correct:
+            emit("rank_changed", rank_change_information)
+
     if is_correct == 1:
         increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))
         # Update if its power
         if interrupt.get("is_power"):
             increment_score_attribute(game_hash, "power", player_hash=user.get("hash"))
             increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=15)
+            emit("reward_points", {"points": 15})
         else:
             increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=10)
+            emit("reward_points", {"points": 10})
         
         # Save the question to the user's correct questions if they have premium
         if user.get("premium"):
@@ -285,9 +296,6 @@ def on_submit(data): # FinalAnswer
             level=lobby_data.get("level"), # All, ms, hs, college, open
             category=CATEGORIES[lobby_data.get("category")]
         )
-
-        # If the user got the question correct, then let's give them a rank changed event
-        emit("rank_changed", rank_change_information)
 
         data["question"] = new_question
         set_question_to_game(new_question, lobby)
@@ -386,18 +394,36 @@ def on_next_question(data):
 
     # If the lobby is ranked, then we want to adjust user rank for users who don't answer a question
     #TODO: tell if lobby is ranked
-    if lobby == "ranked":
+    if lobby == "ranked" and game_m.get("current_question"):
         # The user not answering (at least at any point in the question if someone got us early) tells us that the user does not know the answer to the question at that timestep
         
         # Handle no interrupts
         interrupts = game_m.get("question_interrupts") or [{"proportion_through": 1.0}]
         proportion_through = interrupts[-1].get("proportion_through")
 
-        interruptor_hashes = [interrupt.get("user").get("hash") for interrupt in game_m.get("question_interrupts")]
-        non_answering_users = [user for user in game_m.get("users") if user.get("hash") not in interruptor_hashes]
 
-        for user in non_answering_users:
-            result = update_rank(user.get("hash"), game_m.get("current_question"), is_correct=False, buzz_fraction=proportion_through, is_non_answer=True)
+        interruptor_hashes = {
+            interrupt.get("user", {}).get("hash")
+            for interrupt in game_m.get("question_interrupts", [])
+            if interrupt.get("user", {}).get("hash") is not None
+        }
+
+        non_answering_users = [
+            user_hash
+            for user_hash in game_m.get("users", {}).keys()
+            if user_hash not in interruptor_hashes
+        ]
+        
+        print(interruptor_hashes, game_m.get("users"))
+        print(non_answering_users)
+
+        for user_hash in non_answering_users:
+            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=proportion_through, is_non_answer=True)
+            rank_change_information = result.get("user")
+
+            print(rank_change_information)
+
+            emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
 
     game_mem.next_question(question, game_hash)
 
@@ -471,5 +497,8 @@ def on_disconnect():
     result = user_disconnect_from_lobby(user_hash)
 
     user = get_user_by_hash(user_hash)
+
+    # Remove the user from the game
+    game_mem.remove_user_from_game(user_hash, game_hash)
 
     emit("player_disconnected", {"lobby": lobby_data, "user": user}, room=f"lobby:{lobby}")

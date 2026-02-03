@@ -76,7 +76,17 @@ def get_game(game_hash: str) -> dict:
 def add_user_to_game(user_hash: str, game_hash: str) -> dict:
     game = get_game(game_hash)
     
-    user = db.get_user_by_hash(user_hash)
+    # If user_hash is a dict, then we don't want to query the database again
+    user = None
+    if type(user_hash) is str:
+        user = db.get_user_by_hash(user_hash)
+    else:
+        user = user_hash
+        user_hash = user.get("hash")
+
+    # Check if they are already in the game
+    if game["users"].get(user_hash):
+        return game
     
     game["users"][user_hash] = user
 
@@ -95,6 +105,7 @@ def next_question(question_dict: dict, game_hash: str) -> dict:
     game["question_count"] += 1
     game["current_question"] = question_dict
     game["questions"].append(question_dict)
+    game["question_interrupts"] = []
     
     return game
 

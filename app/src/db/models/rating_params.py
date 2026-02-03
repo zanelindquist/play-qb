@@ -13,6 +13,7 @@ class RatingParams(Base, CreatedAtColumn):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(20), nullable=False, unique=True)
     value = Column(Float)
+    description = Column(String(100))
 
     def __repr__(self):
         return f"<RatingParams(id={self.id})>"

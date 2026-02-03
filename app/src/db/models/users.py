@@ -4,6 +4,8 @@ from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
 
+import src.db.ranked as ranked
+
 class Users(Base, CreatedAtColumn):
     __tablename__ = 'users'
     __table_args__ = {'mysql_engine':'InnoDB'}
@@ -38,8 +40,8 @@ class Users(Base, CreatedAtColumn):
     stats = relationship(
         "Stats",
         back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        uselist=False
     )
 
     created_lobbies = relationship(
