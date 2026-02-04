@@ -17,38 +17,39 @@ import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
 
 const RANK_INFO = [
-    { rank_code: 0,  name: "Dirt I", rr: 0 },
-    { rank_code: 1,  name: "Dirt II", rr: 100 },
-    { rank_code: 2,  name: "Dirt III", rr: 200 },
+    { rank_code: 0,  name: "Dirt I", rr: 0,    color: "#8A6837" },
+    { rank_code: 1,  name: "Dirt II", rr: 100, color: "#7A5B30" },
+    { rank_code: 2,  name: "Dirt III", rr: 200, color: "#6B4F2A" },
 
-    { rank_code: 3,  name: "Plastic I", rr: 700 },
-    { rank_code: 4,  name: "Plastic II", rr: 800 },
-    { rank_code: 5,  name: "Plastic III", rr: 900 },
+    { rank_code: 3,  name: "Plastic I", rr: 700, color: "#8EA1B1" },
+    { rank_code: 4,  name: "Plastic II", rr: 800, color: "#7E909F" },
+    { rank_code: 5,  name: "Plastic III", rr: 900, color: "#6E7F8D" },
 
-    { rank_code: 6,  name: "Tin I", rr: 1000 },
-    { rank_code: 7,  name: "Tin II", rr: 1100 },
-    { rank_code: 8,  name: "Tin III", rr: 1200 },
+    { rank_code: 6,  name: "Tin I", rr: 1000, color: "#B3B3B3" },
+    { rank_code: 7,  name: "Tin II", rr: 1100, color: "#A0A0A0" },
+    { rank_code: 8,  name: "Tin III", rr: 1200, color: "#8E8E8E" },
 
-    { rank_code: 9,  name: "Bronze I", rr: 1300 },
-    { rank_code: 10, name: "Bronze II", rr: 1400 },
-    { rank_code: 11, name: "Bronze III", rr: 1500 },
+    { rank_code: 9,  name: "Bronze I", rr: 1300, color: "#BF7A39" },
+    { rank_code: 10, name: "Bronze II", rr: 1400, color: "#A66A32" },
+    { rank_code: 11, name: "Bronze III", rr: 1500, color: "#8C5A2B" },
 
-    { rank_code: 12, name: "Silver I", rr: 1600 },
-    { rank_code: 13, name: "Silver II", rr: 1700 },
-    { rank_code: 14, name: "Silver III", rr: 1800 },
+    { rank_code: 12, name: "Silver I", rr: 1600, color: "#C9D2DB" },
+    { rank_code: 13, name: "Silver II", rr: 1700, color: "#B4BCC4" },
+    { rank_code: 14, name: "Silver III", rr: 1800, color: "#9FA6AD" },
 
-    { rank_code: 15, name: "Gold I", rr: 1900 },
-    { rank_code: 16, name: "Gold II", rr: 2000 },
-    { rank_code: 17, name: "Gold III", rr: 2100 },
+    { rank_code: 15, name: "Gold I", rr: 1900, color: "#F5CD30" },
+    { rank_code: 16, name: "Gold II", rr: 2000, color: "#E0B82C" },
+    { rank_code: 17, name: "Gold III", rr: 2100, color: "#C9A227" },
 
-    { rank_code: 18, name: "Diamond I", rr: 2200 },
-    { rank_code: 19, name: "Diamond II", rr: 2300 },
-    { rank_code: 20, name: "Diamond III", rr: 2400 },
+    { rank_code: 18, name: "Diamond I", rr: 2200, color: "#5FE6F7" },
+    { rank_code: 19, name: "Diamond II", rr: 2300, color: "#4ED0E0" },
+    { rank_code: 20, name: "Diamond III", rr: 2400, color: "#3FB8C6" },
 
-    { rank_code: 21, name: "Immortal I", rr: 2500 },
-    { rank_code: 22, name: "Immortal II", rr: 2600 },
-    { rank_code: 23, name: "Immortal III", rr: 2700 }
-]
+    { rank_code: 21, name: "Immortal I", rr: 2500, color: "#CB8AFF" },
+    { rank_code: 22, name: "Immortal II", rr: 2600, color: "#B86BFF" },
+    { rank_code: 23, name: "Immortal III", rr: 2700, color: "#A64DFF" }
+];
+
 
 export default function RankedProgressBar ({
     rankInfo,
@@ -87,8 +88,8 @@ export default function RankedProgressBar ({
 
     return (
         <View style={[styles.container, style]}>
-            <View style={styles.minRank}>
-                <HelperText style={styles.rankText}>{rank.name}</HelperText>
+            <View style={styles.rank}>
+                <HelperText style={[styles.rankText, ustyles.text.shadowText, {backgroundColor: rank.color}]}>{rank.name}</HelperText>
             </View>
             <View
                 style={styles.barContainer}
@@ -102,10 +103,6 @@ export default function RankedProgressBar ({
                         width: widthRef.current || '100%', // Set max width
                         transform: [
                             { scaleX: barScale },
-                            // { translateX: barScale.interpolate({
-                            //     inputRange: [0, 1],
-                            //     outputRange: [-(widthRef.current || 0) / 2, 0]
-                            // })}
                         ],
                         transformOrigin: 'left' // Not supported, handled by translateX above
                     }
@@ -121,8 +118,8 @@ export default function RankedProgressBar ({
                 </Animated.View>
 
             </View>
-            <View style={styles.maxRank}>
-                <HelperText style={styles.rankText}>{nextRank.name}</HelperText>
+            <View style={styles.rank}>
+                <HelperText style={[styles.rankText, ustyles.text.shadowText, {backgroundColor: nextRank.color}]}>{nextRank.name}</HelperText>
             </View>
         </View>
     )
@@ -135,8 +132,12 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center" // Changed from baseline to center
     },
+    rank: {
+        marginHorizontal: 10,
+    },
     rankText: {
-
+        padding: 10,
+        borderRadius: 999
     },
     barContainer: {
         position: "relative",
