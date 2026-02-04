@@ -40,10 +40,10 @@ RANKS = [
 
 
 QUESTION_DIFFICULTIES = {
-    0: {"name": "Middle School", "mu": 1300, "sigma": 200},
-    1: {"name": "High School", "mu": 1800, "sigma": 200},
-    2: {"name": "Collegiate", "mu": 2200, "sigma": 200},
-    3: {"name": "Open", "mu": 2900, "sigma": 200},
+    0: {"name": "Middle School", "mu": 1200, "sigma": 200},
+    1: {"name": "High School", "mu": 1500, "sigma": 200},
+    2: {"name": "Collegiate", "mu": 1800, "sigma": 200},
+    3: {"name": "Open", "mu": 2200, "sigma": 200},
 }
 
 # Skill is used for players
@@ -110,7 +110,7 @@ def w_func(delta: float) -> float:
     return v * (v + delta)
 
 def weight_answer_time(p: float) -> float:
-    return 2 - math.sqrt(p);
+    return 4 - 2 * math.sqrt(p);
 
 # TODO: We may want to not weight incorrect answers a ton beacuse that shows they at least thought they could answer the question
 # For example, the probability that they get the incorrectly answered question right is higher than for a question they didn't buzz (hypothetically)
@@ -119,34 +119,46 @@ def update_skill(
     difficulty: Difficulty,
     correct: bool,
     answer_time: float,
-    beta: float # Noise uncertainty
+    beta: float
 ) -> Skill:
     """
     Bayesian update for one question attempt
     """
-
     # Combined uncertainty
     c = math.sqrt(skill.sigma**2 + difficulty.sigma**2 + beta**2)
 
-    # Performance difference (z score)
-    delta = (skill.mu - difficulty.mu) / c
-
-    if not correct:
-        delta = -abs(delta)
-    else:
-        delta = abs(delta)
-        delta *= weight_answer_time(answer_time)
-
+    # Performance difference (z score) - ALWAYS POSITIVE for v_func
+    delta = abs(skill.mu - difficulty.mu) / c
+    
+    # Compute v and w with positive delta
     v = v_func(delta)
     w = w_func(delta)
-
-    # Mean update
-    mu_new = skill.mu + (skill.sigma**2 / c) * v
-
-    # Variance update
+    
+    # NOW apply the sign based on correctness
+    if correct:
+        # Correct answer: increase mu (positive update)
+        # Weight by answer time (earlier = bigger boost)
+        mu_delta = (skill.sigma**2 / c) * v * weight_answer_time(answer_time)
+    else:
+        # Incorrect answer: decrease mu (negative update)
+        mu_delta = -(skill.sigma**2 / c) * v
+    
+    # Apply the update
+    mu_new = skill.mu + mu_delta
+    
+    # Variance update (same for correct/incorrect)
     sigma_sq_new = skill.sigma**2 * (1 - (skill.sigma**2 / (c**2)) * w)
 
+    print("IS CORRECT", correct)
+    print("DIFF", skill.mu - difficulty.mu)
+    print("DELTA (abs)", delta)
+    print("V", v)
+    print("MU_DELTA", mu_delta)
+    print("MU_NEW", mu_new)
+    print("SIG_SQ_NEW", sigma_sq_new)
+
     return Skill(mu_new, math.sqrt(max(sigma_sq_new, 1e-6)))
+
 
 def non_answer_update_skill(
     skill: Skill,
@@ -156,6 +168,7 @@ def non_answer_update_skill(
     power: float = 2.5,
     max_mu_drop: float = 5.0
 ) -> Skill:
+    print("NON ANSWER CALLED")
     """
     Update user skill from NOT buzzing before buzz_fraction of the question.
     """
@@ -182,7 +195,6 @@ def non_answer_update_skill(
 
     # Timing weight
     weight = buzz_fraction ** power
-    print(buzz_fraction, weight)
 
     # Mean update (negative)
     delta_mu = -(skill.sigma**2 / sigma_x) * v * weight

@@ -35,6 +35,7 @@ import GradientFlair from "../../components/custom/GradientFlair.jsx";
 import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
+import Beta from "../../components/custom/Beta.jsx";
 
 const { width } = Dimensions.get('window');
 const MOBILE_THRESHOLD = 600
@@ -467,10 +468,19 @@ const Play = () => {
                     </ScrollView>
                 </View>
                 <View style={styles.optionsContainer}>
-                    <HelperText style={ustyles.text.header}>{alias}</HelperText>
-                    <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText>
-                    <RankUser user={myUser}/>
-                    <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText>
+                    {
+                        // TODO: Tell if its ranked
+                        alias == "ranked" &&
+                        <>
+                            <HelperText style={[ustyles.text.header]}>
+                                {alias}
+                                <Beta />
+                            </HelperText>
+                            <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText>
+                            <RankUser user={myUser}/>
+                            <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText>
+                        </>
+                    }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton>

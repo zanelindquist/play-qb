@@ -1797,39 +1797,51 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
 
         # Compute updated_skill
         updated = None
-        if is_non_answer: 
+        if is_non_answer:
             updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
         else:
-            updated = ranked.update_skill(effective_skill, q, is_correct, buzz_fraction, beta=rating_params.beta)
+            updated = ranked.update_skill(effective_skill, q, bool(is_correct > 0), buzz_fraction, beta=rating_params.beta)
 
-        # TODO update user category skill too
-        delta_mu = updated.mu - effective_skill.mu
-        delta_sigma = updated.sigma - effective_skill.sigma
+        print("=" * 50)
+        print(f"Question difficulty: mu={q.mu}, sigma={q.sigma}")
+        print(f"Effective skill BEFORE: mu={effective_skill.mu}, sigma={effective_skill.sigma}")
+        print(f"Updated effective skill: mu={updated.mu}, sigma={updated.sigma}")
+        print(f"Is correct: { bool(is_correct > 0)}, buzz_fraction: {buzz_fraction}")
+        print(f"Beta: {rating_params.beta}")
+
 
         # Throttle for not seeing a ton of questions
         cat_conf = min(1.0, category_skill.questions_seen / 20)
         # Rating_params.alpha is the proportion that goes towards global skill
         WEIGHT = rating_params.alpha / 2 + rating_params.alpha / 2 * (1 - cat_conf)
 
-        # Update global skill
+        # Calculate deltas (this is fine)
+        delta_mu = updated.mu - effective_skill.mu
+        delta_sigma = updated.sigma - effective_skill.sigma
+
+        print("DELTA MU", delta_mu)
+        print("DELTA SIGMA", delta_sigma)
+
+        # Update global and category skills (this is fine)
         g_new = ranked.Skill(g.mu, g.sigma)
         g_new.mu += WEIGHT * delta_mu
-        g_new.sigma = max(
-            1.0,
-            g_new.sigma + WEIGHT * delta_sigma
-        )
+        g_new.sigma = max(1.0, g_new.sigma + WEIGHT * delta_sigma)
 
-        # Update category skill
         c_new = ranked.Skill(c.mu, c.sigma)
         c_new.mu += (1 - WEIGHT) * delta_mu
-        c_new.sigma = max(
-            1.0,
-            c_new.sigma + (1 - WEIGHT) * delta_sigma
-        )
+        c_new.sigma = max(1.0, c_new.sigma + (1 - WEIGHT) * delta_sigma)
+
+        # After calculating g_new and c_new, add:
+        print(f"WEIGHT: {WEIGHT}")
+        print(f"Global skill BEFORE: mu={g.mu}, sigma={g.sigma}")
+        print(f"Global skill AFTER: mu={g_new.mu}, sigma={g_new.sigma}")
+        print(f"Category skill BEFORE: mu={c.mu}, sigma={c.sigma}")
+        print(f"Category skill AFTER: mu={c_new.mu}, sigma={c_new.sigma}")
+        print("=" * 50)
 
         # Save the updated score to the database
-        setattr(stats, "skill_mu", updated.mu)
-        setattr(stats, "skill_sigma", updated.sigma)
+        setattr(stats, "skill_mu", g_new.mu)
+        setattr(stats, "skill_sigma", g_new.sigma)
         setattr(stats, "last_active_at", datetime.now(timezone.utc))
 
         setattr(category_skill, "mu", c_new.mu)
@@ -1838,8 +1850,6 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
 
         # Update question difficulty
         updated_question = ranked.update_question_difficulty(q, updated, is_correct, buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
-
-        print("WB UPDATED Q", updated_question)   
 
         # TODO: MAKE SURE UPDATING QUESTION IS ACURATE 
 
