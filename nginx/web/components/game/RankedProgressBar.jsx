@@ -55,29 +55,34 @@ export default function RankedProgressBar ({
     style
 }) {
     if (!rankInfo) return
-
-    // Keep track of old states
     
     // Rank info
     const [rank, setRank] = useState(RANK_INFO[rankInfo.rank.rank_code])
-    // Handle for being Imo III
-    const [nextRank, setNextRank] = useState(RANK_INFO[rankInfo.rank.rank_code + 1 < RANK_INFO.length ? rankInfo.rank.rank_code + 1 : RANK_INFO.length - 1])
+    const [nextRank, setNextRank] = useState(RANK_INFO[rankInfo.rank.rank_code + 1 < RANK_INFO.length ? rankInfo.rank.rank_code + 1 : RANK_INFO.length - 1]) // Handle for being Imo III
 
     const [rrBetweenRanks, setRRBetweenRanks] =  useState(nextRank?.rr - rank?.rr)
 
-    useEffect(() => {
-        console.log("RI", rankInfo)
-        console.log("RCD", rankInfo.rank_change.rr_diff)
-        console.log(`WIDTH ${rankInfo.rank_change.rr_diff / rrBetweenRanks * 100}%`)
+    // Refs
+    const barScale = useRef(new Animated.Value(0)).current
+    const widthRef = useRef()
 
+    useEffect(() => {
         const newRank = RANK_INFO[rankInfo.rank.rank_code]
         const newNextRank = RANK_INFO[rankInfo.rank.rank_code + 1 < RANK_INFO.length ? rankInfo.rank.rank_code + 1 : RANK_INFO.length - 1]
 
         if(rank.name !== newRank.name) {
-            console.log("YOU RNAKED UP!")
+            console.log("YOU RANKED UP!")
             setRank(newRank)
             setNextRank(newNextRank)
         }
+
+        const targetScale = (rankInfo.rank.residual_rr) / rrBetweenRanks
+
+        Animated.timing(barScale, {
+            toValue: targetScale,
+            duration: 400,
+            useNativeDriver: true, // Can keep this true
+        }).start()
     }, [rankInfo])
 
     return (
@@ -85,20 +90,36 @@ export default function RankedProgressBar ({
             <View style={styles.minRank}>
                 <HelperText style={styles.rankText}>{rank.name}</HelperText>
             </View>
-            <View style={styles.barContainer}>
-                <View style={[
-                    styles.diffBar,
-                    {
-                        left: `${(rankInfo.rank.residual_rr - (rankInfo.rank_change.rr_diff > 0 ? rankInfo.rank_change.rr_diff : 0 )) / rrBetweenRanks * 100}%`,
-                        width: `${Math.abs(rankInfo.rank_change.rr_diff) / rrBetweenRanks * 100}%`,
-                        backgroundColor: rankInfo.rank_change.rr_diff > 0 ? theme.static.correct : theme.error
-                    }
-                ]}></View>
-                <View style={[
+            <View
+                style={styles.barContainer}
+                onLayout={(e) => {
+                    widthRef.current = e.nativeEvent.layout.width
+                }}
+            >
+                <Animated.View style={[
                     styles.bar,
-                    {width: `${(rankInfo.rank_change.rr_diff > 0 ? rankInfo.rank.residual_rr : rankInfo.rank.residual_rr - rankInfo.rank_change.rr_diff) / rrBetweenRanks * 100}%`}
+                    {
+                        width: widthRef.current || '100%', // Set max width
+                        transform: [
+                            { scaleX: barScale },
+                            // { translateX: barScale.interpolate({
+                            //     inputRange: [0, 1],
+                            //     outputRange: [-(widthRef.current || 0) / 2, 0]
+                            // })}
+                        ],
+                        transformOrigin: 'left' // Not supported, handled by translateX above
+                    }
                 ]}>
-            </View>
+                    <View style={[
+                        styles.diffBar,
+                        {
+                            width: `${Math.abs(rankInfo.rank_change.rr_diff) / rrBetweenRanks * 100}%`,
+                            right: rankInfo.rank_change.rr_diff < 0 ? `${rankInfo.rank_change.rr_diff / rrBetweenRanks * 100}%` : 0,
+                            backgroundColor: rankInfo.rank_change.rr_diff > 0 ? theme.static.correct : theme.error
+                        }
+                    ]}></View>
+                </Animated.View>
+
             </View>
             <View style={styles.maxRank}>
                 <HelperText style={styles.rankText}>{nextRank.name}</HelperText>
@@ -112,24 +133,31 @@ const styles = StyleSheet.create({
         width: "100%",
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "baseline"
+        alignItems: "center" // Changed from baseline to center
+    },
+    rankText: {
+
     },
     barContainer: {
         position: "relative",
         zIndex: 0,
         flexGrow: 1,
-        alignSelf: "baseline",
+        height: 10, // Add explicit height
         backgroundColor: theme.elevation.level5,
         borderRadius: 999,
+        overflow: 'hidden' // Add this to clip the bar within bounds
     },
     diffBar: {
-        position: "relative",
+        position: "absolute",
+        right: 0,
         zIndex: 2,
         height: 10,
         borderRadius: 999
     },
     bar: {
-        position: "absolute",
+        position: 'absolute', // Change to absolute
+        left: 0, // Pin to left
+        top: 0, // Pin to top
         zIndex: 1,
         height: 10,
         backgroundColor: theme.primary,
