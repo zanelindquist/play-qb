@@ -15,6 +15,7 @@ class Lobbies(Base, CreatedAtColumn):
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     name = Column(String(40), default="playqb")
     public = Column(Boolean, default=False)
+    is_ranked = Column(Boolean, default=False)
     total_games = Column(Integer, default=0)
     level = Column(Integer, default=0) # All, middle school, high school, college, open
     category = Column(Integer, default=0) # Everything, sience, history, literature, social science, philosophy, religion, mythology, geography, fine arts, current events, custom

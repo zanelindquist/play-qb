@@ -19,6 +19,8 @@ import GlassyView from "../../components/custom/GlassyView.jsx";
 import Stats from "../../components/entities/Stats.jsx";
 import theme from "@/assets/themes/theme.js";
 import { useBanner } from "../../utils/banners.jsx";
+import Analytics from "../../components/entities/Analytics.jsx";
+import ustyles from "../../assets/styles/ustyles.js";
 
 const CATEGORIES = [
     "science",
@@ -54,13 +56,18 @@ export default function StatsPage() {
             setIsLoading(false)
         })
         .catch((error) => {
-            showBanner(error.message)
+            showBanner(error.message, {backgroundColor: theme.error})
         })
     }
 
     return (
-        <SidebarLayout>
+        <SidebarLayout
+            style={ustyles.flex.flexColumn}
+        >
             <Stats
+                stats={stats}
+            />
+            <Analytics
                 stats={stats}
             />
         </SidebarLayout>

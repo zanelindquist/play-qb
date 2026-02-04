@@ -20,7 +20,7 @@ def create_app(test_config=None):
 
     # Remove this later-- its just so we can use a different localhost port in development
     # TODO: Remove 8081 because its development
-    CORS(app, resources={r"/*": {"origins": ["http://localhost:8081"]}}) #"https://localhost", "https://app.localhost", 
+    CORS(app, resources={r"/*": {"origins": ["http://localhost:8081", "https://localhost", "https://app.localhost", "http://10.104.5.175", "https://10.104.5.175"]}}) #, 
 
     app.config.from_mapping(
         SECRET_KEY='dev',
