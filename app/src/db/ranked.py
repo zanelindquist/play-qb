@@ -72,7 +72,7 @@ class Difficulty:
     
     def time_difficulty_multiplier(self, buzz_fraction):
         # Smooth function starting big and getting smaller
-        val = 3 - 2 * math.sqrt(buzz_fraction)
+        val = 4 - 3 * math.sqrt(buzz_fraction)
 
         if isinstance(val, complex):
             val = val.real
@@ -110,7 +110,7 @@ def w_func(delta: float) -> float:
     return v * (v + delta)
 
 def weight_answer_time(p: float) -> float:
-    return 4 - 2 * math.sqrt(p);
+    return 4 - 3 * math.sqrt(p);
 
 # TODO: We may want to not weight incorrect answers a ton beacuse that shows they at least thought they could answer the question
 # For example, the probability that they get the incorrectly answered question right is higher than for a question they didn't buzz (hypothetically)
