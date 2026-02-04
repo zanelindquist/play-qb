@@ -1890,6 +1890,34 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
     finally:
         session.commit()
 
+def ranked_on_next_question(game_m: dict, emit):
+            # The user not answering (at least at any point in the question if someone got us early) tells us that the user does not know the answer to the question at that timestep
+        
+        # Handle no interrupts
+        interrupts = game_m.get("question_interrupts") or [{"proportion_through": 1.0}]
+        proportion_through = interrupts[-1].get("proportion_through")
+
+
+        interruptor_hashes = {
+            interrupt.get("user", {}).get("hash")
+            for interrupt in game_m.get("question_interrupts", [])
+            if interrupt.get("user", {}).get("hash") is not None
+        }
+
+        non_answering_users = [
+            user_hash
+            for user_hash in game_m.get("users", {}).keys()
+            if user_hash not in interruptor_hashes
+        ]
+
+        for user_hash in non_answering_users:
+            # Assume every question is read to completion
+            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=1, is_non_answer=True)
+            rank_change_information = result.get("user")
+
+            if rank_change_information:
+                emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
+
 def reset_user_ranks():
     session = get_session()
     rating_params = get_rating_params()

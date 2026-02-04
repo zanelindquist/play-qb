@@ -107,6 +107,8 @@ export default function RankedProgressBar ({
                         transformOrigin: 'left' // Not supported, handled by translateX above
                     }
                 ]}>
+                    {
+                    rankInfo?.rank_change &&
                     <View style={[
                         styles.diffBar,
                         {
@@ -115,6 +117,7 @@ export default function RankedProgressBar ({
                             backgroundColor: rankInfo.rank_change.rr_diff > 0 ? theme.static.correct : theme.error
                         }
                     ]}></View>
+                    }
                 </Animated.View>
 
             </View>
