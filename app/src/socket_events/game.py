@@ -287,6 +287,8 @@ def on_submit(data): # FinalAnswer
         if user.get("premium"):
             save_question(question.get("id"), user.get("id"), saved_type="correct")
 
+        # TODO: WE NEED THE NEXT_QUESTION CODE TO RUN, NOT THIS, FOR RANKED ESPESSIALLY
+
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is true
@@ -415,9 +417,10 @@ def on_next_question(data):
         ]
 
         for user_hash in non_answering_users:
-            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=proportion_through, is_non_answer=True)
+            # Assume every question is read to completion
+            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=1, is_non_answer=True)
             rank_change_information = result.get("user")
-            
+
             if rank_change_information:
                 emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
 

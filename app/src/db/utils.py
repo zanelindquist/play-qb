@@ -1798,7 +1798,8 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
         # Compute updated_skill
         updated = None
         if is_non_answer:
-            updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
+            updated = ranked.update_skill(effective_skill, q, False, 1, beta=rating_params.beta)
+            # updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
         else:
             updated = ranked.update_skill(effective_skill, q, bool(is_correct > 0), buzz_fraction, beta=rating_params.beta)
 
