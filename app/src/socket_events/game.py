@@ -85,7 +85,7 @@ def on_join_lobby(data):
     
     # TODO: See if the user has permission to enter this lobby (dont let people intrude on private or custom games)
 
-    user = get_user_by_hash(user_hash)
+    user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
     
     # Add player to lobby in database
     result = user_join_lobby(user_hash, lobby)
@@ -145,10 +145,50 @@ def on_join_lobby(data):
     lobby_data["games"][0]["teams"] = attatch_players_to_teams(teams)
 
     # Send PlayerInformation about the new player to existing players
+
+    # Attatch the user's ranked info
+    skill = ranked.Skill(user.get("stats").get("skill_mu"), user.get("stats").get("skill_sigma"))
+    user["rank"] = ranked.get_rank(skill).to_dict()
     
     emit("you_joined", {"user": user})
     
     emit("player_joined", {"user": user, "lobby": lobby_data}, room=f"lobby:{lobby}")
+
+@socketio.on("change_game_settings", "/game")
+def on_change_game_settings(data):
+    user_hash = request.environ["user_hash"]
+    lobby = request.environ.get("lobby")
+    user = get_user_by_hash(user_hash)
+
+    # Early request from the front end from race condition, not intentional, but we have to guard against it
+    if not lobby:
+        return;
+
+    settings = data.get("settings")
+
+    if not lobby:
+        return;
+
+    if not settings:
+        emit("changed_game_settings_failure", {"message": "No settings provided", "code": 400})
+        return;
+
+    # TODO: see if the user can edit the settings
+
+    # Change lobby settings
+    result = set_lobby_settings(lobby, settings)
+
+    if result.get("code") >= 400:
+        emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
+        return;
+
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # TODO: Handle lobbies with multiple games
+    lobby_data["games"][0]["teams"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
+    
+    emit("changed_game_settings", {"lobby": lobby_data}, room=f"lobby:{lobby}")
+
 
 # When a player buzzes
 @socketio.on("buzz", namespace="/game")
@@ -287,11 +327,11 @@ def on_submit(data): # FinalAnswer
         if user.get("premium"):
             save_question(question.get("id"), user.get("id"), saved_type="correct")
 
-        # TODO: WE NEED THE NEXT_QUESTION CODE TO RUN, NOT THIS, FOR RANKED ESPESSIALLY
+        # Run next question code
 
         lobby_data = get_lobby_by_alias(lobby)
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
-        # If the answer is true
+        
         # Get question ACCORDING TO LOBBY SETTINGS
         new_question = get_random_question(
             type=0, # Tossup
@@ -301,6 +341,19 @@ def on_submit(data): # FinalAnswer
 
         data["question"] = new_question
         set_question_to_game(new_question, lobby)
+
+        game_m = game_mem.get_game(game_hash)
+
+        # If the lobby is ranked, then we want to adjust user rank for users who don't answer a question
+        #TODO: tell if lobby is ranked
+        if lobby == "ranked" and game_m.get("current_question"):
+            ranked_on_next_question(game_m, emit)
+
+        game_mem.next_question(question, game_hash)
+
+        # Set this question as the game's DB question
+        set_question_to_game(question, lobby)
+
         emit("next_question", data, room=f"lobby:{lobby}")
     elif is_correct == 0:
         # If the answer is a prompt, then we want to emit another buzz
@@ -313,8 +366,8 @@ def on_submit(data): # FinalAnswer
         )
         
     elif is_correct == -1:
+        increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
         if is_early:
-            increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
             increment_score_attribute(game_hash, "points", player_hash=user.get("hash"), amount=-5)
 
         # Save the question to the user's missed questions
@@ -325,41 +378,6 @@ def on_submit(data): # FinalAnswer
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
-
-@socketio.on("change_game_settings", "/game")
-def on_change_game_settings(data):
-    user_hash = request.environ["user_hash"]
-    lobby = request.environ.get("lobby")
-    user = get_user_by_hash(user_hash)
-
-    # Early request from the front end from race condition, not intentional, but we have to guard against it
-    if not lobby:
-        return;
-
-    settings = data.get("settings")
-
-    if not lobby:
-        return;
-
-    if not settings:
-        emit("changed_game_settings_failure", {"message": "No settings provided", "code": 400})
-        return;
-
-    # TODO: see if the user can edit the settings
-
-    # Change lobby settings
-    result = set_lobby_settings(lobby, settings)
-
-    if result.get("code") >= 400:
-        emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
-        return;
-
-    lobby_data = get_lobby_by_alias(lobby)
-
-    # TODO: Handle lobbies with multiple games
-    lobby_data["games"][0]["teams"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
-    
-    emit("changed_game_settings", {"lobby": lobby_data}, room=f"lobby:{lobby}")
 
 # PAUSING AND PLAYING THE GAME
 
@@ -397,32 +415,7 @@ def on_next_question(data):
     # If the lobby is ranked, then we want to adjust user rank for users who don't answer a question
     #TODO: tell if lobby is ranked
     if lobby == "ranked" and game_m.get("current_question"):
-        # The user not answering (at least at any point in the question if someone got us early) tells us that the user does not know the answer to the question at that timestep
-        
-        # Handle no interrupts
-        interrupts = game_m.get("question_interrupts") or [{"proportion_through": 1.0}]
-        proportion_through = interrupts[-1].get("proportion_through")
-
-
-        interruptor_hashes = {
-            interrupt.get("user", {}).get("hash")
-            for interrupt in game_m.get("question_interrupts", [])
-            if interrupt.get("user", {}).get("hash") is not None
-        }
-
-        non_answering_users = [
-            user_hash
-            for user_hash in game_m.get("users", {}).keys()
-            if user_hash not in interruptor_hashes
-        ]
-
-        for user_hash in non_answering_users:
-            # Assume every question is read to completion
-            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=1, is_non_answer=True)
-            rank_change_information = result.get("user")
-
-            if rank_change_information:
-                emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
+        ranked_on_next_question(game_m, emit)
 
     game_mem.next_question(question, game_hash)
 

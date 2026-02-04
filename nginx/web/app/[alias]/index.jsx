@@ -404,7 +404,7 @@ const Play = () => {
             <View style={styles.container}>
                 <View style={styles.gameContent}>
                     <RankedProgressBar
-                        rankInfo={myRankInfo}
+                        rankInfo={myRankInfo || myUser}
                     />
                     <AnswerInput
                         onChange={handleInputChange}

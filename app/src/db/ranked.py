@@ -58,27 +58,61 @@ class Skill:
 # Difficulty is for questions
 class Difficulty:
     def __init__(self, mu: float, sigma: float, buzz_fraction: float = 1):
+        self.base_mu = mu  # Store the original difficulty
         self.buzz_fraction = buzz_fraction
-        self.mu = mu
         self.sigma = sigma
-
-        dt_mu = mu * self.time_difficulty_multiplier(buzz_fraction)
-        if buzz_fraction:
-            self.mu = dt_mu
-
+        
+        # Adjust mu based on how much of the question was heard
+        self.mu = self.get_effective_difficulty(mu, buzz_fraction)
 
     def __repr__(self):
-        return f"<Difficulty(mu={self.mu}, sigma={self.sigma})>"
+        return f"<Difficulty(base_mu={self.base_mu}, effective_mu={self.mu}, sigma={self.sigma})>"
     
-    def time_difficulty_multiplier(self, buzz_fraction):
-        # Smooth function starting big and getting smaller
-        val = 4 - 3 * math.sqrt(buzz_fraction)
+    def get_effective_difficulty(self, base_mu: float, buzz_fraction: float) -> float:
+        """
+        Model how question difficulty decreases as more clues are revealed.
+        
+        buzz_fraction = 0.0: Very beginning (hardest)
+        buzz_fraction = 0.5: Halfway through
+        buzz_fraction = 1.0: Giveaway at end (easiest)
+        """
+        # Define the giveaway difficulty (what the last line is worth)
+        # This scales with base difficulty but is much lower
+        if base_mu >= 2100:  # Collegiate/Open
+            giveaway_mu = 1500
+        elif base_mu >= 1500:  # High School
+            giveaway_mu = 1100
+        else:  # Middle School
+            giveaway_mu = 900
+        
+        # Define the peak difficulty (early in the question)
+        # Peak is higher than base - requires connecting dots early
+        peak_multiplier = 1.4  # Early buzzes are 40% harder than base
+        peak_mu = base_mu * peak_multiplier
+        
+        # Model the difficulty curve
+        # Use a power function so difficulty drops faster near the end
+        # (models the "giveaway" nature of last lines)
+        t = buzz_fraction
+        curve_power = 2.5  # Higher = steeper drop near end
+        
+        # Interpolate between peak (at t=0) and giveaway (at t=1)
+        # Using (1-t)^power makes it drop faster as t approaches 1
+        difficulty_range = peak_mu - giveaway_mu
+        effective_mu = giveaway_mu + difficulty_range * ((1 - t) ** curve_power)
 
+        if isinstance(effective_mu, complex):
+            effective_mu = effective_mu.real
+        
+        return effective_mu
+
+    def time_difficulty_multiplier(self, buzz_fraction):
+        """Deprecated - kept for reference"""
+        # Old approach - can remove this
+        val = 4 - 3 * math.sqrt(buzz_fraction)
         if isinstance(val, complex):
             val = val.real
-
         return float(val)
-
     
 class Rank:
     def __init__(self, rank: str, rr: float, residual_rr: float = 0, skill_mu: float = 0, skill_sigma: float = 0):
@@ -119,7 +153,8 @@ def update_skill(
     difficulty: Difficulty,
     correct: bool,
     answer_time: float,
-    beta: float
+    beta: float,
+    max_delta: float = 3.0 # Maximum number of standard deviations away a question difficulty gap can be
 ) -> Skill:
     """
     Bayesian update for one question attempt
@@ -128,7 +163,8 @@ def update_skill(
     c = math.sqrt(skill.sigma**2 + difficulty.sigma**2 + beta**2)
 
     # Performance difference (z score) - ALWAYS POSITIVE for v_func
-    delta = abs(skill.mu - difficulty.mu) / c
+    # Cap delta so taht is is not so large that we don't learn anything from it
+    delta = min(abs(skill.mu - difficulty.mu) / c, max_delta)
     
     # Compute v and w with positive delta
     v = v_func(delta)
@@ -139,6 +175,10 @@ def update_skill(
         # Correct answer: increase mu (positive update)
         # Weight by answer time (earlier = bigger boost)
         mu_delta = (skill.sigma**2 / c) * v * weight_answer_time(answer_time)
+
+        if skill.mu < difficulty.mu:
+            upset_bonus = min((difficulty.mu - skill.mu) * 0.03, 10)
+            mu_delta += upset_bonus
     else:
         # Incorrect answer: decrease mu (negative update)
         mu_delta = -(skill.sigma**2 / c) * v
