@@ -23,6 +23,11 @@ class Questions(Base, CreatedAtColumn):
     category_confidence = Column(Float, nullable=False, default=0.5)
     hand_labeled = Column(Boolean, default=False)
 
+    # Ranked information
+    difficulty_mu = Column(Float, default=1500, nullable=False)
+    difficulty_sigma = Column(Float, default=400, nullable=False)
+    times_asked = Column(Integer, default=0)
+
     reports = relationship("Reports", back_populates="question")
     games = relationship("Games", back_populates="current_question")
 

@@ -10,25 +10,25 @@ import ExpandableView from "../custom/ExpandableView";
 
 // TODO: Hover for stat tooltip
 
-export default function Answers ({ style, answers, onExpand, onCollapse, event }) {
+export default function Answers ({ style, answers, onExpand, onCollapse, rightIcon }) {
     const [expanded, setExpanded] = useState(false)
     const mountHeight = useRef(0)
 
     const moreInformation = answers.accept || answers.prompt || answers.reject || answers.suggested_cateogry
 
     function onPress() {
-        setExpanded(!expanded)
-        if(expanded) {
+        if(!expanded) {
             if(onExpand) onExpand(mountHeight.current)
         } else {
             if(onCollapse) onCollapse()
         }
+        setExpanded(!expanded)
     }
 
     return (
         <ExpandableView
             expanded={expanded}
-            style={[styles.expandable, style]}
+            style={[styles.expandable]}
             maxHeight={mountHeight.current}
             duration={300}
         >
@@ -47,6 +47,9 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
                 <View style={styles.container}>
                     <HelperText style={styles.answerText}>{answers.main}</HelperText>
                     <IconButton icon={"chevron-up"} onPress={onPress}/>
+                    {
+                        rightIcon
+                    }
                 </View>
                 <HelperText style={styles.answerInfo}>Answer information</HelperText>
                 {answers.accept && <HelperText>Accept: {answers.accept.join(", ")}</HelperText>}
@@ -59,6 +62,9 @@ export default function Answers ({ style, answers, onExpand, onCollapse, event }
             <View style={styles.container}>
                 <HelperText style={styles.answerText}>{answers.main}</HelperText>
                 {moreInformation && <IconButton icon={"chevron-down"} onPress={onPress}/>}
+                {
+                    rightIcon
+                }
             </View>}
         </ExpandableView>
     )

@@ -21,12 +21,45 @@ export default function Stats ({
     stats,
     style
 }) {
-    console.log(stats)
 
     const rows = {
-        Answers: ["points", "correct", "buzzes", "incorrect"],
-        Games: ["games", "rounds", "questions_encountered", "buzzes_encountered"]
-    }
+        Answers: [
+            {
+                name: "points",
+                description: "Total points earned from answering questions"
+            },
+            {
+                name: "correct",
+                description: "Number of questions answered correctly"
+            },
+            {
+                name: "buzzes",
+                description: "Total times the player buzzed in"
+            },
+            {
+                name: "incorrect",
+                description: "Number of questions answered incorrectly"
+            }
+        ],
+        Games: [
+            {
+                name: "games",
+                description: "Total number of games played"
+            },
+            {
+                name: "rounds",
+                description: "Total number of rounds participated in"
+            },
+            {
+                name: "questions_encountered",
+                description: "Total number of questions seen across all games"
+            },
+            {
+                name: "buzzes_encountered",
+                description: "Total number of buzzes from any player encountered"
+            }
+        ]
+    };
 
     return (
         <GlassyView style={[styles.container, style]}>
@@ -38,14 +71,17 @@ export default function Stats ({
                 stats &&
                 Object.entries(rows).map(([title, row]) => 
                     <Stat.Row
+                        key={title}
                         title={title}
                         style={styles.row}
                     >
                         {
                             row.map((item) => 
                                 <Stat
-                                    name={item}
-                                    value={stats[item]}
+                                    key={item}
+                                    name={item.name}
+                                    value={stats[item.name]}
+                                    description={item.description}
                                     style={styles.stat}
                                 />
                             )
@@ -59,14 +95,16 @@ export default function Stats ({
 
 const styles = StyleSheet.create({
     container: {
-        gap: 10,
-        overflow: "hidden"
+        gap: 20,
+        overflow: "hidden",
+        padding: 20,
+        borderRadius: 15
     },
     row: {
-
+        flex: 1
     },
     stat: {
-        // flexGrow: 1,
-        // width: "24%"
+        flex: 1,
+        minWidth: "22%"
     }
 })

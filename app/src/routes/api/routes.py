@@ -37,18 +37,18 @@ def on_classify_question():
 @bp.route("/my_stats", methods=["GET"])
 @jwt_required()
 def on_my_stats():
-    email = get_jwt_identity()
+    hash = get_jwt_identity()
 
-    stats = get_stats_by_email(email)
+    stats = get_stats_by_hash(hash)
     
     return stats, 200
 
 @bp.route("/my_account", methods=["GET"])
 @jwt_required()
 def on_my_account():
-    email = get_jwt_identity()
+    hash = get_jwt_identity()
 
-    account = get_user_by_email(email, gentle=False, rel_depths={"created_lobbies": 0, "friends": 0})
+    account = get_user_by_hash(hash, gentle=False, rel_depths={"created_lobbies": 0, "friends": 0})
     
     del account["password"]
 
@@ -57,14 +57,41 @@ def on_my_account():
 @bp.route("/set_username", methods=["POST"])
 @jwt_required()
 def on_set_username():
-    email = get_jwt_identity()
+    hash = get_jwt_identity()
     data = request.get_json()
     
     username = data.get("username")
 
-    result = edit_user(email, {"username": username})
+    result = edit_user(hash, {"username": username})
 
     return jsonify(result), result.get("code")
+
+@bp.route("/saved", methods=["POST"])
+@jwt_required()
+def on_saved():
+    hash = get_jwt_identity()
+    data = request.get_json()
+
+    user = get_user_by_hash(hash)
+    
+    offset = data.get("offset")
+    limit = data.get("limit")
+    saved_type = data.get("saved_type")
+    category = data.get("category")
+
+    result = get_saved_questions(hash, saved_type=saved_type, category=category, offset=offset, limit=limit)
+
+    return {"questions": result.get("questions"), "user": user, "saved_type": saved_type, "next_offset": offset + limit, "total_length": result.get("total")}, 200
+
+@bp.route("/unsave_question", methods=["POST"])
+@jwt_required()
+def on_unsave_question():
+    hash = get_jwt_identity()
+    data = request.get_json()
+
+    result = unsave_question(hash, data.get("hash"))
+
+    return {"message": "Question unsaved"}, 200
 
 
 
@@ -73,16 +100,16 @@ def on_set_username():
 @bp.route("/identity")
 @jwt_required()
 def identity():
-    email = get_jwt_identity()
-    print(email)
-    return email, 200
+    hash = get_jwt_identity()
+    print(hash)
+    return hash, 200
 
 @bp.route("/account")
 @jwt_required()
 def account():
-    email = get_jwt_identity()
+    hash = get_jwt_identity()
 
-    user = get_user_by_email(email)
+    user = get_user_by_hash(hash)
 
-    print(email)
+    print(hash)
     return jsonify(user), 200

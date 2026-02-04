@@ -4,6 +4,8 @@ from datetime import datetime
 from ..db import Base, CreatedAtColumn
 from .hash import generate_unique_hash
 
+import src.db.ranked as ranked
+
 class Users(Base, CreatedAtColumn):
     __tablename__ = 'users'
     __table_args__ = {'mysql_engine':'InnoDB'}
@@ -18,6 +20,9 @@ class Users(Base, CreatedAtColumn):
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
     is_online = Column(Boolean, default=False)
+    premium = Column(Boolean, default=False)
+    xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
 
     current_lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=True)
     current_lobby = relationship(
@@ -35,8 +40,8 @@ class Users(Base, CreatedAtColumn):
     stats = relationship(
         "Stats",
         back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        uselist=False
     )
 
     created_lobbies = relationship(

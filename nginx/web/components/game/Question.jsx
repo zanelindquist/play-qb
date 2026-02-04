@@ -7,7 +7,7 @@ import {
     Dimensions,
     ScrollView,
     Image,
-    Text
+    Text,
 } from "react-native";
 import {
     Button,
@@ -31,26 +31,30 @@ import GlassyView from "../custom/GlassyView";
 import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
+import ustyles from "../../assets/styles/ustyles";
 
-const LEVELS = ["Middle School", "High School", "Collegiate", "Open"]
+const LEVELS = ["Middle School", "High School", "Collegiate", "Open"];
 
 const collapsedHeight = 40;
-const EXPANDED_HEIGHT = 400;
-
+const EXPANDED_HEIGHT = 500;
+const TICK_MS = 16; // 60 FPS
 
 const Question = ({
     question,
     timestamp,
-    state="dead",
-    setState,
+    state = "dead",
     onInterruptOver,
     onFinish,
     onDeath,
+    onCharChange,
     speed = 400,
     style,
+    rightIcon,
+    onSave = null,
+    saveIcon,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    MS_FOR_ANSWER = 5000,
+    ANSWER_MS = 5000,
 }) => {
     // Text variables
     const fullText = question.question || "";
@@ -58,248 +62,283 @@ const Question = ({
     const [interruptIndexes, setInterruptIndexes] = useState([]);
 
     // Animation
-    const [firstRenderForAnimation, setFirstRenderForAnimation] = useState(true)
-    const [isMinimized, setIsMinimized] = useState(false)
-    const [expandedHeight, setExpandedHeight] = useState(EXPANDED_HEIGHT)
+    const [isMinimized, setIsMinimized] = useState(false);
+    const [expandedHeight, setExpandedHeight] = useState(EXPANDED_HEIGHT);
+
+    const frameRef = useRef(null);
+    const lastTimeRef = useRef(performance.now());
+    const charAccumulatorRef = useRef(0);
 
     // Gamestate and buzz variables
+    const stateRef = useRef(state);
     const [isFinished, setIsFinished] = useState(false);
     const [isDead, setIsDead] = useState(false);
-    const [msLeft, setMsLeft] = useState(0)
-    const [msLeftInWaiting, setMsLeftInWaiting] = useState(MS_UNTIL_DEAD)
+    const [msLeft, setMsLeft] = useState(0);
+    const [remainingWaitTime, setRemainingWaitTime] = useState(MS_UNTIL_DEAD)
 
     // Reading constants
-    const charsPerMinute = speed * 6;
+    const charsPerMinute = speed * 5;
     const msPerChar = 60_000 / charsPerMinute; // ms per char
 
     // Status bar
-    const [reRenderStatusBar, setReRenderStatusBar] = useState(0);
+    const [barWidth, setBarWidth] = useState(1);
 
-    // When the state changes
+    // Other
+    const [isSaved, setIsSaved] = useState(false);
+
     useEffect(() => {
-        if (state == "interrupted") {
+        // Set the state ref for some parts of the program to use instantaneously in a useEffect
+        stateRef.current = state;
+        
+        // If the state is set to running, we want to pre-emptively set the ms left for the buzz as ANSWER_MS too.
+        if (state === "running" || state === "interupted") {
+            setMsLeft(ANSWER_MS);
+        } else if (state === "interrupted") {
+            // Add an interrupt
             setInterruptIndexes((prev) => {
                 // Make sure there are no duplicates
                 if(charIndex === prev[prev.length - 1]) return prev;
                 return [...prev, charIndex]
             })
-            setMsLeft(MS_FOR_ANSWER)
-            const interval = setInterval(() => {
-                setMsLeft((prev) => {
-                    if (prev <= 0) {
-                        // If there is still more to read
-                        if (onInterruptOver) onInterruptOver(charIndex < fullText.length)
-                        clearInterval(interval);
-                        return 0;
-                    }
 
-                    return prev - 10;
-                })
-            }, 10);
-
-            // Clear interval after enough time has passed
-            return () => clearInterval(interval);
-
-        } 
-        else if (state == "running") {
-            let currentIndex = charIndex;
-
-            // Calculate how many chars we need since the timestamp on the quesiton
-            const diff = Date.now() - timestamp
-            currentIndex += Math.ceil(diff / msPerChar)
-            const interval = setInterval(() => {
-                if (state == "running") {
-                    currentIndex += 1;
-                    setCharIndex(currentIndex);
-
-                    if (currentIndex >= fullText.length) {
-                        setIsFinished(true);
-                        if (onFinish) onFinish();
-                        clearInterval(interval);
-                    }
-                }
-            }, msPerChar);
-            return () => clearInterval(interval);
+            setMsLeft(ANSWER_MS);
         }
-        else if (state == "waiting") {
-            setMsLeft(msLeftInWaiting)
-
-            const interval = setInterval(() => {
-                setMsLeftInWaiting((prev) => {
-                    if (prev <= 0) {
-                        if (onDeath) onDeath();
-                        setIsDead(true);
-                        clearInterval(interval);
-                        return 0;
-                    }
-
-                    setMsLeft(prev - 10)
-
-                    return prev - 10;
-                });
-            }, 10);
-
-            return () => clearInterval(interval);
-        }
-        else if (state == "dead") {
+        else if (state === "waiting") {
+            setMsLeft(remainingWaitTime);
+        } else if (state === "dead") {
             setCharIndex(fullText.length)
-        }
-        else if (state == "resume") {
-            if(!setState) return;
-            if(charIndex < fullText.length) setState("running")
-            else if (msLeftInWaiting > 0) {
-                console.log("QUESTION SETTING TO WAITING")
-                setState("waiting")
-            }
-            else setState("dead")
-        }
-        else {
-            throw Error("<Question>: unknown state passed")
         }
     }, [state]);
 
-    // Rerender the status bar
     useEffect(() => {
-        setReRenderStatusBar((prev) => prev + 1)
-    }, [msLeft, charIndex])
+        const loop = (now) => {
+            const delta = now - lastTimeRef.current;
+            lastTimeRef.current = now;
+
+            const currentState = stateRef.current;
+
+            if (currentState === "interrupted") {
+                setMsLeft((prev) => {
+                    const next = Math.max(prev - delta, 0);
+                    if (next === 0)
+                        onInterruptOver?.(charIndex < fullText.length);
+                    return next;
+                });
+            } else if (currentState === "waiting") {
+                setMsLeft((prev) => {
+                    const next = Math.max(prev - delta, 0);
+                    if (next === 0) {
+                        setIsDead(true);
+                        onDeath?.();
+                    }
+                    // Update the remaining wait time because we want to save this amount for multiple buzzes
+                    setRemainingWaitTime(next)
+                    return next;
+                });
+            } else if (currentState === "running") {
+                charAccumulatorRef.current += delta;
+                while (charAccumulatorRef.current >= msPerChar) {
+                    charAccumulatorRef.current -= msPerChar;
+
+                    setCharIndex((prev) => {
+                        const next = prev + 1;
+                        onCharChange?.(next);
+                        if (next >= fullText.length) {
+                            setIsFinished(true);
+                            onFinish?.();
+                            return prev;
+                        }
+                        return next;
+                    });
+                }
+            }
+
+            frameRef.current = requestAnimationFrame(loop);
+        };
+
+        frameRef.current = requestAnimationFrame(loop);
+
+        return () => cancelAnimationFrame(frameRef.current);
+    }, []);
 
     useEffect(() => {
-        setIsMinimized(!question.expanded)
-    }, [question])
-
+        setIsMinimized(!question.expanded);
+    }, [question]);
 
     function handleAnimationFinish(expanded) {
-        if(!expanded) setIsMinimized(true)
+        if (!expanded) setIsMinimized(true);
     }
 
     function handleDeadPressed() {
-        if(state !== "dead") return;
-        setIsMinimized(!isMinimized)
-        handleAnswerCollapsed()
+        if (state !== "dead") return;
+        setIsMinimized(!isMinimized);
+        handleAnswerCollapsed();
     }
 
     function handleAnswerExpanded(answerHeight) {
-        setExpandedHeight(expandedHeight + answerHeight)
+        setExpandedHeight(expandedHeight + answerHeight);
     }
 
     function handleAnswerCollapsed() {
-        setExpandedHeight(EXPANDED_HEIGHT)
+        setExpandedHeight(EXPANDED_HEIGHT);
     }
+
+    function handleSave() {
+        onSave(question.hash);
+        setIsSaved(true);
+    }
+
+    // TODO: Fix expanding answer errors
 
     return (
         <ExpandableView
-            expanded={ question.expanded || (state == "dead" && !isMinimized)}
-            style={styles.expandable}
+            expanded={question.expanded || (state == "dead" && !isMinimized)}
+            style={[styles.expandable, style]}
             maxHeight={expandedHeight}
             onAnimationFinish={handleAnimationFinish}
         >
-        {
-        !isMinimized ?
-        <GlassyView
-            style={[styles.container, {height: expandedHeight}]}
-            onPress={handleDeadPressed}
-        >
-            <View style={styles.top}>
-                <View style={styles.progressBarContainer}>
-                    <View
-                        style={[
-                            styles.progressBar,
-                            state === "running"
-                            ? {
-                                width: `${(1 - charIndex / fullText.length) * 100}%`,
-                                backgroundColor: theme.static.lightblue,
-                            }
-                            : state === "waiting"
-                            ? {
-                                width: `${(msLeft / MS_UNTIL_DEAD) * 100}%`,
-                                backgroundColor: theme.static.red,
-                            }
-                            : state === "interrupted"
-                            ? {
-                                width: `${(msLeft / MS_FOR_ANSWER) * 100}%`,
-                                backgroundColor: theme.primary,
-                            }
-                            : {
-                                width: 0,
-                                backgroundColor: "black",
-                            }
-                        ]}
-                    />
-                </View>
+            {!isMinimized ? (
+                <GlassyView
+                    style={[styles.container, { height: expandedHeight }]}
+                    onPress={handleDeadPressed}
+                >
+                    <View style={styles.top}>
+                        <View style={styles.progressBarContainer}>
+                            <View
+                                style={[
+                                    styles.progressBar,
+                                    {
+                                        width:
+                                            (state === "running"
+                                                ? 1 -
+                                                  charIndex / fullText.length
+                                                : state === "waiting"
+                                                  ? msLeft / MS_UNTIL_DEAD
+                                                  : state === "interrupted"
+                                                    ? msLeft / ANSWER_MS
+                                                    : 1) *
+                                                100 +
+                                            "%",
+                                        backgroundColor:
+                                            state === "running"
+                                                ? theme.static.lightblue
+                                                : state === "waiting"
+                                                  ? theme.static.red
+                                                  : state === "interrupted"
+                                                    ? theme.primary
+                                                    : "transparent",
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <View style={ustyles.flex.flexRowSpaceBetween}>
+                            <HelperText>
+                                {LEVELS[question.level]} {">"}{" "}
+                                {question.tournament} {">"}{" "}
+                                {capitalize(question.category)}
+                            </HelperText>
+                            {onSave && (
+                                <IconButton
+                                    icon={
+                                        isSaved
+                                            ? "check"
+                                            : saveIcon || "bookmark"
+                                    }
+                                    style={{
+                                        backgroundColor: isSaved
+                                            ? theme.static.prompt
+                                            : theme.surface,
+                                    }}
+                                    size={20}
+                                    onPress={handleSave}
+                                    disabled={isSaved}
+                                />
+                            )}
+                        </View>
+                        <View>
+                            <HelperText style={styles.questionText}>
+                                {interruptIndexes.map((char, i) => {
+                                    const start = interruptIndexes[i - 1] || 0;
+                                    const end = char;
 
-                <View style={styles.questionTopline}>
-                    <HelperText>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
-                </View>
-                <View>
-                    <HelperText style={styles.questionText}>
-                        {interruptIndexes.map((char, i) => {
-                        const start = interruptIndexes[i - 1] || 0;
-                        const end = char;
+                                    return (
+                                        <Text key={i}>
+                                            {fullText.slice(start, end)}
+                                            <InterrupIcon />
+                                        </Text>
+                                    );
+                                })}
 
-                        return (
-                            <Text key={i}>
-                            {fullText.slice(start, end)}
-                            <InterrupIcon />
-                            </Text>
-                        );
-                        })}
+                                {fullText.slice(
+                                    interruptIndexes[
+                                        interruptIndexes.length - 1
+                                    ] || 0,
+                                    charIndex,
+                                )}
+                            </HelperText>
+                        </View>
+                    </View>
 
-                        {fullText.slice(
-                        interruptIndexes[interruptIndexes.length - 1] || 0,
-                        charIndex
+                    <View style={styles.bottom}>
+                        {
+                            state !== "dead" &&
+                            <HelperText>
+                                {state === "running"
+                                    ? (
+                                        ((fullText.length - charIndex) *
+                                            msPerChar) /
+                                        1000
+                                    ).toFixed(1)
+                                    : (msLeft / 1000).toFixed(1)}
+                                s
+                            </HelperText>
+                        }
+                        {/* <HelperText>{question.answers.main}</HelperText> */}
+                        {state == "dead" && (
+                            <Answers
+                                answers={question.answers}
+                                style={styles.answerComponent}
+                                onExpand={handleAnswerExpanded}
+                                onCollapse={handleAnswerCollapsed}
+                                rightIcon={rightIcon}
+                            />
                         )}
+                    </View>
+                </GlassyView>
+            ) : (
+                <GlassyView
+                    style={styles.collapsedBar}
+                    onPress={handleDeadPressed}
+                >
+                    <HelperText
+                        numberOfLines={1}
+                        style={ustyles.text.shadowText}
+                    >
+                        {LEVELS[question.level]} {">"} {question.tournament}{" "}
+                        {">"} {capitalize(question.category)}
                     </HelperText>
-                </View>
-            </View>
-
-            <View style={styles.bottom}>
-                <HelperText>
-                    {
-                        state == "running" ?
-                        ((1 - charIndex / fullText.length) * fullText.length * charsPerMinute / 60_000).toFixed(1)                                
-                        : (msLeft / 1000).toFixed(1)
-                    }
-                    s
-                </HelperText>
-                <HelperText>{question.answers.main}</HelperText>
-                {
-                    state == "dead" &&
-                    (
-                        <Answers
-                            answers={question.answers}
-                            style={styles.answerComponent}
-                            onExpand={handleAnswerExpanded}
-                            onCollapse={handleAnswerCollapsed}
-                        />
-                    )
-                } 
-            </View>
-        </GlassyView> :
-        <GlassyView
-            style={styles.collapsedBar}
-            onPress={handleDeadPressed}
-        >
-            <HelperText numberOfLines={1}>{LEVELS[question.level]} {">"} {question.tournament} {">"} {capitalize(question.category)}</HelperText>
-            <HelperText style={styles.answer} numberOfLines={1}>
-                {question.answers.main}
-            </HelperText>
-        </GlassyView>
-        }
+                    <View style={styles.right}>
+                        <HelperText
+                            style={[styles.answer, ustyles.text.shadowText]}
+                            numberOfLines={1}
+                        >
+                            {question.answers.main}
+                        </HelperText>
+                        {rightIcon}
+                    </View>
+                </GlassyView>
+            )}
         </ExpandableView>
     );
 };
 
 const InterrupIcon = ({}) => {
-
     return (
         <View style={iiStyles.container}>
-            <Icon
-                source={"bell"}
-                size={"0.8rem"}
-            />
+            <Icon source={"bell"} size={"0.8rem"} />
         </View>
-    )
-}
+    );
+};
 
 const iiStyles = StyleSheet.create({
     container: {
@@ -307,8 +346,8 @@ const iiStyles = StyleSheet.create({
         marginHorizontal: 5,
         backgroundColor: theme.static.early,
         borderRadius: 3,
-    }
-})
+    },
+});
 
 const styles = StyleSheet.create({
     // Minimized
@@ -317,11 +356,14 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         marginHorizontal: 1,
-        borderRadius: 10
+        borderRadius: 10,
     },
-    tournament: {
-
+    right: {
+        flexDirection: "row",
+        gap: 10,
+        alignItems: "center",
     },
+    tournament: {},
     answerComponent: {
         // backgroundColor: "blue"
     },
@@ -331,9 +373,7 @@ const styles = StyleSheet.create({
     },
 
     // Maximized
-    expandable: {
-
-    },
+    expandable: {},
     container: {
         flexDirection: "column",
         justifyContent: "space-between",

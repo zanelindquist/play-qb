@@ -15,13 +15,13 @@ import {
     Title,
     Button,
     HelperText,
-    ActivityIndicator
+    ActivityIndicator,
 } from "react-native-paper";
-import Video from 'react-native-video';
+import Video from "react-native-video";
 import { useWindowDimensions } from "react-native";
 import { getProtectedRoute, putProtectedRoute } from "../../utils/requests";
 import { useAlert } from "../../utils/alerts";
-import {useSocket} from "../../utils/socket"
+import { useSocket } from "../../utils/socket";
 
 import { removeAccessToken } from "../../utils/encryption";
 
@@ -34,6 +34,7 @@ import Footer from "./Footer";
 import GlassyView from "../custom/GlassyView";
 import TopNavItem from "./TopNavItem";
 import Logo from "../custom/Logo";
+import { useBanner } from "@/utils/banners";
 
 const iconColor = theme.primary;
 
@@ -46,13 +47,14 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
+    const {showBanner} = useBanner()
     const segments = useSegments();
-    const {disconnect} = useSocket("lobby")
-
+    const { disconnect } = useSocket("lobby");
 
     // Page variables
     const currentScreen = segments[0] || "Home";
-    const title = currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
+    const title =
+        currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
 
     // States
     const [isDrawerOpen, setDrawerOpen] = useState(isWide);
@@ -83,20 +85,61 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     });
 
     function handleLogout() {
-        removeAccessToken()
-        .then(() => {
-            disconnect()
-            console.log("Logged out")
-            router.replace("/signin")
-        })
+        removeAccessToken().then(() => {
+            disconnect();
+            console.log("Logged out");
+            router.replace("/signin");
+            showBanner("You were logged out")
+        });
     }
+
+    const play = (
+        <TopNavItem
+            label="Play"
+            onPress={() => router.replace("/lobby?mode=solos")}
+            icon="play"
+            iconColor={iconColor}
+        />
+    );
+    const saved = (
+        <TopNavItem
+            label="Saved"
+            onPress={() => router.replace("/saved")}
+            icon="bookmark"
+            iconColor={iconColor}
+        />
+    );
+    const stats = (
+        <TopNavItem
+            label="Stats"
+            onPress={() => router.push("/stats")}
+            icon="poll"
+            iconColor={iconColor}
+        />
+    );
+    const account = (
+        <TopNavItem
+            label="Account"
+            onPress={() => router.push("/account")}
+            icon="account"
+            iconColor={iconColor}
+        />
+    );
+    const logout = (
+        <TopNavItem
+            label="Logout"
+            onPress={handleLogout}
+            icon="logout"
+            iconColor={iconColor}
+        />
+    );
 
     return (
         <View style={styles.root}>
             {/* Background Layer */}
-            <View style={styles.bg} >                
+            <View style={styles.bg}>
                 <Video
-                    source={{uri: "/videos/Earth.mp4"}}
+                    source={{ uri: "/videos/Earth.mp4" }}
                     style={[StyleSheet.absoluteFill]}
                     muted
                     repeat
@@ -108,66 +151,35 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             <View
                 style={styles.navCenter}
                 onLayout={(e) => {
-                    setNavBarHeight(e.nativeEvent.layout.height)
+                    setNavBarHeight(e.nativeEvent.layout.height);
                 }}
             >
                 <GlassyView style={styles.topNav}>
                     <View style={styles.middleNav}>
-                        <Logo text={true} image={false} style={styles.logo}/>
+                        <Logo text={true} image={false} style={styles.logo} />
                     </View>
 
                     <View style={styles.middleNav}>
-                        <TopNavItem
-                            label="Play"
-                            onPress={() => router.replace("/lobby?mode=solos")}
-                            icon="play"
-                            iconColor={iconColor}
-                        />
-                        <TopNavItem
-                            label="Saved"
-                            onPress={() => router.replace("/saved")}
-                            icon="bookmark"
-                            iconColor={iconColor}
-                        />
-                        <TopNavItem
-                            label="Stats"
-                            onPress={() => router.push("/stats")}
-                            icon="poll"
-                            iconColor={iconColor}
-                        />
-\                   </View>
-                    <View style={styles.rightNav} >
-
-                        <TopNavItem
-                            label="Account"
-                            onPress={() => router.push("/account")}
-                            icon="account"
-                            iconColor={iconColor}
-                        />
-                        <TopNavItem
-                            label="Logout"
-                            onPress={handleLogout}
-                            icon="logout"
-                            iconColor={iconColor}
-                        />
+                        {play}
+                        {saved}
+                        {stats}
+                    </View>
+                    <View style={styles.rightNav}>
+                        {account}
+                        {logout}
                     </View>
                 </GlassyView>
             </View>
 
-
             {/* Scroll area */}
             <ScrollView
-                style={[styles.scroll, {paddingTop: navBarHeight}]}
-                contentContainerStyle={styles.scrollContent}
+                style={[styles.scroll, { paddingTop: navBarHeight }]}
+                contentContainerStyle={[styles.scrollContent, style]}
             >
-                {
-                    isLoading ? 
-                    <ActivityIndicator /> :
-                    children
-                }
+                {isLoading ? <ActivityIndicator /> : children}
             </ScrollView>
         </View>
-    );
+    )
 };
 
 const drawerWidth = isWide ? "auto" : 250;
@@ -196,7 +208,7 @@ const styles = StyleSheet.create({
         padding: 10,
         position: "absolute",
         top: 10,
-        zIndex: 10
+        zIndex: 10,
     },
     topNav: {
         maxWidth: 1200,
@@ -210,10 +222,10 @@ const styles = StyleSheet.create({
         flexDirection: "row",
     },
     rightNav: {
-        flexDirection: "row"
+        flexDirection: "row",
     },
     logo: {
-        marginHorizontal: 20
+        marginHorizontal: 20,
     },
 
     scroll: {

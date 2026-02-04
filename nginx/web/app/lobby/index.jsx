@@ -78,6 +78,11 @@ const GAMEMODES = [
         description: "Create a custom game and play with your friends.",
         icon: "hammer-wrench",
     },
+    {
+        name: "ranked",
+        description: "Test your skill against other players and climb up the global leaderboard.",
+        icon: "medal",
+    },
 ];
 
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]
@@ -127,7 +132,6 @@ export default function LobbyScreen() {
                 setPlayersOnline(lobby.number_of_online_players)
                 setFriends(friends)
                 setFriendRequests(friend_requests)
-                console.log("FRIENDS", friends, friend_requests)
 
                 for(let i = 0; i < party_members.length; i++) {
                     joinParty(party_members[i])
@@ -146,7 +150,7 @@ export default function LobbyScreen() {
             });
 
             addEventListener("prelobby_not_found", ({ player }) => {
-                showBanner("Lobby not found")
+                showBanner("Lobby not found", {backgroundColor: theme.error})
             })
 
             addEventListener("invited", ({from_user, party_hash}) => {
@@ -187,12 +191,12 @@ export default function LobbyScreen() {
                     // Update the lobby info
                     setLobbyInfo(lobby)
 
-                    showBanner(`You left the party`)
+                    showBanner(`You left the party`, {backgroundColor: theme.error})
                     return
                 }
 
                 leaveParty(user.hash)
-                showBanner(`${user.username} left the party`)
+                showBanner(`${user.username} left the party`, {backgroundColor: theme.error})
             })
 
             addEventListener("party_member_readied", ({ready_info}) => {
@@ -247,12 +251,12 @@ export default function LobbyScreen() {
 
             addEventListener("failed_lobby_creation", (error) => {
                 console.log(error)
-                showBanner("Failled to create lobby: " + error?.message)
+                showBanner("Failled to create lobby: " + error?.message, {backgroundColor: theme.error})
                 setIsReady(false)
             })
 
             addEventListener("failed_lobby_join", (error) => {
-                showBanner("Failed to join lobby: "+ error?.message)
+                showBanner("Failed to join lobby: "+ error?.message, {backgroundColor: theme.error})
                 setIsReady(false)
             })
 
@@ -275,7 +279,7 @@ export default function LobbyScreen() {
             })
 
             addEventListener("removed_friend", ({message, friends}) => {
-                showBanner(message)
+                showBanner(message, {backgroundColor: theme.error})
                 if(friends !== undefined) setFriends(friends)
             })
 
@@ -413,7 +417,7 @@ export default function LobbyScreen() {
         if(!lobby) return
         // Don't let them do this if they're not the party leader
         if(!myPM?.is_leader) {
-            showBanner("You are not the party leader")
+            showBanner("You are not the party leader", {backgroundColor: theme.error})
         } else {
             setLobbyInfo(lobby)
             setCustomSettings(lobby)

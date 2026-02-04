@@ -9,14 +9,17 @@ import random
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists
+from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists, update
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
-from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 
+from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
 from .db import engine
 from .models.hash import *
+import src.db.ranked as ranked
+from src.db.classes import *
+
 
 # Answer judging constants
 BRACKETED = re.compile(r"\[.*?\]")
@@ -55,10 +58,24 @@ CATEGORIES = [
     "current events"
     "custom",
 ];
-PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5"]
+CATEGORY_CODES = [
+    "science",
+    "history",
+    "literature",
+    "social science",
+    "philosophy",
+    "religion",
+    "mythology",
+    "geography",
+    "fine arts",
+    "current events"
+]
+
+# TODO: protect ranked lobbies
+PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5", "custom", "ranked"]
 
 # Cleaning up database
-LOBBY_DELETE_DAYS = 0
+LOBBY_DELETE_DAYS = 10
 
 def normalize(s: str) -> str:
     text = re.sub(r"\s+", " ", s.lower().strip())
@@ -102,7 +119,7 @@ def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
     """
         
     if obj is None:
-        return
+        return None
     
     # Set the model name to the capitalized name of the table obj is from
     model_name = inspect(obj).mapper.local_table.name.capitalize()
@@ -128,7 +145,6 @@ def to_dict_safe(obj, depth=0, gentle=True, rel_depths=None):
             c.key: getattr(obj, c.key)
             for c in inspect(obj).mapper.column_attrs
         }
-
 
     for rel, rel_table in relationships.items():
         if depth > 0 or (isinstance(rel_depths, dict) and rel in rel_depths.keys()) or rel_depths == "LENGTH":
@@ -244,6 +260,11 @@ def search_filter(items, keys, query):
 
     return filtered
 
+def get_category_code(category: str):
+    return CATEGORY_CODES.index(category)
+
+def get_category_from_code(index: int):
+    return CATEGORY_CODES[index]
 
 
 # CREATING RESOURCES
@@ -273,7 +294,7 @@ def create_user(data):
         session.add(stats)
         session.commit()
 
-        return {'message': 'create_user(): success', "code": 201}
+        return {'message': 'create_user(): success', "user": to_dict_safe(new_user), "code": 201}
     
     except Exception as e:
         print(e)
@@ -354,10 +375,10 @@ def create_lobby(settings):
     finally:
         session.commit()
 
-def create_friend_request_from_email_to_hash(email, hash):
+def create_friend_request(user_hash, hash):
     session = get_session()
     try:
-        user = get_user_by_email(email)
+        user = get_user_by_hash(user_hash)
         target = get_user_by_hash(hash)
 
         if not user or not target:
@@ -405,18 +426,78 @@ def create_friend_request_from_email_to_hash(email, hash):
         return {'message': 'Friend request sent to ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'create_friend_request(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
+def save_question(question_id, user_id, saved_type="missed"): # category= missed, correct, saved
+    session = get_session()
+    try:
+        # There could be two: one for tracking correct answers, and one as just a saved
+        saved_questions = session.execute(
+            select(SavedQuestions)
+            .where(
+                and_(
+                    SavedQuestions.question_id == question_id,
+                    SavedQuestions.user_id == user_id,
+                )
+            )
+        ).scalars().all()
 
+        answer_tracking_question = None
+        saved_question = None
+        for sq in saved_questions:
+            if sq.saved_type == "saved":
+                saved_question = sq
+            else:
+                answer_tracking_question = sq
+
+        if answer_tracking_question and saved_type != "saved":
+            # If there is a saved question already, but the new saved type = saved and the old saved type is not missed, make a new question
+            # If the new saved type is saved and the category is missed or correct, we want to add a new question anyway
+            
+            # If they just got the answer correct and there is already an instance of them getting it wrong, then change teh SavedQuestion to correct
+            if saved_type == "correct" and answer_tracking_question.saved_type == "missed":
+                setattr(answer_tracking_question, "saved_type", "correct")
+
+            # Increment the categories
+            if saved_type == "missed":
+                setattr(answer_tracking_question, "missed_count", answer_tracking_question.missed_count + 1)
+            elif saved_type == "correct":
+                setattr(answer_tracking_question, "correct_count", answer_tracking_question.correct_count + 1)
+            session.commit()
+
+            return
+        
+        if saved_question and saved_type == "saved":
+            return {'message': 'save_question(): that question is already saved', "code": 403}
+
+        new_saved_question = SavedQuestions(
+            question_id=question_id,
+            user_id=user_id,
+            saved_type=saved_type,
+            missed_count=1 if saved_type == "missed" else 0,
+            correct_count=1 if saved_type == "correct" else 0
+        )
+
+        session.add(new_saved_question)
+        
+        session.commit()
+
+        return {'message': 'save_question(): success', "code": 200}
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'save_question(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
 
 
 # RETRIEVING RESOURCES
 
 # All of thse functions must return dicts, not SQL Alchemy objects
 
-def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+def get_user_by_email(email, gentle=True, advanced=False, rel_depths=None, depth=0):
     try:
         session = get_session()
         user = None
@@ -435,7 +516,7 @@ def get_user_by_email(email, gentle=True, advanced=False, joinedloads=False, rel
     finally:
         session.remove()
 
-def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_depths=None, depth=0):
+def get_user_by_hash(hash, gentle=True, advanced=False, rel_depths=None, depth=0):
     try:
         session = get_session()
         user = None
@@ -454,7 +535,6 @@ def get_user_by_hash(hash, gentle=True, advanced=False, joinedloads=False, rel_d
         return None
     finally:
         session.remove()
-
 
 def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
     session = get_session()
@@ -517,6 +597,23 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
     except Exception as e:
         return {"code": 400, "error": str(e)}
 
+def get_question_by_hash(hash):
+    try:
+        session = get_session()
+        question = None
+
+        question = session.execute(
+            select(Questions)
+            .where(Questions.hash == hash)
+        ).scalars().first()
+
+        return to_dict_safe(question)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
 def get_lobby_by_alias(lobbyAlias):
     session = get_session()
     try:
@@ -576,15 +673,15 @@ def get_game_by_lobby_alias(lobbyAlias):
     finally:
         session.commit()
 
-def get_friends_by_email(email, online=False, party=False):
+def get_friends_by_hash(hash, online=False, party=False):
     session = get_session()
 
-    if not email:
-        raise Exception("get_friends_by_email(): No email provided")
+    if not hash:
+        raise Exception("get_friends_by_hash(): No hash provided")
     
     user = session.execute(
         select(Users)
-        .where(Users.email == email)
+        .where(Users.hash == hash)
     ).scalars().first()
 
     if not user:
@@ -624,15 +721,15 @@ def get_friends_by_email(email, online=False, party=False):
         to_dict_safe(friend) for friend in filtered_friends
     ]
 
-def get_friend_requests_by_email(email):
+def get_friend_requests_by_hash(hash):
     session = get_session()
 
-    if not email:
-        raise Exception("get_friends_by_email(): No email provided")
+    if not hash:
+        raise Exception("get_friends_by_hash(): No hash provided")
     
     user = session.execute(
         select(Users)
-        .where(Users.email == email)
+        .where(Users.hash == hash)
     ).scalars().first()
 
     if not user:
@@ -723,12 +820,12 @@ def attatch_players_to_teams(teams: dict):
 
     return mutated_teams
 
-def get_stats_by_email(email: str) -> list:
+def get_stats_by_hash(hash: str) -> list:
     session = get_session()
     try:
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         if not user:
@@ -738,21 +835,101 @@ def get_stats_by_email(email: str) -> list:
 
     except Exception as e:
         session.rollback()
-        return {'message': 'get_stats_by_email(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'hash(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
+def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=20):
+    try:
+        session = get_session()
+        
+        user = session.execute(
+            select(Users)
+            .where(Users.hash == hash)
+        ).scalars().first()
+
+        where_clauses = [SavedQuestions.user_id == user.id]
+
+        if saved_type != "all":
+            where_clauses.append(SavedQuestions.saved_type == saved_type)
+
+        # Build base statement with all filters
+        base_stmt = select(SavedQuestions).where(*where_clauses).order_by(SavedQuestions.created_at.desc())
+
+        # Only join if filtering by question category
+        if category != "all":
+            base_stmt = base_stmt.join(SavedQuestions.question).where(Questions.category == category)
+
+        # Get total count
+        total = session.execute(
+            select(func.count()).select_from(base_stmt.subquery())
+        ).scalar_one()
+
+        # Execute paginated query
+        saved_questions = session.execute(
+            base_stmt.limit(limit).offset(offset)
+        ).scalars().all()
+
+        parsed = []
+
+        for sq in saved_questions:
+            q = to_dict_safe(sq.question, rel_depths=REL_DEP["db:question"])
+            parsed_answers = {}
+            keys = ["main", "accept", "prompt", "reject", "suggested_category"]
+            index = 0;
+            for part in q.get("answers").split(" || "):
+                parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+                index += 1
+
+            # Make the main answer not a list
+            parsed_answers["main"] = parsed_answers["main"][0]
+
+            # Parse answer
+            q["answers"] = parsed_answers
+            q["saved_type"] = sq.saved_type
+            q["correct_count"] = sq.correct_count
+            q["missed_count"] = sq.missed_count
+
+            parsed.append(q)
+
+        return {"questions": parsed, "total": total}
+
+    except Exception as e:
+        print(e)
+        return {'message': 'get_saved_questions(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.remove()
+
+def get_rating_params() -> RatingParameters:
+    try:
+        session = get_session()
+        
+        params = session.execute(
+            select(RatingParams)
+        ).scalars().all()
+
+        dict_params = {}
+
+        for param in params:
+            dict_params[param.name] = param.value
+
+        return RatingParameters(dict_params)
+
+    except Exception as e:
+        return {'message': 'get_saved_questions(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.remove()
 
 
 # EDITING RESOURCES
 
-def set_user_online(email: str, online=True):
+def set_user_online(hash: str, online=True):
     try:
         session = get_session()
 
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         setattr(user, "is_online", online)
@@ -786,7 +963,11 @@ def add_player_to_game_scores(game_hash:str, player_hash: str, team_hash:str = N
             "buzzes_encountered": 0,
             "early": 0,
             "bonuses": 0,
-            "questions_encountered": 0
+            "questions_encountered": 0,
+            
+            "rounds": 0,
+            "games": 0,
+            "average_time_to_buzz": 0,
         }
         
         # 1. Get the game from the hash
@@ -963,8 +1144,8 @@ def write_user_stats(player_hash: str, stats: dict) -> dict:
             # Forget it if there is no change
             if stats[key] == 0:
                 continue
-            new_total = getattr(user.stats, key) + stats.get(key)
-            all_stats[key] = new_total
+            new_total = getattr(user.stats, key) + Decimal(stats.get(key))
+            all_stats[key] = float(new_total)
             setattr(user.stats, key, new_total)
 
         session.commit()
@@ -973,6 +1154,7 @@ def write_user_stats(player_hash: str, stats: dict) -> dict:
 
     except Exception as e:
         session.rollback()
+        print(e)
         return {'message': 'write_user_stats(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
@@ -1003,13 +1185,13 @@ def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
     finally:
         session.commit()
 
-def edit_user(email:str, data: dict):
+def edit_user(hash:str, data: dict):
     try:
         session = get_session()
 
         user = session.execute(
             select(Users)
-            .where(Users.email == email)
+            .where(Users.hash == hash)
         ).scalars().first()
 
         if not user:
@@ -1059,6 +1241,36 @@ def classify_question(hash: str, category: str) -> dict:
         return {"message": "classify_question(): failure","error": e, "code": 500}
     finally:
         session.remove()
+
+def update_game_active_at(hash: str, active_at: datetime): 
+    session = get_session()
+    try:
+        active_at_dt = datetime.fromisoformat(active_at)
+        cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS - 2)
+
+        # We don't need to update it then
+        if (active_at_dt > cutoff):
+            return
+
+
+        game = session.execute(
+            select(Games)
+            .where(Games.hash == hash)
+        ).scalars().first()
+
+        setattr(game, "active_at", datetime.now(timezone.utc))
+
+        session.commit()
+
+        return {"message": "update_game_active_at(): success", "code": 200}
+
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {"message": "update_game_active_at(): failure","error": e, "code": 500}
+    finally:
+        session.remove()
+
 
 
 # DELETING RESOURCES
@@ -1125,21 +1337,31 @@ def remove_user_game_scores(game_hash: str, player_hash: str):
 
 def delete_inactive_lobbies():
     # TODO: We need to remove the Players table before this probably
-    return;
     session = get_session()
     try:
         cutoff = datetime.utcnow() - timedelta(days=LOBBY_DELETE_DAYS)
 
-        print("cutoff:", cutoff)
-        print("min active_at:", session.execute(
-            select(func.min(Games.active_at))
-        ).scalar())
+        to_delete = session.execute(
+            select(func.count())
+            .select_from(Games)
+            .where(Games.active_at < cutoff)
+        ).scalar()
 
         # Delete inactive games
+        # This will help when there are potentially a lot of games on common servers so that we don't get dead buildup
         games = session.execute(
             delete(Games)
-            .where(Games.active_at <= cutoff)
+            .where(Games.active_at < cutoff)
         )
+
+        to_delete_lobbies = session.execute(
+            select(func.count())
+            .select_from(Lobbies)
+            .where(
+                ~Lobbies.games.any(),                 # no gamess exist
+                ~Lobbies.name.in_(PROTECTED_LOBBIES)  # not protected
+            )
+        ).scalar()
 
         # Now delete lobbies with no games
         session.execute(
@@ -1151,12 +1373,14 @@ def delete_inactive_lobbies():
 
         session.commit()
 
-        return stats
+        print(f"Deleted {to_delete} games and {to_delete_lobbies} lobbies")
+
+        return {'message': 'delete_inactive_lobbies(): success', "code": 200}
 
     except Exception as e:
         session.rollback()
         print(e)
-        return {'message': 'get_lobby_by_alias(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'delete_inactive_lobbies(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -1186,7 +1410,32 @@ def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
         return {'message': 'Unfriended ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'create_friend_request_from_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'remove_friend_by_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def unsave_question(hash: str, question_hash: str) -> bool:
+    session = get_session()
+    try:
+        user = get_user_by_hash(hash)
+        question = get_question_by_hash(question_hash)
+
+        # See if there is already a friend request
+        question = session.execute(
+            delete(SavedQuestions)
+            .where(
+                SavedQuestions.user_id == user.get("id"),
+                SavedQuestions.question_id == question.get("id"),
+                SavedQuestions.saved_type == "saved"
+            )
+        )
+
+        session.commit()
+
+        return {'message': "Question unsaved", "code": 200}
+    except Exception as e:
+        session.rollback()
+        return {'message': 'unsave_question(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
@@ -1404,7 +1653,7 @@ def strip_answerline_junk(answer: str) -> str:
 
 # Game state management
 
-def user_join_lobby(email, lobbyAlias):
+def user_join_lobby(hash, lobbyAlias):
     session = get_session()
     try:
         lobby = session.execute(
@@ -1420,7 +1669,7 @@ def user_join_lobby(email, lobbyAlias):
         user = session.execute(
             select(Users)
             .where(
-                Users.email == email,
+                Users.hash == hash,
             )
         ).scalars().first()
 
@@ -1452,13 +1701,13 @@ def user_join_lobby(email, lobbyAlias):
     finally:
         session.commit()
 
-def user_disconnect_from_lobby(email):
+def user_disconnect_from_lobby(hash):
     session = get_session()
     try:
         user = session.execute(
             select(Users)
             .where(
-                Users.email == email,
+                Users.hash == hash,
             )
         ).scalars().first()
 
@@ -1501,6 +1750,219 @@ def set_question_to_game(question, lobbyAlias):
     finally:
         session.commit()
 
+
+# ===== RANKED SYSTEM =====
+
+def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction: float, is_non_answer: bool = False) -> dict:
+    session = get_session()
+    try:
+        # Get data to start
+        user = get_user_by_hash(user_hash, rel_depths={"stats": 0})
+        rating_params = get_rating_params()
+
+        stats = session.execute(
+            select(Stats)
+            .where(Stats.user_id == user.get("id"))
+        ).scalars().first()
+
+        # Load global skill
+        g = ranked.Skill(stats.skill_mu, stats.skill_sigma)
+
+        # Load category skill
+        category_skill = session.execute(
+            select(UserCategorySkill)
+            .where(
+                UserCategorySkill.user_id == user.get("id"),
+                UserCategorySkill.category_code == get_category_code(question.get("category").lower())
+            )
+        ).scalars().first()
+        # If there isn't category skill, then we need to create one
+        if not category_skill:
+            category_skill = UserCategorySkill(
+                user_id=user.get("id"),
+                category_code=get_category_code(question.get("category")),
+                questions_seen=1
+            )
+
+            session.add(category_skill)
+            session.flush()
+
+        # Category skill
+        c = ranked.Skill(category_skill.mu, category_skill.sigma)
+        # Calculate effective skill by combining the user's overall and category skill
+        effective_skill = ranked.effective_skill(g, c, global_weight=rating_params.alpha)
+
+        # Load question difficulty
+        q = ranked.Difficulty(question.get("difficulty_mu"), question.get("difficulty_sigma"), buzz_fraction=buzz_fraction)
+
+        # Compute updated_skill
+        updated = None
+        if is_non_answer:
+            updated = ranked.update_skill(effective_skill, q, False, 1, beta=rating_params.beta)
+            # updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
+        else:
+            updated = ranked.update_skill(effective_skill, q, bool(is_correct > 0), buzz_fraction, beta=rating_params.beta)
+
+        print("=" * 50)
+        print(f"Question difficulty: mu={q.mu}, sigma={q.sigma}")
+        print(f"Effective skill BEFORE: mu={effective_skill.mu}, sigma={effective_skill.sigma}")
+        print(f"Updated effective skill: mu={updated.mu}, sigma={updated.sigma}")
+        print(f"Is correct: { bool(is_correct > 0)}, buzz_fraction: {buzz_fraction}")
+        print(f"Beta: {rating_params.beta}")
+
+
+        # Throttle for not seeing a ton of questions
+        cat_conf = min(1.0, category_skill.questions_seen / 20)
+        # Rating_params.alpha is the proportion that goes towards global skill
+        WEIGHT = rating_params.alpha / 2 + rating_params.alpha / 2 * (1 - cat_conf)
+
+        # Calculate deltas (this is fine)
+        delta_mu = updated.mu - effective_skill.mu
+        delta_sigma = updated.sigma - effective_skill.sigma
+
+        print("DELTA MU", delta_mu)
+        print("DELTA SIGMA", delta_sigma)
+
+        # Update global and category skills (this is fine)
+        g_new = ranked.Skill(g.mu, g.sigma)
+        g_new.mu += WEIGHT * delta_mu
+        g_new.sigma = max(1.0, g_new.sigma + WEIGHT * delta_sigma)
+
+        c_new = ranked.Skill(c.mu, c.sigma)
+        c_new.mu += (1 - WEIGHT) * delta_mu
+        c_new.sigma = max(1.0, c_new.sigma + (1 - WEIGHT) * delta_sigma)
+
+        # After calculating g_new and c_new, add:
+        print(f"WEIGHT: {WEIGHT}")
+        print(f"Global skill BEFORE: mu={g.mu}, sigma={g.sigma}")
+        print(f"Global skill AFTER: mu={g_new.mu}, sigma={g_new.sigma}")
+        print(f"Category skill BEFORE: mu={c.mu}, sigma={c.sigma}")
+        print(f"Category skill AFTER: mu={c_new.mu}, sigma={c_new.sigma}")
+        print("=" * 50)
+
+        # Save the updated score to the database
+        setattr(stats, "skill_mu", g_new.mu)
+        setattr(stats, "skill_sigma", g_new.sigma)
+        setattr(stats, "last_active_at", datetime.now(timezone.utc))
+
+        setattr(category_skill, "mu", c_new.mu)
+        setattr(category_skill, "sigma", c_new.sigma)
+        setattr(category_skill, "questions_seen", category_skill.questions_seen + 1)
+
+        # Update question difficulty
+        updated_question = ranked.update_question_difficulty(q, updated, is_correct, buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, min_sigma=rating_params.q_min_sigma)
+
+        # TODO: MAKE SURE UPDATING QUESTION IS ACURATE 
+
+        # Update question
+        # question = session.execute(
+        #     select(Questions)
+        #     .where(Questions.hash == question.get("hash"))
+        # ).scalars().first()
+
+        # setattr(question, "difficulty_mu", updated_question.mu)
+        # setattr(question, "difficulty_sigma", updated_question.sigma)
+
+        session.commit()
+
+        # Get and display the user's new skill level
+        new_skill = ranked.Skill(stats.skill_mu, stats.skill_sigma)
+        new_cat_rank = ranked.get_rank(
+            ranked.Skill(category_skill.mu, category_skill.sigma)
+        )
+
+        new_user_rank = ranked.get_rank(new_skill)
+        rank_change = ranked.skill_diff(g, new_skill)
+
+        # Update the user's new rank and rr
+        setattr(stats, "visible_rank", new_user_rank.rank)
+        setattr(stats, "rank_points", new_user_rank.rr)
+
+        session.commit()
+
+        user = get_user_by_hash(user_hash, {"stats": 0})
+
+        return {'message': 'update_rank(): success', "user": {"hash": user.get("hash"), "rank": new_user_rank.to_dict(), "rank_change": rank_change, "category_rank": new_cat_rank.to_dict()}, "code": 200}
+    except Exception as e:
+        session.rollback()
+        print(e)
+        return {'message': 'update_rank(): failure', 'error': f'{e}', "code": 400}
+    finally:
+        session.commit()
+
+def ranked_on_next_question(game_m: dict, emit):
+            # The user not answering (at least at any point in the question if someone got us early) tells us that the user does not know the answer to the question at that timestep
+        
+        # Handle no interrupts
+        interrupts = game_m.get("question_interrupts") or [{"proportion_through": 1.0}]
+        proportion_through = interrupts[-1].get("proportion_through")
+
+
+        interruptor_hashes = {
+            interrupt.get("user", {}).get("hash")
+            for interrupt in game_m.get("question_interrupts", [])
+            if interrupt.get("user", {}).get("hash") is not None
+        }
+
+        non_answering_users = [
+            user_hash
+            for user_hash in game_m.get("users", {}).keys()
+            if user_hash not in interruptor_hashes
+        ]
+
+        for user_hash in non_answering_users:
+            # Assume every question is read to completion
+            result = update_rank(user_hash, game_m.get("current_question"), is_correct=False, buzz_fraction=1, is_non_answer=True)
+            rank_change_information = result.get("user")
+
+            if rank_change_information:
+                emit("rank_changed", rank_change_information, room=f"user:{rank_change_information.get("hash")}")
+
+def reset_user_ranks():
+    session = get_session()
+    rating_params = get_rating_params()
+
+    # Remove stats
+    session.execute(
+        update(Stats)
+        .values(
+            skill_mu=rating_params.initial_mu,
+            skill_sigma=rating_params.initial_sigma
+        )
+    )
+
+    # Remove category stats
+    session.execute(
+        delete(UserCategorySkill)
+    )
+
+    session.commit()
+
+    print(f"Successfully reset ranks to values: mu={rating_params.initial_mu}, sigma={rating_params.initial_sigma}")
+
+def reset_question_difficulties():
+    session = get_session()
+
+    level_difficulties = ranked.QUESTION_DIFFICULTIES
+
+    for level in level_difficulties.keys():
+        data = level_difficulties[level]
+        session.execute(
+            update(Questions)
+            .values(
+                difficulty_mu=data.get("mu"),
+                difficulty_sigma=data.get("sigma")
+            )
+            .where(Questions.level == level)
+        )
+
+    session.commit()
+
+    print(f"Successfully question difficulties")
+    
+
+# reset_user_ranks()
+# reset_question_difficulties()
 
 # =====SANITATION AND VALIDATION=====
 

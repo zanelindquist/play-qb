@@ -19,7 +19,9 @@ import GlassyView from "@/components/custom/GlassyView.jsx";
 import theme from "@/assets/themes/theme.js";
 import GradientText from "../components/custom/GradientText.jsx"
 import BentoGameMode from "../components/entities/BentoGameMode.jsx"
+import VerticalHoverOption from "../components/custom/VerticalHoverOption.jsx"
 import GameDemoBox from "../components/custom/GameDemoBox.jsx"
+import ustyles from "@/assets/styles/ustyles.js";
 
 
 const GAMEMODES = [
@@ -89,23 +91,29 @@ export default function HomeScreen() {
                 <View style={styles.about}>
                     <GradientText
                         size={50}
-                        colors={GAMEMODES.map((g) => g.color)}
+                        colors={[theme.primary, theme.onPrimary, theme.primary]} //GAMEMODES.map((g) => g.color)
                         style={styles.title}
                     >Welcome to PlayQB!</GradientText>
+                    <HelperText style={[ustyles.text.header, ustyles.text.center]}>Sharpen your Quiz Bowl skills in competetive gamemodes, create custom lobbies and play with your friends, or enter practice missed questions solo!</HelperText>
                     {/* <View style={[styles.bottomBoxes, styles.bentoRow]}>
                     {
                         DEMO.map((d) => <GameDemoBox info={d}/>)
                     }
                     </View> */}
                 </View>
-                <View style={[styles.topBoxes, styles.bentoRow]}>
-                    <BentoGameMode gamemode={GAMEMODES[3]}/>
-                    <BentoGameMode gamemode={GAMEMODES[4]}/>
-                </View>
-                <View style={[styles.bottomBoxes, styles.bentoRow]}>
-                    <BentoGameMode gamemode={GAMEMODES[0]}/>
-                    <BentoGameMode gamemode={GAMEMODES[1]}/>
-                    <BentoGameMode gamemode={GAMEMODES[2]}/>
+                <View style={ustyles.flex.flexRow}>
+                    {
+                        GAMEMODES.map((g) => 
+                            <VerticalHoverOption
+                                title={g.name}
+                                description={g.description}
+                                color={g.color}
+                                href={g.href}
+                                icon={g.icon}
+                                style={styles.gamemode}
+                            />
+                        )
+                    }
                 </View>
             </View>
         </SidebarLayout>
@@ -124,13 +132,21 @@ const styles = StyleSheet.create({
         gap: 20,
         alignItems: "center",
         width: "100%",
-        marginBottom: 30,
+        marginBottom: 50,
+    },
+    gamemode: {
+        backgroundColor: "red",
     },
     bentoRow: {
         width: "100%",
         flexDirection: "row",
         justifyContent: "space-between",
         gap: 20,
+    },
+    topBoxes: {
+        width: "100%",
+        flexDirection: "row",
+
     },
     title: {
         fontSize: 30,

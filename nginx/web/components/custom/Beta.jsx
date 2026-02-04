@@ -17,19 +17,22 @@ import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
 
 
-export default function Template ({
+export default function Beta ({
     style
 }) {
 
     return (
-        <GlassyView style={[styles.container, style]}>
-        
-        </GlassyView>
+        <HelperText style={[styles.container, style]}>
+            Beta
+        </HelperText>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-
+        backgroundColor: theme.onPrimary,
+        borderRadius: 5,
+        color: theme.primary,
+        margin: 10
     },
 })
