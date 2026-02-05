@@ -115,10 +115,8 @@ const styles = StyleSheet.create({
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        gap: 20,
         height: "100%",
-        minHeight: 300,
-        maxHeight: 350,
+        gap: 20,
     },
     circle: {
         padding: 5,
