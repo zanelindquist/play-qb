@@ -44,7 +44,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const contentPadding = 16;
 
-const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true }) => {
+const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideDown=null }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
@@ -70,9 +70,18 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true }) => {
         }, 1000);
     }, []);
 
+    useEffect(() => {
+        const toValue = slideDown ? 1 : 0
+        Animated.timing(drawerAnim, {
+            toValue,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    }, [slideDown])
+
     const toggleDrawer = () => {
         const toValue = isDrawerOpen ? 0 : 1; // 0 = closed (up), 1 = open (down)
-        
+
         Animated.timing(drawerAnim, {
             toValue,
             duration: 300,
@@ -165,6 +174,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true }) => {
                     resizeMode="cover"
                 />
             </View>
+            {/* Slide down */}
 
             {/* Top Navigation Bar */}
             {isMobile && showMobileIcon && toggleDrawerIcon}
@@ -188,11 +198,16 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true }) => {
                             end: {x: 0, y: 1}
                         }}
                     >
+                    {
+                        slideDown ||
+                        <>
                         {play}
                         {saved}
                         {stats}
                         {account}
                         {logout}
+                        </>
+                    }
                     </GlassyView>
                 </Animated.View>
             ) : (
@@ -312,9 +327,9 @@ const styles = StyleSheet.create({
         flexDirection: "column",
         justifyContent: "center",
         gap: 30,
-        paddingBottom: 30,
         width: "100vw",
         height: "100vh",
+        marginBottom: 0
     },
     openDrawerButton: {
         position: "absolute",
