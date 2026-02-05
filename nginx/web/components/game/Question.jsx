@@ -36,7 +36,6 @@ import ustyles from "../../assets/styles/ustyles";
 const LEVELS = ["Middle School", "High School", "Collegiate", "Open"];
 
 const collapsedHeight = 40;
-const EXPANDED_HEIGHT = 500;
 const TICK_MS = 16; // 60 FPS
 
 const Question = ({
@@ -55,6 +54,7 @@ const Question = ({
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     ANSWER_MS = 5000,
+    EXPANDED_HEIGHT=500,
 }) => {
     // Text variables
     const fullText = question.question || "";

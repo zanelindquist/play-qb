@@ -503,7 +503,7 @@ export default function LobbyScreen() {
                     <View style={isMobile ? mstyles.partySlots : styles.partySlots}>
                     {
                         partySlots.length > 0 ?
-                        partySlots.sort((slot, i) => isMobile && i == 2 ? -1 : 1).map((user, i) => 
+                        partySlots.sort((slot, i) => isMobile && i == 2 ? -1 : 0).map((user, i) => 
                             <PartySlot
                                 player={user}
                                 style={isMobile ? mstyles.partySlot : styles.partySlot}
