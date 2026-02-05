@@ -77,11 +77,13 @@ const Play = () => {
     const [myRankInfo, setMyRankInfo] = useState(null)
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
-
     
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
     const rateLimitRef = useRef(null)
+
+    // Mobile ui
+    const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false)
 
     // Register keybinds
     useEffect(() => {
@@ -420,19 +422,68 @@ const Play = () => {
         send("save_question", {hash})
     }
 
+    function openMobileOptions () {
+        setMobileOptionsOpen(true)
+    }
+    function closeMobileOptions () {
+        setMobileOptionsOpen(false)
+    }
+
 
     return (
         <SidebarLayout
             style={styles.sidebar}
             showMobileIcon={false}
+            slideDown={mobileOptionsOpen &&
+            <ScrollView contentContainerStyle={[ustyles.flex.flexColumn, {gap: 40}]}>
+                <IconButton
+                    icon={"close"}
+                    onPress={closeMobileOptions}
+                    size={40}
+                    style={mstyles.closeButton}
+                />
+                {
+                    lobby && lobby.games ? 
+                    <View style={styles.playerScoresContainer}>
+                        <View style={styles.scoreIndicator}>
+                            <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                        </View>
+                        <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                    </View>
+                    :
+                    <GlassyView>
+                        <HelperText>Lobby or lobby.games undefined</HelperText>
+                    </GlassyView>
+                }
+                <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                <GameSettings
+                    columns={1}
+                    defaultInfo={lobby}
+                    expanded={true}
+                    // TODO: Determine who can edit lobbies while they are in them
+                    disabled={myUser?.id !== lobby?.creator_id}
+                    nameDisabled={true}
+                    title={"Game Settings"}
+                    onGameRuleChange={handleGameRuleChange}
+                />
+            </ScrollView>
+            }
         >
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
             <View style={isMobile ? mstyles.container : styles.container}>
                 {
                     isMobile &&
-                    <View style={mstyles.topButtons}>
-                        <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
-                        <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                    <View style={mstyles.topContainer}>
+                        <View style={mstyles.topButtons}>
+                            <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
+                            <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                        </View>
+                        <IconButton
+                            icon={"dots-horizontal"}
+                            style={mstyles.moreDisplay}
+                            onPress={openMobileOptions}
+                            size={50}
+                        />
                     </View>
                 }
                 <View style={isMobile ? mstyles.gameContent : styles.gameContent}>
@@ -539,7 +590,7 @@ const Play = () => {
                         </View>
                         :
                         <GlassyView>
-                            <HelperText>Lobby or lobb.games undefined</HelperText>
+                            <HelperText>Lobby or lobby.games undefined</HelperText>
                         </GlassyView>
                     }
                     <ShowSettings
@@ -629,12 +680,28 @@ const mstyles = StyleSheet.create({
         flexDirection: "column",
         gap: 10
     },
+    topContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 10,
+    },
     topButtons: {
         gap: 10,
-
+        flex: 2,
     },
     button: {
         height: 60,
+    },
+    moreDisplay: {
+        flex: 1,
+        backgroundColor: theme.elevation.level2,
+        borderWidth: 1,
+        borderColor: theme.elevation.level4,
+        borderRadius: 10,
+        height: "100%"
+    },
+    closeButton: {
+        alignSelf: "center"
     },
     gameContent: {
         margin: 0,
