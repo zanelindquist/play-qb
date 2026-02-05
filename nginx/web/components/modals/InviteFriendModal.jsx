@@ -32,7 +32,6 @@ export default function InviteFriendModal({socket, addEventListener, removeEvent
 
     useEffect(() => {
         addEventListener("friends_found", ({friends: newFriends}) => {
-            console.log(newFriends)
             setFriends(newFriends)
         })
 

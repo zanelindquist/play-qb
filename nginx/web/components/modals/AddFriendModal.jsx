@@ -40,7 +40,7 @@ export default function AddFriendModal({ socket, addEventListener, removeEventLi
 
     useEffect(() => {
         addEventListener("users_found", ({ users }) => {
-            console.log(users);
+            console.log("USERS", users);
             setUsers(users);
             setLoading(false);
         });

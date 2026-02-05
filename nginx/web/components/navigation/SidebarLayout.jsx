@@ -85,7 +85,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     // Interpolate the drawer animation value for slide-in/out effect
     const drawerTranslateY = drawerAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-drawerHeight, 0], // Slide drawer from left (-300) to 0
+        outputRange: [-drawerHeight, 0],
     });
 
     function handleLogout() {
@@ -99,6 +99,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
 
     const play = (
         <TopNavItem
+            inline={isMobile}
             label="Play"
             onPress={() => router.replace("/lobby?mode=solos")}
             icon="play"
@@ -107,6 +108,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const saved = (
         <TopNavItem
+            inline={isMobile}
             label="Saved"
             onPress={() => router.replace("/saved")}
             icon="bookmark"
@@ -115,6 +117,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const stats = (
         <TopNavItem
+            inline={isMobile}
             label="Stats"
             onPress={() => router.push("/stats")}
             icon="poll"
@@ -123,6 +126,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const account = (
         <TopNavItem
+            inline={isMobile}
             label="Account"
             onPress={() => router.push("/account")}
             icon="account"
@@ -131,6 +135,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const logout = (
         <TopNavItem
+            inline={isMobile}
             label="Logout"
             onPress={handleLogout}
             icon="logout"
@@ -162,40 +167,34 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             </View>
 
             {/* Top Navigation Bar */}
+            {isMobile && toggleDrawerIcon}
             {isMobile ? (
-                <>
-                    <Animated.View
-                        style={[
-                            styles.drawerContainer,
-                            {
-                                transform: [{translateY: drawerTranslateY}]
-                            }
-                        ]}
-                        onLayout={(e) => {
-                            setDrawerHeight(e.nativeEvent.layout.height)
+                <Animated.View
+                    style={[
+                        styles.drawerContainer,
+                        {
+                            transform: [{translateY: drawerTranslateY}]
+                        }
+                    ]}
+                    onLayout={(e) => {
+                        setDrawerHeight(e.nativeEvent.layout.height)
+                    }}
+                >
+                    <GlassyView
+                        style={styles.glassyDrawer}
+                        gradient={{
+                            colors: ["rgba(0,0,0,0.6)", "rgba(0,0,0,0.6)"],
+                            start: {x: 0, y: 1},
+                            end: {x: 0, y: 1}
                         }}
                     >
-                        <GlassyView style={styles.glassyDrawer}>
-                            {toggleDrawerIcon}
-                            <View style={ustyles.flex.flexRowSpaceBetween}>
-                                {play}
-                                {saved}
-                                {stats}
-                                {account}
-                                {logout}
-                            </View>
-
-                        </GlassyView>
-                    </Animated.View>
-                {
-                    !isDrawerOpen &&
-                    <View
-                        style={styles.navCenterMobile}
-                    >
-                        {toggleDrawerIcon}
-                    </View>
-                }
-                </>
+                        {play}
+                        {saved}
+                        {stats}
+                        {account}
+                        {logout}
+                    </GlassyView>
+                </Animated.View>
             ) : (
                 <View
                     style={styles.navCenter}
@@ -301,6 +300,7 @@ const styles = StyleSheet.create({
     },
     drawerContainer: {
         width: "100vw",
+        height: "100vh",
         position: "absolute",
         zIndex: 10
     },
@@ -310,12 +310,18 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 5,
         borderWidth: 0,
         flexDirection: "column",
-        gap: 20,
-        paddingBottom: 30
+        justifyContent: "center",
+        gap: 30,
+        paddingBottom: 30,
+        width: "100vw",
+        height: "100vh",
     },
     openDrawerButton: {
+        position: "absolute",
+        right: 20,
+        top: 20,
         backgroundColor: theme.primary,
-        alignSelf: "flex-end"
+        zIndex: 20,
     },
 });
 
