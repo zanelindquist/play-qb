@@ -37,8 +37,8 @@ import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 import Beta from "../../components/custom/Beta.jsx";
 
-const { width } = Dimensions.get('window');
-const MOBILE_THRESHOLD = 600
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
 
 // TEMPORARY
 const ANSWER_MS = 5000;
@@ -60,6 +60,7 @@ const Play = () => {
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myUser, setMyUser] = useState(null);
+    const myUserRef = useRef(0)
 
     // Question variables
     const [allEvents, setAllEvents] = useState([]);
@@ -68,6 +69,7 @@ const Play = () => {
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
     const charIndexRef = useRef(0)
+    const [lastAnswerStatus, setLastAnswerStatus] = useState(null)
 
     // Lobby state
     const [lobby, setLobby] = useState(null)
@@ -108,7 +110,9 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
             addEventListener("you_joined", ({user}) => {
+                console.log("I JOINED", user)
                 setMyUser(user)
+                myUserRef.current = user
                 // if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 // setLobby(lobby)
             })
@@ -155,7 +159,12 @@ const Play = () => {
                 setInterruptData("content", answer_content)
             })
 
-            addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+            addEventListener("question_resume", ({user, final_answer, scores, is_correct, timestamp}) => {
+                // On mobile telling the user if they got it correct or not
+                if(user?.hash === myUserRef.current?.hash) {
+                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
+                }
+
                 setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
                 if(scores) {
                     setLobby((prev) => {
@@ -170,11 +179,16 @@ const Play = () => {
                 setSynctimestamp(timestamp)
             })
 
-            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {
+            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {              
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
                     showBanner(question?.error, {backgroundColor: theme.error})
                     return
+                }
+
+                // On mobile telling the user if they got it correct or not
+                if(user?.hash === myUserRef.current?.hash) {
+                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
                 }
 
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
@@ -262,6 +276,14 @@ const Play = () => {
     useEffect(() => {
         questionStateRef.current = questionState
     }, [questionState])
+
+    // For question answerbox flashing
+    useEffect(()=> {
+        if(lastAnswerStatus) {
+            const timeout = setTimeout(() => setLastAnswerStatus(null), 1000)
+            return () => clearTimeout(timeout)
+        }
+    }, [lastAnswerStatus])
 
     // Functions
     function onBuzz() {
@@ -398,19 +420,35 @@ const Play = () => {
         send("save_question", {hash})
     }
 
+
     return (
-        <SidebarLayout style={styles.sidebar}>
+        <SidebarLayout
+            style={styles.sidebar}
+            showMobileIcon={false}
+        >
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
-            <View style={styles.container}>
-                <View style={styles.gameContent}>
-                    <RankedProgressBar
-                        rankInfo={myRankInfo || myUser}
-                    />
+            <View style={isMobile ? mstyles.container : styles.container}>
+                {
+                    isMobile &&
+                    <View style={mstyles.topButtons}>
+                        <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
+                        <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                    </View>
+                }
+                <View style={isMobile ? mstyles.gameContent : styles.gameContent}>
+                    {
+                        // TODO: tell if ranked
+                        alias === "ranked" &&
+                        <RankedProgressBar
+                            rankInfo={myRankInfo || myUser}
+                        />   
+                    }
                     <AnswerInput
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
                         disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
-                    ></AnswerInput>
+                        lastAnswer={isMobile && lastAnswerStatus}
+                    ></AnswerInput> 
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
@@ -430,6 +468,7 @@ const Play = () => {
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
+                                            EXPANDED_HEIGHT={700}
                                         />
                                     )
                                 case "interrupt":
@@ -467,6 +506,8 @@ const Play = () => {
                     }
                     </ScrollView>
                 </View>
+                {
+                !isMobile &&
                 <View style={styles.optionsContainer}>
                     {
                         // TODO: Tell if its ranked
@@ -515,7 +556,7 @@ const Play = () => {
                         onGameRuleChange={handleGameRuleChange}
                     />
                 </View>
-
+                }
             </View>
 
         </SidebarLayout>
@@ -580,6 +621,24 @@ const styles = StyleSheet.create({
     },
     nextButton: {
         backgroundImage: theme.gradients.buttonBlue
+    }
+})
+
+const mstyles = StyleSheet.create({
+    container: {
+        flexDirection: "column",
+        gap: 10
+    },
+    topButtons: {
+        gap: 10,
+
+    },
+    button: {
+        height: 60,
+    },
+    gameContent: {
+        margin: 0,
+        width: "100%"
     }
 })
 

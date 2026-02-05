@@ -44,7 +44,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const contentPadding = 16;
 
-const SidebarLayout = ({ children, style, isLoading }) => {
+const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
@@ -167,7 +167,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             </View>
 
             {/* Top Navigation Bar */}
-            {isMobile && toggleDrawerIcon}
+            {isMobile && showMobileIcon && toggleDrawerIcon}
             {isMobile ? (
                 <Animated.View
                     style={[
