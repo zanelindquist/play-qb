@@ -36,7 +36,6 @@ import ustyles from "../../assets/styles/ustyles";
 const LEVELS = ["Middle School", "High School", "Collegiate", "Open"];
 
 const collapsedHeight = 40;
-const EXPANDED_HEIGHT = 500;
 const TICK_MS = 16; // 60 FPS
 
 const Question = ({
@@ -55,6 +54,7 @@ const Question = ({
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     ANSWER_MS = 5000,
+    EXPANDED_HEIGHT=500,
 }) => {
     // Text variables
     const fullText = question.question || "";
@@ -312,7 +312,7 @@ const Question = ({
                 >
                     <HelperText
                         numberOfLines={1}
-                        style={ustyles.text.shadowText}
+                        style={[ustyles.text.shadowText, styles.questionInfo]}
                     >
                         {LEVELS[question.level]} {">"} {question.tournament}{" "}
                         {">"} {capitalize(question.category)}
@@ -360,16 +360,22 @@ const styles = StyleSheet.create({
     },
     right: {
         flexDirection: "row",
-        gap: 10,
         alignItems: "center",
+        justifyContent: "flex-end",
+        gap: 10,
+        flex: 2,
+        minWidth: 0
     },
-    tournament: {},
+    questionInfo: {
+        flex: 1
+    },
     answerComponent: {
         // backgroundColor: "blue"
     },
     answer: {
         fontSize: 17,
         fontWeight: "bold",
+        minWidth: 0
     },
 
     // Maximized

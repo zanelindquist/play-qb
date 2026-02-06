@@ -37,15 +37,15 @@ import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 import Beta from "../../components/custom/Beta.jsx";
 
-const { width } = Dimensions.get('window');
-const MOBILE_THRESHOLD = 600
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
 
 // TEMPORARY
 const ANSWER_MS = 5000;
 
 const SHOW_EVENTS_INCREMENTS = 20
 
-const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5']
+const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5', 'ranked']
 
 const Play = () => {
     // Get the lobby alias
@@ -60,6 +60,7 @@ const Play = () => {
 
     const [typingEmitInterval, setTypingEmitInterval] = useState(null)
     const [myUser, setMyUser] = useState(null);
+    const myUserRef = useRef(0)
 
     // Question variables
     const [allEvents, setAllEvents] = useState([]);
@@ -68,6 +69,7 @@ const Play = () => {
     const questionStateRef = useRef(questionState)
     const [synctimestamp, setSynctimestamp] = useState(0)
     const charIndexRef = useRef(0)
+    const [lastAnswerStatus, setLastAnswerStatus] = useState(null)
 
     // Lobby state
     const [lobby, setLobby] = useState(null)
@@ -75,11 +77,13 @@ const Play = () => {
     const [myRankInfo, setMyRankInfo] = useState(null)
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
-
     
     // Memory manamgent
     const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
     const rateLimitRef = useRef(null)
+
+    // Mobile ui
+    const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false)
 
     // Register keybinds
     useEffect(() => {
@@ -108,7 +112,9 @@ const Play = () => {
     useEffect(() => {
         onReady(() => {
             addEventListener("you_joined", ({user}) => {
+                console.log("I JOINED", user)
                 setMyUser(user)
+                myUserRef.current = user
                 // if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 // setLobby(lobby)
             })
@@ -155,7 +161,12 @@ const Play = () => {
                 setInterruptData("content", answer_content)
             })
 
-            addEventListener("question_resume", ({player, final_answer, scores, is_correct, timestamp}) => {
+            addEventListener("question_resume", ({user, final_answer, scores, is_correct, timestamp}) => {
+                // On mobile telling the user if they got it correct or not
+                if(user?.hash === myUserRef.current?.hash) {
+                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
+                }
+
                 setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
                 if(scores) {
                     setLobby((prev) => {
@@ -170,11 +181,16 @@ const Play = () => {
                 setSynctimestamp(timestamp)
             })
 
-            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {
+            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {              
                 // Make sure the question is not a 404
                 if(question?.error == 'No questions meet this query') {
                     showBanner(question?.error, {backgroundColor: theme.error})
                     return
+                }
+
+                // On mobile telling the user if they got it correct or not
+                if(user?.hash === myUserRef.current?.hash) {
+                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
                 }
 
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
@@ -262,6 +278,14 @@ const Play = () => {
     useEffect(() => {
         questionStateRef.current = questionState
     }, [questionState])
+
+    // For question answerbox flashing
+    useEffect(()=> {
+        if(lastAnswerStatus) {
+            const timeout = setTimeout(() => setLastAnswerStatus(null), 1000)
+            return () => clearTimeout(timeout)
+        }
+    }, [lastAnswerStatus])
 
     // Functions
     function onBuzz() {
@@ -398,19 +422,100 @@ const Play = () => {
         send("save_question", {hash})
     }
 
+    function openMobileOptions () {
+        setMobileOptionsOpen(true)
+    }
+    function closeMobileOptions () {
+        setMobileOptionsOpen(false)
+    }
+
+
     return (
-        <SidebarLayout style={styles.sidebar}>
-            {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
-            <View style={styles.container}>
-                <View style={styles.gameContent}>
-                    <RankedProgressBar
-                        rankInfo={myRankInfo || myUser}
+        <SidebarLayout
+            style={styles.sidebar}
+            showMobileIcon={false}
+            slideDown={mobileOptionsOpen &&
+                <ScrollView contentContainerStyle={[ustyles.flex.flexColumn, {gap: 40}]}>
+                    <IconButton
+                        icon={"close"}
+                        onPress={closeMobileOptions}
+                        size={40}
+                        style={mstyles.closeButton}
                     />
-                    <AnswerInput
-                        onChange={handleInputChange}
-                        onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
-                    ></AnswerInput>
+                    {
+                        lobby && lobby.games ? 
+                        <View style={styles.playerScoresContainer}>
+                            <View style={styles.scoreIndicator}>
+                                <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                            </View>
+                            <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
+                        </View>
+                        :
+                        <GlassyView>
+                            <HelperText>Lobby or lobby.games undefined</HelperText>
+                        </GlassyView>
+                    }
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    <GameSettings
+                        columns={1}
+                        defaultInfo={lobby}
+                        expanded={true}
+                        // TODO: Determine who can edit lobbies while they are in them
+                        disabled={myUser?.id !== lobby?.creator_id}
+                        nameDisabled={true}
+                        title={"Game Settings"}
+                        onGameRuleChange={handleGameRuleChange}
+                    />
+                </ScrollView>
+            }
+        >
+            {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
+            <View style={isMobile ? mstyles.container : styles.container}>
+                {
+                    isMobile &&
+                    <View style={mstyles.topContainer}>
+                        <View style={mstyles.topButtons}>
+                            <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
+                            <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                        </View>
+                        {
+                            (isMobile && lastAnswerStatus) ?
+                            <IconButton
+                                icon={lastAnswerStatus == "correct" ? "check" : (lastAnswerStatus == "incorrect" ? "close" : (lastAnswerStatus == "prompt" ? "sync" : "none"))}
+                                size={50}
+                                style={[
+                                    mstyles.moreDisplay,
+                                    mstyles.answerStatusIcon,
+                                    {backgroundColor: lastAnswerStatus == "correct" ? theme.static.correct : (lastAnswerStatus == "incorrect" ? theme.static.wrong : (lastAnswerStatus == "prompt" ? theme.static.prompt : null))}
+                                ]}
+                            /> :
+                            <IconButton
+                                icon={"dots-horizontal"}
+                                style={mstyles.moreDisplay}
+                                onPress={openMobileOptions}
+                                size={50}
+                            />
+                        }
+
+                    </View>
+                }
+                <View style={isMobile ? mstyles.gameContent : styles.gameContent}>
+                    {
+                        // TODO: tell if ranked
+                        alias === "ranked" &&
+                        <RankedProgressBar
+                            rankInfo={myRankInfo || myUser}
+                        />   
+                    }
+                    {
+                        (buzzer?.current?.id == myUser?.id || !isMobile) &&
+                        <AnswerInput
+                            onChange={handleInputChange}
+                            onSubmit={onSubmit}
+                            disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
+                            lastAnswer={isMobile && lastAnswerStatus}
+                        ></AnswerInput> 
+                    }
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
@@ -430,6 +535,7 @@ const Play = () => {
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
+                                            EXPANDED_HEIGHT={750 + (-width / 4)}
                                         />
                                     )
                                 case "interrupt":
@@ -467,6 +573,8 @@ const Play = () => {
                     }
                     </ScrollView>
                 </View>
+                {
+                !isMobile &&
                 <View style={styles.optionsContainer}>
                     {
                         // TODO: Tell if its ranked
@@ -498,7 +606,7 @@ const Play = () => {
                         </View>
                         :
                         <GlassyView>
-                            <HelperText>Lobby or lobb.games undefined</HelperText>
+                            <HelperText>Lobby or lobby.games undefined</HelperText>
                         </GlassyView>
                     }
                     <ShowSettings
@@ -515,7 +623,7 @@ const Play = () => {
                         onGameRuleChange={handleGameRuleChange}
                     />
                 </View>
-
+                }
             </View>
 
         </SidebarLayout>
@@ -580,6 +688,43 @@ const styles = StyleSheet.create({
     },
     nextButton: {
         backgroundImage: theme.gradients.buttonBlue
+    }
+})
+
+const mstyles = StyleSheet.create({
+    container: {
+        flexDirection: "column",
+        gap: 10
+    },
+    topContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 10,
+    },
+    topButtons: {
+        gap: 10,
+        flex: 2,
+    },
+    button: {
+        height: 60,
+    },
+    moreDisplay: {
+        flex: 1,
+        backgroundColor: theme.elevation.level2,
+        borderWidth: 1,
+        borderColor: theme.elevation.level4,
+        borderRadius: 10,
+        height: "100%"
+    },
+    closeButton: {
+        alignSelf: "center"
+    },
+    gameContent: {
+        margin: 0,
+        width: "100%"
+    },
+    answerStatusIcon: {
+        // position: "absolute",
     }
 })
 

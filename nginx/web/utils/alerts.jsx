@@ -7,7 +7,7 @@ functions (illegal with hooks in react)
 
 import React, { createContext, useContext, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { Portal, Modal, HelperText, Button } from "react-native-paper";
+import { Portal, Modal, HelperText, Button, Dialog } from "react-native-paper";
 import theme from "../assets/themes/theme";
 
 const AlertContext = createContext();
@@ -44,39 +44,34 @@ const AlertProvider = ({ children }) => {
 };
 
 const CustomAlert = ({ content, onClose, modalStyle }) => {
-    console.log(modalStyle)
     return (
-        <Portal style={styles.portal}>
-            <Modal
+        <Portal>
+            <Dialog
                 visible
+                onDismiss={onClose}
+                style={[styles.dialog, modalStyle]}
+                theme={{
+                    ...theme,
+                    colors: {
+                        ...theme.colors,
+                        backdrop: "rgba(0, 0, 0, 0.6)", // darker
+                    },
+                }}
             >
-                <Pressable
-                    onPress={onClose}
-                    style={[
-                        styles.modal,
-                    ]}
-                >
-                    <View style={[styles.container, modalStyle]}>
-                        {typeof content === "string" ? (
-                            <>
-                                <HelperText style={styles.title}>{content}</HelperText>
-                                <View style={styles.buttonContainer}>
-                                    <Button
-                                        mode="contained"
-                                        onPress={onClose}
-                                        style={styles.closeButton}
-                                    >
-                                        Close
-                                    </Button>
-                                </View>
-                            </>
-                        ) : (
-                            // 🔑 Inject close safely
-                            React.cloneElement(content, { close: onClose })
-                        )}
-                    </View>
-                </Pressable>
-            </Modal>
+                <Dialog.Content>
+                    {typeof content === "string" ? (
+                        <Text>{content}</Text>
+                    ) : (
+                        React.cloneElement(content, { close: onClose })
+                    )}
+                </Dialog.Content>
+
+                {typeof content === "string" && (
+                    <Dialog.Actions>
+                        <Button onPress={onClose}>Close</Button>
+                    </Dialog.Actions>
+                )}
+            </Dialog>
         </Portal>
     );
 };
@@ -87,10 +82,14 @@ const styles = StyleSheet.create({
     portal: {
 
     },
+    dialog: {
+        backgroundColor: theme.surface,
+        borderRadius: 10
+    },
     modal: {
         width: "100vw",
         height: "100vh",
-        backgroundColor: "rgba(0,0,0,0.5)"
+        backgroundColor: "rgba(0,0,0,0.5)",
     },
     container: {
         backgroundColor: theme.surface,
@@ -100,6 +99,7 @@ const styles = StyleSheet.create({
         width: "80%",
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.1)",
+        zIndex: 20,
     },
     title: {
         fontSize: 18,

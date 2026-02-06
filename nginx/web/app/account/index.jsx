@@ -40,6 +40,9 @@ const CATEGORIES = [
     "current events",
     "fine arts"
 ]
+
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
  
 export default function AccountPage() {
     // Hooks
@@ -105,7 +108,7 @@ export default function AccountPage() {
 
     return (
         <SidebarLayout>
-            <GlassyView>
+            <GlassyView style={isMobile && mstyles.container}>
                 <MultiDisplaySlider
                     screenNames={["Profile", "My Lobbies"]}
                 >
@@ -113,7 +116,7 @@ export default function AccountPage() {
                     isLoading ?
                     <HelperText>Loading data...</HelperText>
                     :
-                    <View style={styles.profile}>
+                    <View style={isMobile ? mstyles.profile : styles.profile}>
                         <View style={styles.left}>
                             <TextInputEdit
                                 label="Username"
@@ -145,7 +148,7 @@ export default function AccountPage() {
                     isLoading ?
                     <HelperText>Loading data...</HelperText>
                     :
-                    <View style={styles.lobbies}>
+                    <View style={[styles.lobbies, isMobile && mstyles.lobbies]}>
                         <View style={styles.left}>
                             <HelperText style={styles.title}>Your lobbies</HelperText>
                             <ScrollView contentContainerStyle={styles.lobbiesList}>
@@ -172,6 +175,7 @@ export default function AccountPage() {
                                 disabled={true}
                                 useGlassyView={false}
                                 title={account.created_lobbies[selectedLobby]?.name || "Lobby"}
+                                columns={isMobile ? 1 : 2}
                             />
                         </View>
 
@@ -265,4 +269,17 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
+})
+
+const mstyles = StyleSheet.create({
+    container: {
+        marginTop: 80,
+    },
+    profile: {
+        flexDirection: "column-reverse"
+    },
+    lobbies: {
+        flexDirection: "column",
+        gap: 50
+    }
 })

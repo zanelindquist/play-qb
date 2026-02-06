@@ -7,7 +7,16 @@
             "wrong": "#c30010",
             "prompt": "#00A9FF",
             "early": "#c30010",
-            "late": "#46923C"
+            "late": "#46923C",
+            "transparent": {
+                "lightblue": "#5BA8E166",
+                "red": "#ff474c66",
+                "correct": "#46923C66",
+                "wrong": "#c3001066",
+                "prompt": "#00A9FF66",
+                "early": "#c3001066",
+                "late": "#46923C66"
+            }
         },
         "gradients": {
             "button": "linear-gradient(135deg, rgba(76, 102, 43, 0.7), rgba(88, 98, 73, 0.7))",
@@ -52,7 +61,16 @@
             "wrong": "#c30010",
             "prompt": "#00A9FF",
             "early": "#c30010",
-            "late": "#46923C"
+            "late": "#46923C",
+            "transparent": {
+                "lightblue": "#5BA8E166",
+                "red": "#ff474c66",
+                "correct": "#46923C66",
+                "wrong": "#c3001066",
+                "prompt": "#00A9FF66",
+                "early": "#c3001066",
+                "late": "#46923C66"
+            }
         },
         "gradients": {
             "button": "linear-gradient(135deg, rgba(76, 102, 43, 0.7), rgba(88, 98, 73, 0.7))",

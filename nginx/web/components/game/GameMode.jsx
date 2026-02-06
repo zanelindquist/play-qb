@@ -13,6 +13,7 @@ import GlassyButton from "../custom/GlassyButton";
 import GlassyView from "../custom/GlassyView";
 
 import theme from "../../assets/themes/theme";
+import ustyles from "../../assets/styles/ustyles"
 import GradientText from "../custom/GradientText";
 import { capitalize } from "../../utils/text";
 
@@ -23,6 +24,7 @@ const ANIMATION_DURATION = 150;
 export default function GameMode({
     style,
     gamemode,
+    condensed,
     icon = "account-multiple",
     selected = false,
     onPress = () => {},
@@ -50,6 +52,38 @@ export default function GameMode({
             }).start();
         }
     }
+
+    if (condensed) return (
+        <Animated.View
+            style={[
+                styles.animated,
+                style,
+                // Apply animated width only if layout width has been measured
+                animatedWidth && animatedWidth._value > 0
+                    ? { width: animatedWidth }
+                    : null,
+            ]}
+        >
+            <GlassyView
+                style={[mstyles.container]}
+                gradient={
+                    selected && {
+                        colors: theme.gradients.selectedMode,
+                        start: { x: 0, y: 0 },
+                        end: { x: 1, y: 1 },
+                    }
+                }
+                onPress={onPress}
+                onHoverIn={handleHoverIn}
+                onHoverOut={handleHoverOut}
+            >
+                <Icon source={icon} size={20} color={theme.tertiary} />
+                <GradientText size={"1rem"} style={styles.name}>
+                    {capitalize(gamemode.name)}
+                </GradientText>
+            </GlassyView>
+        </Animated.View>
+    )
 
     return (
         <Animated.View
@@ -122,5 +156,16 @@ const styles = StyleSheet.create({
     playersOnlineText: {
         fontSize: "0.8rem",
         fontWeight: "bold"
-    }
+    },
+
+    // Condenced styles
 });
+
+const mstyles = StyleSheet.create({
+    container: {
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        width: "auto"
+    }
+})

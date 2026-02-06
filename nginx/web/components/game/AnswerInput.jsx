@@ -1,7 +1,7 @@
 import React, {useEffect, useState, useRef} from "react";
-import { Platform, View, StyleSheet, Pressable, TextInput } from "react-native";
+import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { Text,  } from "react-native-paper";
+import { IconButton, Text, TextInput  } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import GlassyView from "../custom/GlassyView";
 
@@ -9,15 +9,18 @@ import theme from "../../assets/themes/theme";
 
 // TODO: Hover for stat tooltip
 
-export default function AnswerInput ({ style, disabled, onChange = () => {}, onSubmit = () => {} }) {
+export default function AnswerInput ({ style, disabled, visible=true, lastAnswer, onChange = () => {}, onSubmit = () => {} }) {
     const inputRef = useRef(null);
     const [isFocused, setIsFocused] = useState(false);
     const [value, setValue] = useState("")
     const [hasSubmitted, setHasSubmitted] = useState(false)
+    // Mostly to tell mobile users if their answer is correct or not
+    const [flashColor, setFlashColor] = useState(null)
+    const [showCheck, setShowCheck] = useState(null)
     
-    const handleChange = (e) => {
-        onChange(e.nativeEvent.text)
-        setValue(e.nativeEvent.text)
+    const handleChange = (text) => {
+        onChange(text)
+        setValue(text)
     }
     
     const handleSubmit = (e) => {
@@ -40,8 +43,28 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
         }
     }, [disabled]);
 
+    useEffect(() => {
+        setFlashColor(lastAnswer == "correct" ? theme.static.correct : (lastAnswer == "incorrect" ? theme.static.wrong : (lastAnswer == "prompt" ? theme.static.prompt : null)))
+        setShowCheck(lastAnswer == "correct" ? "check" : (lastAnswer == "incorrect" ? "close" : (lastAnswer == "prompt" ? "sync" : null)))
+        const timeout = setTimeout(() => {
+            setFlashColor(null)
+            setShowCheck(null)
+        }, 1000)
+
+        return () => clearTimeout(timeout)
+    }, [lastAnswer])
+
+    if(!visible) return
+
     return (
-        <GlassyView style={[styles.container, style]}>
+        <GlassyView
+            style={[styles.container, style]}
+            gradient={ false && {
+                colors: [flashColor, flashColor],
+                start: {x: 0, y: 1},
+                end: {x: 0, y: 1},
+            }}
+        >
             <TextInput
                 ref={inputRef}
                 mode="outlined"
@@ -49,7 +72,8 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
                     styles.input,
                     isFocused && styles.focused
                 ]}
-                onChange={handleChange}
+                outlineStyle={{borderWidth: 0}}
+                onChangeText={handleChange}
                 onSubmitEditing={handleSubmit}
                 disabled={disabled}
                 value={value}
@@ -57,6 +81,14 @@ export default function AnswerInput ({ style, disabled, onChange = () => {}, onS
                 // value={value}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
+
+                right={
+                    showCheck &&
+                    <TextInput.Icon
+                        icon={showCheck}
+                        style={{backgroundColor: flashColor}}
+                    />
+                }
             />
         </GlassyView>
     )
@@ -69,7 +101,9 @@ const styles = StyleSheet.create({
     input: {
         outlineWidth: 0,
         padding: 10,
-        color: theme.onBackground
+        color: theme.onBackground,
+        backgroundColor: "transparent",
+        height: 40
     },
     focused: {
         

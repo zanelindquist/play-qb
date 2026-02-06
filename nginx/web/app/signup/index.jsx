@@ -24,7 +24,8 @@ import GlassyView from '../../components/custom/GlassyView.jsx';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 import { useAlert } from '../../utils/alerts.jsx';
 
-const { width } = Dimensions.get('window');
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
 
 
 const SignUp = () => {
@@ -68,7 +69,8 @@ const SignUp = () => {
         // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
         setHTVisibleStates(defaultHTStates)
         // First, make sure the passwords match
-        if(password !== confirmPassword) return handleInvalidField("Password does not match confirm password field")
+        // Don't be fucking annoying and tell them their passwords don't match when they haven't event tried typing in the second one yet
+        if(password !== confirmPassword && confirmPassword.length > 6) return handleInvalidField("Password does not match confirm password field")
         
         // First ensure password is valid and safe
         const results = {
@@ -237,7 +239,7 @@ const SignUp = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.bg} >                
+            <View style={styles.bg} >
                 <Video
                     source={{uri: "/videos/Earth.mp4"}}
                     style={[StyleSheet.absoluteFill]}
@@ -253,7 +255,7 @@ const SignUp = () => {
                     { transform: [{ translateX }] },
                 ]}
             >
-                <GlassyView style={styles.phaseContainer}>
+                <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
                     <HelperText style={[styles.header, styles.textShadow]}>Create Account</HelperText>
                     <TextInput
                         style={styles.input}
@@ -300,7 +302,7 @@ const SignUp = () => {
                         mode="contained"
                         rippleColor={theme.primary}
                         onPress={goToNextPhase}
-                        style={styles.nextButton}
+                        style={[styles.nextButton, isMobile && mstyles.nextButton]}
                     >
                         Next
                     </Button>
@@ -316,7 +318,8 @@ const SignUp = () => {
                     <Divider />
                     <Button
                         mode="outlined"
-                        contentStyle={styles.googleButton}
+                        style={styles.nextButton}
+                        contentStyle={styles.googleButtonContent}
                         rippleColor={theme.primary}
                         onPress={handleCreateWithGoogle}
                         disabled={disabled}
@@ -330,7 +333,7 @@ const SignUp = () => {
                 </GlassyView>
 
                 {/* Phase 2 */}
-                <GlassyView style={styles.phaseContainer}>
+                <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
                     <HelperText style={[styles.header, styles.textShadow]}>Select A Username</HelperText>
                     <TextInput
                         style={styles.input}
@@ -380,17 +383,14 @@ const SignUp = () => {
   );
 };
 
-const inputWidth = "40vw"
-const inputMaxWidth = 500
-const inputMinWidth = 350
-
 const styles = StyleSheet.create({
     container: {
         height: "100vh",
         width: "100vw",
         alignItems: 'center',
         justifyContent: "center",
-        backgroundColor: theme.background
+        backgroundColor: theme.background,
+        overflow: "hidden"
     },
     bg: {
         ...StyleSheet.absoluteFillObject,
@@ -400,15 +400,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: "space-around",
         alignItems: "center",
-        width: '200vw', // Twice the screen width
+        width: "200vw", // Twice the screen width
+        
     },
     phaseContainer: {
         flexDirection: "column",
         gap: 10,
         alignItems: "center",
-
-        padding: "20px",
-        marginBottom: "40px" 
+        flex: 1,
     },
     header: {
         fontSize: 24,
@@ -416,14 +415,12 @@ const styles = StyleSheet.create({
         margin: 20,
     },
     input: {
-        minWidth: inputMinWidth,
-        maxWidth: inputMaxWidth,
-        width: inputWidth,
+        width: "100%"
     },
     error: {
         fontSize: 14,
         alignSelf: "baseline",
-        color: "#FF2C2C",
+        color: theme.error,
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
@@ -443,14 +440,11 @@ const styles = StyleSheet.create({
     link: {
         color: theme.primary,
     },
-    googleButton: {
+    googleButtonContent: {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         gap: 10,
-        maxWidth: inputMaxWidth,
-        minWidth: inputMinWidth,
-        width: inputWidth,
     },
     googleIcon: {
         height: 16,
@@ -459,26 +453,22 @@ const styles = StyleSheet.create({
     googleText: {
         fontSize: "0.8rem"
     },
-    genderButton:{
-        minWidth: inputMinWidth,
-        maxWidth: inputMaxWidth,
-        width: inputWidth,
-        backgroundColor: theme.surface, // Same as TextInput background
-        borderColor: theme.onBackground, // Matches the border of TextInput
-        borderWidth: 1,
-        borderRadius: 4,
-        justifyContent: 'center',
-        paddingVertical: 5, // Mimics TextInput padding
-    },
     buttonContent: {
         justifyContent: 'flex-start', // Align text to the left
         color: "black"
     },
     nextButton: {
-        maxWidth: inputMaxWidth,
-        minWidth: inputMinWidth,
-        width: inputWidth,
+        width: "100%"
     },
 });
+
+const mstyles = StyleSheet.create({
+    phaseContainer: {
+        margin: 10,
+    },
+    nextButton: {
+        marginTop: 30,
+    }
+})
 
 export default SignUp;
