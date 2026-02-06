@@ -49,6 +49,9 @@ const TYPE_OPTIONS = [
 ]
 
 const LIMIT = 20
+
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
  
 export default function StatsPage() {
     // Hooks
@@ -154,8 +157,8 @@ export default function StatsPage() {
 
     return (
         <SidebarLayout>
-            <View style={styles.container}>
-                <GlassyView style={styles.pannel}>
+            <View style={[styles.container, isMobile && mstyles.container]}>
+                <GlassyView style={isMobile ? mstyles.pannel : styles.pannel}>
                     <View style={styles.left}>
                         <GameRule
                             label={"Saved Type"}
@@ -164,7 +167,7 @@ export default function StatsPage() {
                             defaultValue={Math.max(TYPE_OPTIONS.map((t) => t.title.toLowerCase()).indexOf(savedType), 0) }
                             dataName={"saved_type"}
                             onChange={handleSavedTypeChange}
-                            style={styles.saveType}    
+                            style={[styles.saveType, isMobile && mstyles.saveType]}    
                         />
                         <GameRule
                             label={"Category"}
@@ -175,10 +178,10 @@ export default function StatsPage() {
                             defaultValue={Math.max(CATEGORIES.indexOf(category), 0) }
                             dataName={"saved_type"}
                             onChange={handleCategoryChange}
-                            style={styles.saveType}    
+                            style={[styles.saveType, isMobile && mstyles.saveType]}    
                         />
                     </View>
-                    <View style={styles.right}>
+                    <View style={isMobile ? mstyles.right : styles.right}>
                         <HelperText style={styles.question}>{Math.ceil(totalQueryLength / limit)} page{Math.ceil(totalQueryLength / limit) > 1 && "s"}</HelperText>
                         <PaginationNavigator
                             startOffset={offset}
@@ -199,12 +202,17 @@ export default function StatsPage() {
                             onSave={q.saved_type == "saved" && handleQuestionUnsave}
                             saveIcon={"bookmark-off"}
                             key={`${q.hash}-${i}`}
+                            EXPANDED_HEIGHT={700}
                             rightIcon={
                                 <View style={styles.questionRight}>
+                                {
+                                    !isMobile &&
                                     <GitPlusMinus 
                                         plus={q.correct_count}
                                         minus={q.missed_count}
                                     />
+                                }
+
                                     <IconButton
                                         size={15}
                                         icon={q.saved_type == "correct" ? "check" : (q.saved_type == "missed" ? "close" : "bookmark")}
@@ -237,9 +245,8 @@ const styles = StyleSheet.create({
     container: {
         gap: 20,
         maxWidth: 1100,
-        height: "80vh",
         padding: 20,
-        marginBottom: 40
+        paddingBottom: 100
     },
     pannel: {
         margin: 10,
@@ -296,4 +303,22 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         flexWrap: "wrap"
     },
+})
+
+const mstyles = StyleSheet.create({
+    container: {
+        padding: 0
+    },
+    pannel: {
+        flexDirection: "column",
+        gap: 20
+    },
+    right: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    saveType: {
+        flex: 1
+    }
 })
