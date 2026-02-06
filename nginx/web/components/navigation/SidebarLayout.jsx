@@ -44,6 +44,8 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const contentPadding = 16;
 
+const ANIMATION_TIME = 200
+
 const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideDown=null }) => {
     // Routing
     const router = useRouter();
@@ -74,7 +76,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
         const toValue = slideDown ? 1 : 0
         Animated.timing(drawerAnim, {
             toValue,
-            duration: 300,
+            duration: ANIMATION_TIME,
             useNativeDriver: true,
         }).start();
     }, [slideDown])
@@ -84,7 +86,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
 
         Animated.timing(drawerAnim, {
             toValue,
-            duration: 300,
+            duration: ANIMATION_TIME,
             useNativeDriver: true,
         }).start();
         
