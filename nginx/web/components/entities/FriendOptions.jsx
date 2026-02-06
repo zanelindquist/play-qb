@@ -36,7 +36,6 @@ export default function FriendOptions({
     socket,
     addEventListener,
     removeEventListener,
-    mobile=false,
     style,
 }) {
     const {showAlert} = useAlert()
@@ -67,7 +66,7 @@ export default function FriendOptions({
     })
 
     return (
-        <GlassyView style={[styles.container, mobile ? {backgroundColor: "transparent"} : false, style]}>
+        <GlassyView style={[styles.container, style]}>
             <View>
                 <View style={styles.friendsTitleContainer}>
                     <HelperText style={styles.label}>

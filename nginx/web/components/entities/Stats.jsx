@@ -73,7 +73,6 @@ export default function Stats ({
                     <Stat.Row
                         key={title}
                         title={title}
-                        style={styles.row}
                     >
                         {
                             row.map((item) => 
@@ -82,7 +81,6 @@ export default function Stats ({
                                     name={item.name}
                                     value={stats[item.name]}
                                     description={item.description}
-                                    style={styles.stat}
                                 />
                             )
                         }
@@ -100,11 +98,4 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 15
     },
-    row: {
-        flex: 1
-    },
-    stat: {
-        flex: 1,
-        minWidth: "22%"
-    }
 })

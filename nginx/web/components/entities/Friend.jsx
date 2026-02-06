@@ -41,6 +41,7 @@ export default function Friend({ style, friend, showIcon=true, onPress = () => {
             style={[
                 styles.container,
                 isHovering && { backgroundColor: "white" },
+                style
             ]}
             onPress={handlePress}
             onHoverIn={handleHoverIn}
@@ -59,7 +60,7 @@ export default function Friend({ style, friend, showIcon=true, onPress = () => {
                         ]}
                     />
                 }
-                <HelperText style={[styles.name, !friend.is_online && styles.offline]}>{friend.username}</HelperText>
+                <HelperText style={[styles.name, !friend.is_online && styles.offline]} numberOfLines={1}>{friend.username}</HelperText>
             </View>
             <View style={styles.right}>
                 {
@@ -110,10 +111,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 20,
+        flex: 3
     },
     right: {
         flexDirection: "row",
         alignItems: "center",
+        flex: 1
     },
     circle: {
         padding: 5,

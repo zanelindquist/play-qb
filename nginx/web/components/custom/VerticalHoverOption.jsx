@@ -35,7 +35,7 @@ export default function VerticalHoverOption ({
 
     return (
         <GlassyView
-            style={styles.container}
+            style={[styles.container, style]}
             onPress={() => router.replace(href)}
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}

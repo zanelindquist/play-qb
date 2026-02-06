@@ -33,6 +33,9 @@ GAMEMODES = {
     "5v5": {
         "size": 5,
     },
+    "ranked": {
+        "size": 1,
+    },
 }
 
 # ===== INCOMMING EVENT HANDLERS =====

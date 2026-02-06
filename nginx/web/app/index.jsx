@@ -83,6 +83,9 @@ const DEMO = [
     },
 ]
 
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
+
 
 export default function HomeScreen() {
     return (
@@ -94,7 +97,7 @@ export default function HomeScreen() {
                         colors={[theme.primary, theme.onPrimary, theme.primary]} //GAMEMODES.map((g) => g.color)
                         style={styles.title}
                     >Welcome to PlayQB!</GradientText>
-                    <HelperText style={[ustyles.text.header, ustyles.text.center]}>Sharpen your Quiz Bowl skills in competetive gamemodes, create custom lobbies and play with your friends, or enter practice missed questions solo!</HelperText>
+                    <HelperText style={[ustyles.text.header, !isMobile && ustyles.text.center]}>Sharpen your Quiz Bowl skills in competetive gamemodes, create custom lobbies and play with your friends, or practice missed questions by yourself!</HelperText>
                     {/* <View style={[styles.bottomBoxes, styles.bentoRow]}>
                     {
                         DEMO.map((d) => <GameDemoBox info={d}/>)
@@ -110,7 +113,7 @@ export default function HomeScreen() {
                                 color={g.color}
                                 href={g.href}
                                 icon={g.icon}
-                                style={styles.gamemode}
+                                style={isMobile && mstyles.gamemode}
                             />
                         )
                     }
@@ -134,9 +137,6 @@ const styles = StyleSheet.create({
         width: "100%",
         marginBottom: 50,
     },
-    gamemode: {
-        backgroundColor: "red",
-    },
     bentoRow: {
         width: "100%",
         flexDirection: "row",
@@ -153,4 +153,10 @@ const styles = StyleSheet.create({
         fontWeight: 700,
         alignSelf: "center",
     },
+})
+
+const mstyles = StyleSheet.create({
+    gamemode: {
+        height: "auto"
+    }
 })
