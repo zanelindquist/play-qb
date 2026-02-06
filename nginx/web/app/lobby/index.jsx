@@ -13,6 +13,7 @@ import {
     Dimensions,
     ScrollView,
     Image,
+    Pressable
 } from "react-native";
 import {
     Button,
@@ -55,6 +56,8 @@ import GameSettings from "../../components/entities/GameSettings.jsx";
 import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
 import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
 import FriendOptions from "../../components/entities/FriendOptions.jsx";
+import DropDown from "../../components/custom/DropDown.jsx";
+import ustyles from "../../assets/styles/ustyles.js";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -86,6 +89,11 @@ const GAMEMODES = [
 ];
 
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]
+
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
+
+
 
 export default function LobbyScreen() {
     const router = useRouter();
@@ -122,6 +130,8 @@ export default function LobbyScreen() {
     const [friends, setFriends] = useState([])
     const [friendRequests, setFriendRequests] = useState([])
 
+    // Mobile style
+    const [mobileFriendsDisplayed, setMobileFriendsDisplayed] = useState(null)
     
     useEffect(() => {
         onReady(() => {
@@ -239,7 +249,6 @@ export default function LobbyScreen() {
                 if(!myPM?.is_leader) return;
                 // For making a new lobby
                 if(gameMode === "custom" && isCreateCustom) {
-                    console.log(myPM)
                     console.log({...customSettings, creator_id: myPM.id})
                     send("clients_ready", {settings: {...customSettings, creator_id: myPM.id}})
                 } else if (gameMode === "custom" && !isCreateCustom) {
@@ -429,12 +438,70 @@ export default function LobbyScreen() {
         }
     }
 
+
+    // Components
+    const readyInfo = (
+        <View style={isMobile ? mstyles.partyOptions : styles.partyOptions}>
+            <GlassyButton
+                style={[styles.leaveButton, isMobile && mstyles.readyInfoButton]}
+                onPress={handleLeaveParty}
+            >Leave Party</GlassyButton>
+            {
+                !isMobile &&
+                <ShowSettings 
+                    onChange={setShowSettings}
+                />
+            }
+            <GlassyButton
+                style={[styles.readyButton, isMobile && mstyles.readyInfoButton]}
+                mode={isReady ? "filled" : "contained"}
+                onPress={handleReadyPressed}
+            >Ready</GlassyButton>
+        </View>
+    )
+
+
     return (
-        <SidebarLayout >
-            <View style={styles.container}>
-                <View style={styles.left}>
-                    {
-                        GAMEMODES.map((g, i) => (
+        <SidebarLayout
+            slideDown={mobileFriendsDisplayed &&
+                <View style={ustyles.flex.flexColumnCenterItems}>
+                    <IconButton
+                        icon={"close"}
+                        onPress={() => setMobileFriendsDisplayed(false)}
+                        size={40}
+                    />
+                    <FriendOptions
+                        friends={friends}
+                        friendRequests={friendRequests}
+                        socket={socket}
+                        addEventListener={addEventListener}
+                        removeEventListener={removeEventListener}
+                        style={mstyles.friendsDialogue}
+                    />
+                </View>
+            }
+        >
+            <View style={isMobile ? mstyles.container : styles.container}>
+                {
+                    isMobile &&
+                    <View style={mstyles.topOptions}>
+                        <DropDown
+                            style={mstyles.dd}
+                            options={GAMEMODES.map((g) => {return {title: g.name}})}
+                            onSelect={(param) => handleGameModePress(param.title)}
+                        />
+                        <IconButton
+                            icon={"account"}
+                            style={mstyles.friendsButton}
+                            onPress={() => setMobileFriendsDisplayed(true)}
+                            size={40}
+                        />
+                    </View>
+                }
+                {!isMobile &&
+                <View style={isMobile ? mstyles.top : styles.left}>
+                {
+                    GAMEMODES.map((g, i) => (
                         <GameMode
                             gamemode={g}
                             icon={g.icon}
@@ -443,7 +510,10 @@ export default function LobbyScreen() {
                             onPress={() => handleGameModePress(g.name)}
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
                         />
-                    ))}
+                    ))
+                }
+                {
+                    !isMobile &&
                     <FriendOptions
                         friends={friends}
                         friendRequests={friendRequests}
@@ -451,15 +521,20 @@ export default function LobbyScreen() {
                         addEventListener={addEventListener}
                         removeEventListener={removeEventListener}
                     />
+                }
                 </View>
-                <View style={styles.right}>
-                    <View style={styles.partySlots}>
+                }
+                <View style={isMobile ? mstyles.right : styles.right}>
+                    {
+                        isMobile && readyInfo
+                    }
+                    <View style={isMobile ? mstyles.partySlots : styles.partySlots}>
                     {
                         partySlots.length > 0 ?
-                        partySlots.map((user, i) => 
+                        partySlots.sort((slot, i) => isMobile && i == 2 ? -1 : 0).map((user, i) => 
                             <PartySlot
                                 player={user}
-                                style={styles.partySlot}
+                                style={isMobile ? mstyles.partySlot : styles.partySlot}
                                 onPress={openInviteFriendModal}
                                 isMe={user?.hash == myHash}
                                 ready={user?.ready}
@@ -471,20 +546,15 @@ export default function LobbyScreen() {
                         />
                     }
                     </View>
-                    <View style={styles.partyOptions}>
-                        <GlassyButton
-                            style={styles.leaveButton}
-                            onPress={handleLeaveParty}
-                        >Leave Party</GlassyButton>
+                    {
+                        !isMobile && readyInfo
+                    }
+                    {
+                        isMobile &&
                         <ShowSettings 
                             onChange={setShowSettings}
                         />
-                        <GlassyButton
-                            style={styles.readyButton}
-                            mode={isReady ? "filled" : "contained"}
-                            onPress={handleReadyPressed}
-                        >Ready</GlassyButton>
-                    </View>
+                    }
                     {
                         gameMode === "custom" &&
                         <LabeledToggle
@@ -514,18 +584,16 @@ export default function LobbyScreen() {
                             gameMode={gameMode}
                             disabled={gameMode !== "custom" || !isCreateCustom || !myPM?.is_leader}
                             defaultInfo={lobbyInfo}
-                            columns={2}
+                            columns={ isMobile ? 1 : 2}
                             onGameRuleChange={handleGameRuleChange}
                             dynamicSizing={false}
-                            maxHeight={850}
+                            maxHeight={isMobile ? 1300 : 850}
                         />
                     </ScrollView>
                     <View style={styles.partyChat}>
 
                     </View>
                 </View>
-            </View>
-            <View style={styles.container}>
             </View>
         </SidebarLayout>
     );
@@ -535,7 +603,7 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: "row",
         gap: 10,
-        margin: 10
+        margin: 10,
     },
     left: {
         width: 200,
@@ -566,7 +634,10 @@ const styles = StyleSheet.create({
     partySlot: {
         flexGrow: 1,
         flexShrink: 1,
-        maxWidth: "19%"
+        maxWidth: "19%",
+        height: "100%",
+        minHeight: 300,
+        maxHeight: 350,
     },
     partyOptions: {
         flexDirection: "row",
@@ -614,3 +685,59 @@ const styles = StyleSheet.create({
         maxWidth: "49%"
     }
 });
+
+const mstyles = StyleSheet.create({
+    container: {
+        // paddingTop: 100,
+    },
+    top: {
+        flexDirection: "row",
+        gap: 5
+    },
+    topOptions: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        width: "70vw",
+    },
+    dd: {
+        borderWidth: 1,
+        borderColor: theme.elevation.level5,
+        flexGrow: 1,
+    },
+    friendsButton: {
+        backgroundColor: theme.onPrimary
+    },
+    gamemode: {
+        flex: 1
+    },
+    right: {
+        margin: 0,
+        marginTop: 20,
+        gap: 20,
+    },
+    partySlots: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 10
+    },
+    partySlot: {
+        minWidth: 100,
+        height: 200,
+        alignSelf: "stretch",
+        flex: 1
+    },
+    partyOptions: {
+        flexDirection: "row",
+        gap: 10,
+        justifyContent: "space-between",
+        // flexWrap: "wrap"
+    },
+    readyInfoButton: {
+        flex: 1,
+        maxWidth: 170
+    },
+    friendsDialogue: {
+        maxWidth: 200
+    }
+})

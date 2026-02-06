@@ -41,6 +41,8 @@ export default function Stat ({
             , ustyle.modals.floatingModal
         )
     }
+
+    console.log(value, typeof(value))
     
     return (
         <Pressable
@@ -48,7 +50,7 @@ export default function Stat ({
             onPress={handlePress}
         >
             <View style={styles.left}>
-                <HelperText style={styles.value}>{value}</HelperText>
+                <HelperText style={styles.value}>{typeof value === "number" ? value.toLocaleString() : value}</HelperText>
                 <HelperText style={styles.name}>{name.split("_").map((n) => capitalize(n)).join(" ")}</HelperText>
             </View>
         </Pressable>
@@ -74,6 +76,7 @@ Stat.Row = StatRow
 const styles = StyleSheet.create({
     container: {
         backgroundColor: theme.surface,
+        flex: 1,
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "flex-start",

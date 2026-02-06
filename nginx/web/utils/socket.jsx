@@ -52,6 +52,10 @@ export function useSocket(namespace, lobbyAlias) {
                     readyCallbacksStore[namespace] = [];
                 });
 
+                socket.on("disconnect", () => {
+                    console.log(`Socket disconnected from ${namespace}:`, socket.id);
+                });
+
                 socket.on("reconnect", () => {
                     if (namespace == "game")
                         socket.emit("join_lobby", {lobbyAlias: lobbyAlias})

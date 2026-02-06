@@ -35,19 +35,22 @@ import GlassyView from "../custom/GlassyView";
 import TopNavItem from "./TopNavItem";
 import Logo from "../custom/Logo";
 import { useBanner } from "@/utils/banners";
+import ustyles from "@/assets/styles/ustyles";
 
 const iconColor = theme.primary;
 
 let { width, height } = Dimensions.get("window");
-let isWide = width >= 768; // Adjust breakpoint as needed
+let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const contentPadding = 16;
 
-const SidebarLayout = ({ children, style, isLoading }) => {
+const ANIMATION_TIME = 200
+
+const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideDown=null }) => {
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
-    const {showBanner} = useBanner()
+    const { showBanner } = useBanner();
     const segments = useSegments();
     const { disconnect } = useSocket("lobby");
 
@@ -57,10 +60,11 @@ const SidebarLayout = ({ children, style, isLoading }) => {
         currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
 
     // States
-    const [isDrawerOpen, setDrawerOpen] = useState(isWide);
+    const [isDrawerOpen, setDrawerOpen] = useState(!isMobile);
     const [drawerAnim] = useState(new Animated.Value(0)); // Initial position: hidden
     const [renderFooter, setRenderFooter] = useState(false);
     const [navBarHeight, setNavBarHeight] = useState(0);
+    const [drawerHeight, setDrawerHeight] = useState(0);
 
     useEffect(() => {
         setTimeout(() => {
@@ -68,20 +72,31 @@ const SidebarLayout = ({ children, style, isLoading }) => {
         }, 1000);
     }, []);
 
+    useEffect(() => {
+        const toValue = slideDown ? 1 : 0
+        Animated.timing(drawerAnim, {
+            toValue,
+            duration: ANIMATION_TIME,
+            useNativeDriver: true,
+        }).start();
+    }, [slideDown])
+
     const toggleDrawer = () => {
-        setDrawerOpen(!isDrawerOpen);
+        const toValue = isDrawerOpen ? 0 : 1; // 0 = closed (up), 1 = open (down)
 
         Animated.timing(drawerAnim, {
-            toValue: isDrawerOpen ? 0 : 1, // Toggle between 0 and 1
-            duration: 300, // Duration of the animation
-            useNativeDriver: true, // Enable hardware acceleration for the animation
+            toValue,
+            duration: ANIMATION_TIME,
+            useNativeDriver: true,
         }).start();
+        
+        setDrawerOpen(!isDrawerOpen);
     };
 
     // Interpolate the drawer animation value for slide-in/out effect
-    const drawerTranslateX = drawerAnim.interpolate({
+    const drawerTranslateY = drawerAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-300, 0], // Slide drawer from left (-300) to 0
+        outputRange: [-drawerHeight, 0],
     });
 
     function handleLogout() {
@@ -89,12 +104,13 @@ const SidebarLayout = ({ children, style, isLoading }) => {
             disconnect();
             console.log("Logged out");
             router.replace("/signin");
-            showBanner("You were logged out")
+            showBanner("You were logged out");
         });
     }
 
     const play = (
         <TopNavItem
+            inline={isMobile}
             label="Play"
             onPress={() => router.replace("/lobby?mode=solos")}
             icon="play"
@@ -103,6 +119,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const saved = (
         <TopNavItem
+            inline={isMobile}
             label="Saved"
             onPress={() => router.replace("/saved")}
             icon="bookmark"
@@ -111,6 +128,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const stats = (
         <TopNavItem
+            inline={isMobile}
             label="Stats"
             onPress={() => router.push("/stats")}
             icon="poll"
@@ -119,6 +137,7 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const account = (
         <TopNavItem
+            inline={isMobile}
             label="Account"
             onPress={() => router.push("/account")}
             icon="account"
@@ -127,12 +146,23 @@ const SidebarLayout = ({ children, style, isLoading }) => {
     );
     const logout = (
         <TopNavItem
+            inline={isMobile}
             label="Logout"
             onPress={handleLogout}
             icon="logout"
             iconColor={iconColor}
         />
     );
+
+    const toggleDrawerIcon = (
+        <IconButton
+            style={styles.openDrawerButton}
+            icon={"menu"}
+            size={40}
+            onPress={toggleDrawer}
+            iconColor={theme.onPrimary}
+        />
+    )
 
     return (
         <View style={styles.root}>
@@ -146,30 +176,70 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                     resizeMode="cover"
                 />
             </View>
+            {/* Slide down */}
 
             {/* Top Navigation Bar */}
-            <View
-                style={styles.navCenter}
-                onLayout={(e) => {
-                    setNavBarHeight(e.nativeEvent.layout.height);
-                }}
-            >
-                <GlassyView style={styles.topNav}>
-                    <View style={styles.middleNav}>
-                        <Logo text={true} image={false} style={styles.logo} />
-                    </View>
-
-                    <View style={styles.middleNav}>
+            {isMobile && showMobileIcon && toggleDrawerIcon}
+            {isMobile ? (
+                <Animated.View
+                    style={[
+                        styles.drawerContainer,
+                        {
+                            transform: [{translateY: drawerTranslateY}]
+                        }
+                    ]}
+                    onLayout={(e) => {
+                        setDrawerHeight(e.nativeEvent.layout.height)
+                    }}
+                >
+                    <GlassyView
+                        style={styles.glassyDrawer}
+                        gradient={{
+                            colors: ["rgba(0,0,0,0.6)", "rgba(0,0,0,0.6)"],
+                            start: {x: 0, y: 1},
+                            end: {x: 0, y: 1}
+                        }}
+                    >
+                    {
+                        slideDown ||
+                        <>
                         {play}
                         {saved}
                         {stats}
-                    </View>
-                    <View style={styles.rightNav}>
                         {account}
                         {logout}
-                    </View>
-                </GlassyView>
-            </View>
+                        </>
+                    }
+                    </GlassyView>
+                </Animated.View>
+            ) : (
+                <View
+                    style={styles.navCenter}
+                    onLayout={(e) => {
+                        setNavBarHeight(e.nativeEvent.layout.height);
+                    }}
+                >
+                    <GlassyView style={styles.topNav}>
+                        <View style={styles.middleNav}>
+                            <Logo
+                                text={true}
+                                image={false}
+                                style={styles.logo}
+                            />
+                        </View>
+
+                        <View style={styles.middleNav}>
+                            {play}
+                            {saved}
+                            {stats}
+                        </View>
+                        <View style={styles.rightNav}>
+                            {account}
+                            {logout}
+                        </View>
+                    </GlassyView>
+                </View>
+            )}
 
             {/* Scroll area */}
             <ScrollView
@@ -179,10 +249,10 @@ const SidebarLayout = ({ children, style, isLoading }) => {
                 {isLoading ? <ActivityIndicator /> : children}
             </ScrollView>
         </View>
-    )
+    );
 };
 
-const drawerWidth = isWide ? "auto" : 250;
+const drawerWidth = isMobile ? 250 : "auto";
 
 const styles = StyleSheet.create({
     root: {
@@ -228,15 +298,47 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
     },
 
-    scroll: {
-
-    },
+    scroll: {},
     scrollContent: {
         margin: 10,
         padding: 10,
         maxWidth: 1100,
         width: "100vw",
         alignSelf: "center",
+    },
+    navCenterMobile: {
+        width: "100%",
+        alignItems: "flex-end",
+        backgroundColor: "transparent",
+        padding: 10,
+        position: "absolute",
+        top: 10,
+        zIndex: 10,
+    },
+    drawerContainer: {
+        width: "100vw",
+        height: "100vh",
+        position: "absolute",
+        zIndex: 10
+    },
+    glassyDrawer: {
+        borderRadius: 0,
+        borderBottomLeftRadius: 5,
+        borderBottomRightRadius: 5,
+        borderWidth: 0,
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 30,
+        width: "100vw",
+        height: "100vh",
+        marginBottom: 0
+    },
+    openDrawerButton: {
+        position: "absolute",
+        right: 20,
+        top: 20,
+        backgroundColor: theme.primary,
+        zIndex: 20,
     },
 });
 

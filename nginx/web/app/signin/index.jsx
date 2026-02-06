@@ -24,7 +24,10 @@ import GlassyView from "../../components/custom/GlassyView.jsx"
 import Video from 'react-native-video';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 
-const { width, height } = Dimensions.get("window")
+
+let { width, height } = Dimensions.get("window");
+let isMobile = width <= 768; // Adjust breakpoint as needed
+
 
 export default function SignInScreen() {
     const {showAlert} = useAlert()
@@ -107,20 +110,10 @@ export default function SignInScreen() {
                 resizeMode="cover"
             />
         </View>
-        <GlassyView style={styles.loginContainer}>
-            <View>
-                {
-                    isMobile &&
-                    <Image
-                        source={require("../../assets/images/steig-black.png")}
-                        style={styles.mobileImage}
-                        resizeMode='contain'>
-                    </Image>
-                }
-                <Text style={styles.textShadow} variant="headlineSmall">
-                    Please sign in
-                </Text>
-            </View>
+        <GlassyView style={[styles.loginContainer, isMobile && mstyles.loginContainer ]}>
+            <Text style={styles.textShadow} variant="headlineSmall">
+                Please sign in
+            </Text>
             <TextInput
                 label="Email"
                 value={email}
@@ -137,6 +130,7 @@ export default function SignInScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={secureTextEntry}
                 mode="outlined"
+                style={styles.textInput}
                 right={
                     <TextInput.Icon
                         icon={secureTextEntry ? "eye-off" : "eye"}
@@ -263,3 +257,10 @@ const styles = StyleSheet.create({
         flex: 1
     }
 });
+
+const mstyles = StyleSheet.create({
+    loginContainer: {
+        margin: 10,
+        width: "90vw"
+    }
+})
