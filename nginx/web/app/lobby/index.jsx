@@ -57,6 +57,7 @@ import JoinCustomLobby from "../../components/entities/JoinCustomLobby.jsx";
 import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
 import FriendOptions from "../../components/entities/FriendOptions.jsx";
 import DropDown from "../../components/custom/DropDown.jsx";
+import ustyles from "../../assets/styles/ustyles.js";
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -130,6 +131,7 @@ export default function LobbyScreen() {
     const [friendRequests, setFriendRequests] = useState([])
 
     // Mobile style
+    const [mobileFriendsDisplayed, setMobileFriendsDisplayed] = useState(null)
     
     useEffect(() => {
         onReady(() => {
@@ -460,15 +462,41 @@ export default function LobbyScreen() {
 
 
     return (
-        <SidebarLayout >
+        <SidebarLayout
+            slideDown={mobileFriendsDisplayed &&
+                <View style={ustyles.flex.flexColumnCenterItems}>
+                    <IconButton
+                        icon={"close"}
+                        onPress={() => setMobileFriendsDisplayed(false)}
+                        size={40}
+                    />
+                    <FriendOptions
+                        friends={friends}
+                        friendRequests={friendRequests}
+                        socket={socket}
+                        addEventListener={addEventListener}
+                        removeEventListener={removeEventListener}
+                        mobile={true}
+                    />
+                </View>
+            }
+        >
             <View style={isMobile ? mstyles.container : styles.container}>
                 {
                     isMobile &&
-                    <DropDown
-                        style={mstyles.dd}
-                        options={GAMEMODES.map((g) => {return {title: g.name}})}
-                        onSelect={(param) => handleGameModePress(param.title)}
-                    />
+                    <View style={mstyles.topOptions}>
+                        <DropDown
+                            style={mstyles.dd}
+                            options={GAMEMODES.map((g) => {return {title: g.name}})}
+                            onSelect={(param) => handleGameModePress(param.title)}
+                        />
+                        <IconButton
+                            icon={"account"}
+                            style={mstyles.friendsButton}
+                            onPress={() => setMobileFriendsDisplayed(true)}
+                            size={40}
+                        />
+                    </View>
                 }
                 {!isMobile &&
                 <View style={isMobile ? mstyles.top : styles.left}>
@@ -477,7 +505,7 @@ export default function LobbyScreen() {
                         <GameMode
                             gamemode={g}
                             icon={g.icon}
-                            style={mstyles.gamemode}
+                            style={styles.gamemode}
                             selected={gameMode == g.name}
                             onPress={() => handleGameModePress(g.name)}
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
@@ -567,8 +595,6 @@ export default function LobbyScreen() {
                     </View>
                 </View>
             </View>
-            <View style={styles.container}>
-            </View>
         </SidebarLayout>
     );
 }
@@ -577,7 +603,7 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: "row",
         gap: 10,
-        margin: 10
+        margin: 10,
     },
     left: {
         width: 200,
@@ -668,10 +694,19 @@ const mstyles = StyleSheet.create({
         flexDirection: "row",
         gap: 5
     },
-    dd: {
+    topOptions: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         width: "70vw",
+    },
+    dd: {
         borderWidth: 1,
-        borderColor: theme.elevation.level5
+        borderColor: theme.elevation.level5,
+        flexGrow: 1,
+    },
+    friendsButton: {
+        backgroundColor: theme.onPrimary
     },
     gamemode: {
         flex: 1
