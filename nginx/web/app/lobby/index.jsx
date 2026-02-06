@@ -476,7 +476,7 @@ export default function LobbyScreen() {
                         socket={socket}
                         addEventListener={addEventListener}
                         removeEventListener={removeEventListener}
-                        mobile={true}
+                        style={mstyles.friendsDialogue}
                     />
                 </View>
             }
@@ -736,5 +736,8 @@ const mstyles = StyleSheet.create({
     readyInfoButton: {
         flex: 1,
         maxWidth: 170
+    },
+    friendsDialogue: {
+        maxWidth: 200
     }
 })

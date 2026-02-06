@@ -34,7 +34,7 @@ export default function UnfoldIconMenu ({
             }
             {
                 unfolded &&
-                <View style={styles.children}>{children}</View>
+                <View style={[styles.children]}>{children}</View>
             }
         </View>
     )

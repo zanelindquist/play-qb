@@ -31,6 +31,11 @@ const GAMEMODES = [
         description: "Create a custom game and play with your friends.",
         icon: "hammer-wrench",
     },
+    {
+        name: "ranked",
+        description: "Test your skill against other players and climb up the global leaderboard.",
+        icon: "medal",
+    },
 ];
 
 const LEVELS = ["All", "Middle School", "High School", "Collegiate", "Open"]
@@ -221,7 +226,7 @@ export default function GameSettings({
             dataName="speed"
             mode="slider"
             minimum={100}
-            maximum={1600}
+            maximum={1000}
             defaultValue={400}
             onChange={handleGameRuleChange}
             disabled={disabled}

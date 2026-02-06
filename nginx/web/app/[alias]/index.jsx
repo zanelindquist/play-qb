@@ -45,7 +45,7 @@ const ANSWER_MS = 5000;
 
 const SHOW_EVENTS_INCREMENTS = 20
 
-const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5']
+const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5', 'ranked']
 
 const Play = () => {
     // Get the lobby alias
@@ -435,38 +435,38 @@ const Play = () => {
             style={styles.sidebar}
             showMobileIcon={false}
             slideDown={mobileOptionsOpen &&
-            <ScrollView contentContainerStyle={[ustyles.flex.flexColumn, {gap: 40}]}>
-                <IconButton
-                    icon={"close"}
-                    onPress={closeMobileOptions}
-                    size={40}
-                    style={mstyles.closeButton}
-                />
-                {
-                    lobby && lobby.games ? 
-                    <View style={styles.playerScoresContainer}>
-                        <View style={styles.scoreIndicator}>
-                            <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                <ScrollView contentContainerStyle={[ustyles.flex.flexColumn, {gap: 40}]}>
+                    <IconButton
+                        icon={"close"}
+                        onPress={closeMobileOptions}
+                        size={40}
+                        style={mstyles.closeButton}
+                    />
+                    {
+                        lobby && lobby.games ? 
+                        <View style={styles.playerScoresContainer}>
+                            <View style={styles.scoreIndicator}>
+                                <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                            </View>
+                            <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
                         </View>
-                        <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
-                    </View>
-                    :
-                    <GlassyView>
-                        <HelperText>Lobby or lobby.games undefined</HelperText>
-                    </GlassyView>
-                }
-                <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
-                <GameSettings
-                    columns={1}
-                    defaultInfo={lobby}
-                    expanded={true}
-                    // TODO: Determine who can edit lobbies while they are in them
-                    disabled={myUser?.id !== lobby?.creator_id}
-                    nameDisabled={true}
-                    title={"Game Settings"}
-                    onGameRuleChange={handleGameRuleChange}
-                />
-            </ScrollView>
+                        :
+                        <GlassyView>
+                            <HelperText>Lobby or lobby.games undefined</HelperText>
+                        </GlassyView>
+                    }
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    <GameSettings
+                        columns={1}
+                        defaultInfo={lobby}
+                        expanded={true}
+                        // TODO: Determine who can edit lobbies while they are in them
+                        disabled={myUser?.id !== lobby?.creator_id}
+                        nameDisabled={true}
+                        title={"Game Settings"}
+                        onGameRuleChange={handleGameRuleChange}
+                    />
+                </ScrollView>
             }
         >
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
@@ -478,12 +478,25 @@ const Play = () => {
                             <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                             <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
                         </View>
-                        <IconButton
-                            icon={"dots-horizontal"}
-                            style={mstyles.moreDisplay}
-                            onPress={openMobileOptions}
-                            size={50}
-                        />
+                        {
+                            (isMobile && lastAnswerStatus) ?
+                            <IconButton
+                                icon={lastAnswerStatus == "correct" ? "check" : (lastAnswerStatus == "incorrect" ? "close" : (lastAnswerStatus == "prompt" ? "sync" : "none"))}
+                                size={50}
+                                style={[
+                                    mstyles.moreDisplay,
+                                    mstyles.answerStatusIcon,
+                                    {backgroundColor: lastAnswerStatus == "correct" ? theme.static.correct : (lastAnswerStatus == "incorrect" ? theme.static.wrong : (lastAnswerStatus == "prompt" ? theme.static.prompt : null))}
+                                ]}
+                            /> :
+                            <IconButton
+                                icon={"dots-horizontal"}
+                                style={mstyles.moreDisplay}
+                                onPress={openMobileOptions}
+                                size={50}
+                            />
+                        }
+
                     </View>
                 }
                 <View style={isMobile ? mstyles.gameContent : styles.gameContent}>
@@ -494,12 +507,15 @@ const Play = () => {
                             rankInfo={myRankInfo || myUser}
                         />   
                     }
-                    <AnswerInput
-                        onChange={handleInputChange}
-                        onSubmit={onSubmit}
-                        disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
-                        lastAnswer={isMobile && lastAnswerStatus}
-                    ></AnswerInput> 
+                    {
+                        (buzzer?.current?.id == myUser?.id || !isMobile) &&
+                        <AnswerInput
+                            onChange={handleInputChange}
+                            onSubmit={onSubmit}
+                            disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
+                            lastAnswer={isMobile && lastAnswerStatus}
+                        ></AnswerInput> 
+                    }
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
@@ -519,7 +535,7 @@ const Play = () => {
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
-                                            EXPANDED_HEIGHT={700}
+                                            EXPANDED_HEIGHT={750 + (-width / 4)}
                                         />
                                     )
                                 case "interrupt":
@@ -706,6 +722,9 @@ const mstyles = StyleSheet.create({
     gameContent: {
         margin: 0,
         width: "100%"
+    },
+    answerStatusIcon: {
+        // position: "absolute",
     }
 })
 
