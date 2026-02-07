@@ -584,9 +584,9 @@ const Play = () => {
                                 {alias}
                                 <Beta />
                             </HelperText>
-                            <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText>
+                            {/* <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText> */}
                             <RankUser user={myUser}/>
-                            <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText>
+                            {/* <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText> */}
                         </>
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>

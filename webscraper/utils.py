@@ -44,6 +44,11 @@ def generate_unique_hash(length=16):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def append_to_diagnostics_file(file, message):
+    if not file:
+        return
+    
+    print(message)
+
     # Resolve relative paths to absolute paths
     if file.startswith("./") or file.startswith(".\\"):
         # Make it relative to this script's directory

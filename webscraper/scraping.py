@@ -378,7 +378,7 @@ def write_dict_to_sql(dict, diagnostics=False, persist_db=False):
     """
 
     cursor.execute(query, (tournament,))
-    questions_exist = cursor.fetchone()is not None
+    questions_exist = cursor.fetchone() is not None
 
     if questions_exist and not persist_db:
         print("FAILURE: packet already exists in database")
