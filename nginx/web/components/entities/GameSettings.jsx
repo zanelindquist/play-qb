@@ -294,8 +294,8 @@ export default function GameSettings({
             <HelperText style={styles.title}>{title}</HelperText>
             <View style={styles.customRules}>
                 {
-                    columnArrangement[columns].map((column) => 
-                        <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]}>
+                    columnArrangement[columns].map((column, i) => 
+                        <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]} key={i}>
                             {
                                 column.map((component) => component)
                             }

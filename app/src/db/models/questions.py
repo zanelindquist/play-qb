@@ -11,15 +11,16 @@ class Questions(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
+    scraped_hex = Column(String(24))
     tournament = Column(String(50), default="Untitled Tournament", nullable=False)
     type = Column(Integer, default=0)
     year = Column(String(9))
     level = Column(Integer, default=2)
     difficulty = Column(Integer, default=0)
     category = Column(String(20), default="Unknown")
+    subcategory = Column(String(30))
     question = Column(Text, nullable=False)
     answers = Column(Text, nullable=False)
-    prompts = Column(Text)
     category_confidence = Column(Float, nullable=False, default=0.5)
     hand_labeled = Column(Boolean, default=False)
 
