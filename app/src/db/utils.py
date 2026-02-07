@@ -547,7 +547,7 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
         )
 
         # Optional filters (only apply if non-zero / non-null)
-        if level != 0:
+        if level != 11: # 11 is the code for everything
             base_query = base_query.where(Questions.level == level)
 
         if category != "everything":
@@ -582,7 +582,7 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
         keys = ["main", "accept", "prompt", "reject", "suggested_category"]
         index = 0;
         for part in q.get("answers").split(" || "):
-            parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+            parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" or part != "") else None
             index += 1
 
         # Make the main answer not a list
@@ -878,7 +878,7 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
             keys = ["main", "accept", "prompt", "reject", "suggested_category"]
             index = 0;
             for part in q.get("answers").split(" || "):
-                parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+                parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" or part != "") else None
                 index += 1
 
             # Make the main answer not a list
@@ -1470,7 +1470,7 @@ def check_question(question, guess) -> bool:
     dont_accept_threshold = 0.85
 
         # Parse parts of answer
-    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    main_answer, accepts, prompts, rejects = answers.split(" || ")
     # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
     if len(main_answer.split(" ")) > 4:
         main_answer = main_answer.split(" ")[0]
@@ -1480,7 +1480,7 @@ def check_question(question, guess) -> bool:
 
     # We want a very high theshold on this
     # DON'T ACCEPT
-    for reject in [*(rejects.split(" | ") if rejects != "NONE" else [])]:
+    for reject in [*(rejects.split(" | ") if (rejects != "NONE" or rejects != "") else [])]:
         if is_name:
             is_reject= name_match(reject, guess, threshold=dont_accept_threshold)
         else:
@@ -1489,7 +1489,7 @@ def check_question(question, guess) -> bool:
             return -1
  
     # CORRECT
-    for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
+    for answer in [main_answer, *(accepts.split(" | ") if (accepts != "NONE" or accepts != "") else [])]:
         if is_name:
             is_correct = name_match(answer, guess, threshold=correct_threshold)
         else:
@@ -1500,7 +1500,7 @@ def check_question(question, guess) -> bool:
     if is_correct < correct_threshold and is_correct > prompt_threshold:
         return 0
             
-    for prompt in [*(prompts.split(" | ") if prompts != "NONE" else [])]:
+    for prompt in [*(prompts.split(" | ") if (prompts != "NONE" or prompts != "") else [])]:
         if is_name:
             is_prompt = name_match(prompt, guess, threshold=prompt_threshold)
         else:

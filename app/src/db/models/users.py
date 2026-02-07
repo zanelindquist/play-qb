@@ -23,7 +23,6 @@ class Users(Base, CreatedAtColumn):
     premium = Column(Boolean, default=False)
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
-    is_scraped = Column(Boolean, default=False)
 
     current_lobby_id = Column(Integer, ForeignKey("lobbies.id"), nullable=True)
     current_lobby = relationship(
