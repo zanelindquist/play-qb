@@ -405,9 +405,7 @@ const Play = () => {
             clearTimeout(rateLimitRef.current)
         }
 
-
         rateLimitRef.current = setTimeout(() => {
-            console.log(rules.speed)
             send("change_game_settings", { settings: rules })
         }, 100)
 

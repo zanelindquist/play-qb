@@ -55,4 +55,4 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # create_category_frequency(labeled_questions)
 
 # Scrape questions from qb reader
-scrape_all_questions()
+scrape_all_questions(4000)

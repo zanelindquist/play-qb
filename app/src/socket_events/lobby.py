@@ -424,6 +424,8 @@ def on_custom_settings_changed(data):
     if user_hash != parties[party_hash]["leader_hash"]:
         return;
 
+    # TODO: Actually change settings
+
     # Simply just tell the other party members what the leader changed
     emit("changed_custom_settings", {"settings": data.get("settings")}, room=f"party:{party_hash}")
 

@@ -32,6 +32,7 @@ session = SessionLocal()
 BASE_URL = 'https://qbreader.org/api/query'
 QUERY_LENGTH = 500
 LEVEL_DICT = {
+    0: "Pop Culture",
     1: "Middle School",
     2: "Easy High School",
     3: "Regular High School",
@@ -57,7 +58,7 @@ TAG_RE = re.compile(r'<[^>]+>')
 
 # SCRAPER
 
-def scrape_all_questions():
+def scrape_all_questions(number=2000):
     # Get offset
     if not connection.is_connected():
         connection.reconnect()
@@ -82,7 +83,7 @@ def scrape_all_questions():
 
     cursor.close()
 
-    result = scrape_questions(2000, page=scrape_offset / QUERY_LENGTH, diagnostics="./logs/scrape_qbreader.txt")
+    result = scrape_questions(number, page=scrape_offset / QUERY_LENGTH, diagnostics="./logs/scrape_qbreader.txt")
 
     # Update the scrape offset again
     total = result.get("total_questions")
@@ -273,14 +274,10 @@ def parse_answer_html(answer: str) -> str:
 
     # --- Extract accepts ---
     accepts = [a.strip() for a in ACCEPT_RE.findall(answer)]
-
-    # Remove accepts from text
     remaining = ACCEPT_RE.sub('', answer)
 
     # --- Extract prompts ---
     prompts = [p.strip() for p in PROMPT_RE.findall(remaining)]
-
-    # Remove prompts from text
     remaining = PROMPT_RE.sub('', remaining)
 
     # --- Strip all remaining tags ---
@@ -293,11 +290,11 @@ def parse_answer_html(answer: str) -> str:
         if part.strip()
     ]
 
-    main = accepts[0] if accepts else ''
+    # Fill "NONE" for empty fields
+    main = accepts[0] if accepts else "NONE"
+    accepts_str = ' | '.join(accepts) if accepts else "NONE"
+    prompts_str = ' | '.join(prompts) if prompts else "NONE"
+    rejects_str = ' | '.join(rejects) if rejects else "NONE"
 
-    return (
-        f"{main} || "
-        f"{' | '.join(accepts)} || "
-        f"{' | '.join(prompts)} || "
-        f"{' | '.join(rejects)}"
-    )
+    return f"{main} || {accepts_str} || {prompts_str} || {rejects_str}"
+
