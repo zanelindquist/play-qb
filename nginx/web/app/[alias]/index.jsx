@@ -533,7 +533,7 @@ const Play = () => {
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
-                                            EXPANDED_HEIGHT={750 + (-width / 4)}
+                                            EXPANDED_HEIGHT={750 + Math.min(-width / 4, 350)}
                                         />
                                     )
                                 case "interrupt":
