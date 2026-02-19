@@ -55,7 +55,7 @@ def connect(auth):
         decoded = decode_token(token)
         user_hash = decoded.get("sub")
     except Exception as e:
-        print("Invalid token")
+        print("Invalid token", e)
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
@@ -100,6 +100,10 @@ def on_join_lobby(data):
     # the data type of the returning information?
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
+
+    if not game:
+        emit("game_not_found")
+        return
 
     # See if we should update the game active_at while we're at it
     update_game_active_at(game.get("hash"), game.get("active_at"))
@@ -470,11 +474,14 @@ def on_save_question(data): # Question hash
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
     # Use session here because request.environ is already gone on DC
-    user_hash = session["user_hash"]
-    game_hash = session["game_hash"]
+    user_hash = session.get("user_hash")
+    game_hash = session.get("game_hash")
     lobby = session.get("lobby")
 
     print(f"Received disconnect from /game {user_hash}")
+
+    if not game_hash or not user_hash:
+        return
 
     # Add the scores to the user's stats
     stats = remove_user_game_scores(game_hash, user_hash)

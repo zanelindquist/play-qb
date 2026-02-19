@@ -331,12 +331,29 @@ def create_stat_for_all_users_temp():
 
 
 # Creates a game by default for this lobby
+# If the games get deleted somehow, just go into a custom and create lobbies with the name and it will auto create the game
 def create_lobby(settings):
     session = get_session()
     try:
         lobby = get_lobby_by_alias(settings.get("name"))
-
         if lobby:
+            # If there is a lobby, we want to make sure it has a game
+            #TODO: Handle multiple games per lobby
+            game = session.execute(
+                select(Games)
+                .where(Games.lobby_id == lobby.get("id"))
+            ).scalars().first()
+
+            if not game:
+                game = Games(
+                    lobby_id=lobby.get("id"),
+                    teams={},
+                    rounds=[]
+                )
+                session.add(game)
+                
+                session.commit()
+
             return {'message': 'create_lobby(): lobby already exists', "code": 403}
         
         columns = {}
@@ -1351,7 +1368,10 @@ def delete_inactive_lobbies():
         # This will help when there are potentially a lot of games on common servers so that we don't get dead buildup
         games = session.execute(
             delete(Games)
-            .where(Games.active_at < cutoff)
+            .where(
+                Games.active_at < cutoff,
+                ~Games.lobby.has(Lobbies.name.in_(PROTECTED_LOBBIES))
+            )
         )
 
         to_delete_lobbies = session.execute(
@@ -1675,6 +1695,20 @@ def user_join_lobby(hash, lobbyAlias):
 
         if not user:
             return {'message': 'user_join_lobby(): failure', 'error': f'User not found', "code": 400}
+
+        if not lobby_games:
+            # If there is no game, create a game
+            game = Games(
+                lobby_id=lobby.get("id"),
+                teams={},
+                rounds=[]
+            )
+            session.add(game)
+            
+            session.commit()
+
+            lobby_games = [game]
+
 
         # Set the uesrs's lobby to this lobby
         setattr(user, "current_lobby_id", lobby.id)

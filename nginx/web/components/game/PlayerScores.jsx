@@ -12,6 +12,7 @@ export default function PlayerScores ({
     gameMode="solos",
     style
 }) {
+    console.log("T", teams)
     // We need to handle the different layouts of teams
     if (gameMode === "solos") return (
         <GlassyView style={[style, styles.container]}>

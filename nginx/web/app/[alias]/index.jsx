@@ -124,6 +124,11 @@ const Play = () => {
                 router.replace("/lobby?mode=solos")
             })
 
+            addEventListener("game_not_found", () => {
+                showAlert("The game you are trying to enter does not exist")
+                router.replace("/lobby?mode=solos")
+            })
+
             addEventListener("return_to_lobby", () => {
                 showAlert("Server restarted: return to lobby")
                 router.replace(`/lobby?mode=${alias}`)
@@ -138,7 +143,7 @@ const Play = () => {
                 addEvent(user)
                 // For updating the scores and stuff
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
-
+                console.log("LOBBY", lobby)
                 setLobby({...lobby})
             })
 
