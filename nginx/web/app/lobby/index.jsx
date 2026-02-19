@@ -509,6 +509,7 @@ export default function LobbyScreen() {
                             selected={gameMode == g.name}
                             onPress={() => handleGameModePress(g.name)}
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
+                            key={i}    
                         />
                     ))
                 }
@@ -538,6 +539,7 @@ export default function LobbyScreen() {
                                 onPress={openInviteFriendModal}
                                 isMe={user?.hash == myHash}
                                 ready={user?.ready}
+                                key={i}
                             />
                         ) :
                         <ActivityIndicator
