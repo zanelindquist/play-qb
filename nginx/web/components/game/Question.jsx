@@ -64,6 +64,7 @@ const Question = ({
     rightIcon,
     onSave = null,
     saveIcon,
+    showAnswers,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     ANSWER_MS = 5000,
@@ -306,8 +307,7 @@ const Question = ({
                                 s
                             </HelperText>
                         }
-                        <HelperText>{question.answers.main}</HelperText>
-                        {state == "dead" && (
+                        {(state == "dead" || showAnswers) && (
                             <Answers
                                 answers={question.answers}
                                 style={styles.answerComponent}

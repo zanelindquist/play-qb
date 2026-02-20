@@ -55,7 +55,7 @@ def connect(auth):
         decoded = decode_token(token)
         user_hash = decoded.get("sub")
     except Exception as e:
-        print("Invalid token", e)
+        print("Invalid token")
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
@@ -362,9 +362,13 @@ def on_submit(data): # FinalAnswer
         set_question_to_game(question, lobby)
 
         emit("next_question", data, room=f"lobby:{lobby}")
+
     elif is_correct == 0:
         # If the answer is a prompt, then we want to emit another buzz
         # Emit a resume and then emit another buzz
+        # Add a new interrupt
+        interrupt = game_mem.start_interrupt(user_hash, game_hash, after_character=interrupt.get("after_character"))
+        
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
             "question_interrupt",

@@ -36,6 +36,7 @@ import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 import Beta from "../../components/custom/Beta.jsx";
+import GameRule from "../../components/entities/GameRule.jsx";
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -84,6 +85,9 @@ const Play = () => {
 
     // Mobile ui
     const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false)
+
+    // Admin
+    const [showAnswers, setShowAnswers] = useState(false)
 
     // Register keybinds
     useEffect(() => {
@@ -143,7 +147,6 @@ const Play = () => {
                 addEvent(user)
                 // For updating the scores and stuff
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
-                console.log("LOBBY", lobby)
                 setLobby({...lobby})
             })
 
@@ -539,6 +542,7 @@ const Play = () => {
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
                                             EXPANDED_HEIGHT={750 + Math.min(-width / 4, 350)}
+                                            showAnswers={showAnswers}
                                         />
                                     )
                                 case "interrupt":
@@ -591,6 +595,16 @@ const Play = () => {
                             <RankUser user={myUser}/>
                             {/* <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText> */}
                         </>
+                    }
+                    {
+                        myUser?.id === 1 &&
+                        <GameRule
+                            label="Show question answers"
+                            dataName="qa_visible"
+                            mode="toggle"
+                            defaultValue={false}
+                            onChange={(change) => setShowAnswers(change.value)}
+                        />
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
