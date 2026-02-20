@@ -52,9 +52,9 @@ export default function Answers ({ style, answers, onExpand, onCollapse, rightIc
                     }
                 </View>
                 <HelperText style={styles.answerInfo}>Answer information</HelperText>
-                {answers.accept && <HelperText>Accept: {answers.accept.join(", ")}</HelperText>}
-                {answers.prompt && <HelperText>Prompt: {answers.prompt.join(", ")}</HelperText>}
-                {answers.reject && <HelperText>Reject: {answers.reject.join(", ")}</HelperText>}
+                {answers.accept && <HelperText>Accept: {answers.accept.join("; ")}</HelperText>}
+                {answers.prompt && <HelperText>Prompt: {answers.prompt.join("; ")}</HelperText>}
+                {answers.reject && <HelperText>Reject: {answers.reject.join("; ")}</HelperText>}
                 {answers.suggested_cateogry && <HelperText>Manually labeled category: {answers.suggested_cateogry.join(", ")}</HelperText>}
             </View>
 

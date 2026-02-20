@@ -895,7 +895,7 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
             keys = ["main", "accept", "prompt", "reject", "suggested_category"]
             index = 0;
             for part in q.get("answers").split(" || "):
-                parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" or part != "") else None
+                parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" and part != "") else None
                 index += 1
 
             # Make the main answer not a list
@@ -1469,6 +1469,7 @@ def unsave_question(hash: str, question_hash: str) -> bool:
 # In short, we prefer false positives over false negatives
 def check_question(question, guess) -> bool:
     if not question or not guess:
+        return -1
         raise Exception("check_question(): no question or guess provided")
 
     # Handle bonuses
@@ -1487,22 +1488,23 @@ def check_question(question, guess) -> bool:
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
     correct_threshold = 0.7
     prompt_threshold = 0.6
-    dont_accept_threshold = 0.85
+    dont_accept_threshold = 0.9
 
-        # Parse parts of answer
+    # Parse parts of answer
     main_answer, accepts, prompts, rejects = answers.split(" || ")
     # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
     if len(main_answer.split(" ")) > 4:
         main_answer = main_answer.split(" ")[0]
         correct_threshold = 0.4
         prompt_threshold = 0.3
-    is_name = answer_is_name(main_answer)
+
+    is_name = answer_is_name(main_answer) or True
 
     # We want a very high theshold on this
     # DON'T ACCEPT
     for reject in [*(rejects.split(" | ") if (rejects != "NONE" or rejects != "") else [])]:
         if is_name:
-            is_reject= name_match(reject, guess, threshold=dont_accept_threshold)
+            is_reject = name_match(reject, guess, threshold=dont_accept_threshold)
         else:
             is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
         if is_reject:
