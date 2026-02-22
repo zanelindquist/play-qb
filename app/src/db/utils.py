@@ -1491,7 +1491,7 @@ def check_question(question, guess) -> bool:
     dont_accept_threshold = 0.9
 
     # Parse parts of answer
-    main_answer, accepts, prompts, rejects = answers.split(" || ")
+    main_answer, accepts, prompts, rejects = answers.split(" || ")[0:4]
     # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
     if len(main_answer.split(" ")) > 4:
         main_answer = main_answer.split(" ")[0]
@@ -1500,29 +1500,29 @@ def check_question(question, guess) -> bool:
 
     is_name = answer_is_name(main_answer) or True
 
-    # We want a very high theshold on this
-    # DON'T ACCEPT
-    for reject in [*(rejects.split(" | ") if (rejects != "NONE" or rejects != "") else [])]:
-        if is_name:
-            is_reject = name_match(reject, guess, threshold=dont_accept_threshold)
-        else:
-            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
-        if is_reject:
-            return -1
- 
     # CORRECT
-    for answer in [main_answer, *(accepts.split(" | ") if (accepts != "NONE" or accepts != "") else [])]:
+    for answer in [main_answer, *(accepts.split(" | ") if (accepts != "NONE" and accepts != "") else [])]:
         if is_name:
             is_correct = name_match(answer, guess, threshold=correct_threshold)
         else:
             is_correct = normal_match(answer, guess, threshold=correct_threshold)
         if is_correct == 1:
             return 1
+
+    # We want a very high theshold on this
+    # DON'T ACCEPT
+    for reject in [*(rejects.split(" | ") if (rejects != "NONE" and rejects != "") else [])]:
+        if is_name:
+            is_reject = name_match(reject, guess, threshold=dont_accept_threshold)
+        else:
+            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
+        if is_reject:
+            return -1
         
     if is_correct < correct_threshold and is_correct > prompt_threshold:
         return 0
             
-    for prompt in [*(prompts.split(" | ") if (prompts != "NONE" or prompts != "") else [])]:
+    for prompt in [*(prompts.split(" | ") if (prompts != "NONE" and prompts != "") else [])]:
         if is_name:
             is_prompt = name_match(prompt, guess, threshold=prompt_threshold)
         else:
