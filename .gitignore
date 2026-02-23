@@ -20,3 +20,4 @@ dist
 /webscraper/packets
 /webscraper/pdf_packets
 /webscraper/__pycache__
+/webscraper/qbreader_data
