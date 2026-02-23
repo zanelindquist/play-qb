@@ -227,7 +227,6 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                                 style={styles.logo}
                             />
                         </View>
-
                         <View style={styles.middleNav}>
                             {play}
                             {saved}
@@ -246,7 +245,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                 style={[styles.scroll, { paddingTop: navBarHeight }]}
                 contentContainerStyle={[styles.scrollContent, style]}
             >
-                {isLoading ? <ActivityIndicator /> : children}
+                {isLoading && children ? <ActivityIndicator /> : children}
             </ScrollView>
         </View>
     );

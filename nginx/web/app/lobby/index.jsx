@@ -197,7 +197,7 @@ export default function LobbyScreen() {
                     joinParty(members[i])
                 }
                 // If this user is me
-                if (user.hash === myHash && members && lobby) {
+                if (user?.hash === myHash && members && lobby) {
                     // Update the lobby info
                     setLobbyInfo(lobby)
 

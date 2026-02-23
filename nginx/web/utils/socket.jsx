@@ -4,6 +4,7 @@ import { getAccessToken } from "./encryption";
 import { RedirectToSignIn } from "./redirects";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
+import { useBanner } from "./banners";
 
 // Singleton storage for socket instances
 const socketInstances = {
@@ -20,6 +21,7 @@ export function useSocket(namespace, lobbyAlias) {
     const socketRef = useRef(null);
     const listenersRef = useRef(new Map());
     const { showAlert } = useAlert();
+    const {showBanner} = useBanner();
 
     if(namespace !== "game" && namespace !== "lobby")
         throw Error("useSocket(): Invalid namespace")
@@ -64,9 +66,10 @@ export function useSocket(namespace, lobbyAlias) {
                 });
 
                 socket.on("failed_connection", (data) => {
+                    console.log("DATA", data)
                     if (data.message === "Invalid token") {
-                        showAlert("Your session has expired. Please log in again.");
-                        router.replace("/signin");
+                        showBanner("Your session has expired. Please log in again.");
+                        router.push("/signin");
                     }
                 });
             })
