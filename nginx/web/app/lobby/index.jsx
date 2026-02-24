@@ -197,7 +197,7 @@ export default function LobbyScreen() {
                     joinParty(members[i])
                 }
                 // If this user is me
-                if (user.hash === myHash && members && lobby) {
+                if (user?.hash === myHash && members && lobby) {
                     // Update the lobby info
                     setLobbyInfo(lobby)
 
@@ -509,6 +509,7 @@ export default function LobbyScreen() {
                             selected={gameMode == g.name}
                             onPress={() => handleGameModePress(g.name)}
                             playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
+                            key={i}    
                         />
                     ))
                 }
@@ -538,6 +539,7 @@ export default function LobbyScreen() {
                                 onPress={openInviteFriendModal}
                                 isMe={user?.hash == myHash}
                                 ready={user?.ready}
+                                key={i}
                             />
                         ) :
                         <ActivityIndicator

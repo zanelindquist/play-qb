@@ -101,6 +101,10 @@ def on_join_lobby(data):
     lobby_data = get_lobby_by_alias(lobby)
     game = get_game_by_lobby_alias(lobby)
 
+    if not game:
+        emit("game_not_found")
+        return
+
     # See if we should update the game active_at while we're at it
     update_game_active_at(game.get("hash"), game.get("active_at"))
 
@@ -358,9 +362,13 @@ def on_submit(data): # FinalAnswer
         set_question_to_game(question, lobby)
 
         emit("next_question", data, room=f"lobby:{lobby}")
+
     elif is_correct == 0:
         # If the answer is a prompt, then we want to emit another buzz
         # Emit a resume and then emit another buzz
+        # Add a new interrupt
+        interrupt = game_mem.start_interrupt(user_hash, game_hash, after_character=interrupt.get("after_character"))
+        
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
             "question_interrupt",
@@ -470,11 +478,14 @@ def on_save_question(data): # Question hash
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
     # Use session here because request.environ is already gone on DC
-    user_hash = session["user_hash"]
-    game_hash = session["game_hash"]
+    user_hash = session.get("user_hash")
+    game_hash = session.get("game_hash")
     lobby = session.get("lobby")
 
     print(f"Received disconnect from /game {user_hash}")
+
+    if not game_hash or not user_hash:
+        return
 
     # Add the scores to the user's stats
     stats = remove_user_game_scores(game_hash, user_hash)

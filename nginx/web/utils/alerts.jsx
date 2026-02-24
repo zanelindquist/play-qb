@@ -44,6 +44,7 @@ const AlertProvider = ({ children }) => {
 };
 
 const CustomAlert = ({ content, onClose, modalStyle }) => {
+    console.log("content:: ", content, typeof content)
     return (
         <Portal>
             <Dialog
@@ -60,7 +61,7 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
             >
                 <Dialog.Content>
                     {typeof content === "string" ? (
-                        <Text>{content}</Text>
+                        <HelperText>{content}</HelperText>
                     ) : (
                         React.cloneElement(content, { close: onClose })
                     )}

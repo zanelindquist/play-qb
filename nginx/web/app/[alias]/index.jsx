@@ -36,6 +36,7 @@ import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 import Beta from "../../components/custom/Beta.jsx";
+import GameRule from "../../components/entities/GameRule.jsx";
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -85,6 +86,9 @@ const Play = () => {
     // Mobile ui
     const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false)
 
+    // Admin
+    const [showAnswers, setShowAnswers] = useState(false)
+
     // Register keybinds
     useEffect(() => {
         // Handle key presses
@@ -124,6 +128,11 @@ const Play = () => {
                 router.replace("/lobby?mode=solos")
             })
 
+            addEventListener("game_not_found", () => {
+                showAlert("The game you are trying to enter does not exist")
+                router.replace("/lobby?mode=solos")
+            })
+
             addEventListener("return_to_lobby", () => {
                 showAlert("Server restarted: return to lobby")
                 router.replace(`/lobby?mode=${alias}`)
@@ -138,7 +147,6 @@ const Play = () => {
                 addEvent(user)
                 // For updating the scores and stuff
                 if(!lobby.games[0]) throw Error("Lobby games are not defined")
-
                 setLobby({...lobby})
             })
 
@@ -405,9 +413,7 @@ const Play = () => {
             clearTimeout(rateLimitRef.current)
         }
 
-
         rateLimitRef.current = setTimeout(() => {
-            console.log(rules.speed)
             send("change_game_settings", { settings: rules })
         }, 100)
 
@@ -535,7 +541,8 @@ const Play = () => {
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
-                                            EXPANDED_HEIGHT={750 + (-width / 4)}
+                                            EXPANDED_HEIGHT={Math.max(400, 750 - width/4)}
+                                            showAnswers={showAnswers}
                                         />
                                     )
                                 case "interrupt":
@@ -584,10 +591,20 @@ const Play = () => {
                                 {alias}
                                 <Beta />
                             </HelperText>
-                            <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText>
+                            {/* <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText> */}
                             <RankUser user={myUser}/>
-                            <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText>
+                            {/* <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText> */}
                         </>
+                    }
+                    {
+                        myUser?.id === 1 &&
+                        <GameRule
+                            label="Show question answers"
+                            dataName="qa_visible"
+                            mode="toggle"
+                            defaultValue={false}
+                            onChange={(change) => setShowAnswers(change.value)}
+                        />
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>

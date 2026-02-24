@@ -106,7 +106,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={ustyles.flex.flexRow}>
                     {
-                        GAMEMODES.map((g) => 
+                        GAMEMODES.map((g, i) => 
                             <VerticalHoverOption
                                 title={g.name}
                                 description={g.description}
@@ -114,6 +114,7 @@ export default function HomeScreen() {
                                 href={g.href}
                                 icon={g.icon}
                                 style={isMobile && mstyles.gamemode}
+                                key={i}
                             />
                         )
                     }

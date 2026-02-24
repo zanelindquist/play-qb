@@ -331,12 +331,29 @@ def create_stat_for_all_users_temp():
 
 
 # Creates a game by default for this lobby
+# If the games get deleted somehow, just go into a custom and create lobbies with the name and it will auto create the game
 def create_lobby(settings):
     session = get_session()
     try:
         lobby = get_lobby_by_alias(settings.get("name"))
-
         if lobby:
+            # If there is a lobby, we want to make sure it has a game
+            #TODO: Handle multiple games per lobby
+            game = session.execute(
+                select(Games)
+                .where(Games.lobby_id == lobby.get("id"))
+            ).scalars().first()
+
+            if not game:
+                game = Games(
+                    lobby_id=lobby.get("id"),
+                    teams={},
+                    rounds=[]
+                )
+                session.add(game)
+                
+                session.commit()
+
             return {'message': 'create_lobby(): lobby already exists', "code": 403}
         
         columns = {}
@@ -547,7 +564,7 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
         )
 
         # Optional filters (only apply if non-zero / non-null)
-        if level != 0:
+        if level != 11: # 11 is the code for everything
             base_query = base_query.where(Questions.level == level)
 
         if category != "everything":
@@ -582,7 +599,7 @@ def get_random_question(type=0, level=0, category="all", confidence_threshold=0.
         keys = ["main", "accept", "prompt", "reject", "suggested_category"]
         index = 0;
         for part in q.get("answers").split(" || "):
-            parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+            parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" or part != "") else None
             index += 1
 
         # Make the main answer not a list
@@ -878,7 +895,7 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
             keys = ["main", "accept", "prompt", "reject", "suggested_category"]
             index = 0;
             for part in q.get("answers").split(" || "):
-                parsed_answers[keys[index]] = part.split(" | ") if part != "NONE" else None
+                parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" and part != "") else None
                 index += 1
 
             # Make the main answer not a list
@@ -1351,7 +1368,10 @@ def delete_inactive_lobbies():
         # This will help when there are potentially a lot of games on common servers so that we don't get dead buildup
         games = session.execute(
             delete(Games)
-            .where(Games.active_at < cutoff)
+            .where(
+                Games.active_at < cutoff,
+                ~Games.lobby.has(Lobbies.name.in_(PROTECTED_LOBBIES))
+            )
         )
 
         to_delete_lobbies = session.execute(
@@ -1449,6 +1469,7 @@ def unsave_question(hash: str, question_hash: str) -> bool:
 # In short, we prefer false positives over false negatives
 def check_question(question, guess) -> bool:
     if not question or not guess:
+        return -1
         raise Exception("check_question(): no question or guess provided")
 
     # Handle bonuses
@@ -1467,40 +1488,41 @@ def check_question(question, guess) -> bool:
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
     correct_threshold = 0.7
     prompt_threshold = 0.6
-    dont_accept_threshold = 0.85
+    dont_accept_threshold = 0.9
 
-        # Parse parts of answer
-    main_answer, accepts, prompts, rejects, suggested_category = answers.split(" || ")
+    # Parse parts of answer
+    main_answer, accepts, prompts, rejects = answers.split(" || ")[0:4]
     # If the answer is longer than like 4 words, then its probably poisoned data, and well just go off of the first word, but with a much lower acceptance threshold
     if len(main_answer.split(" ")) > 4:
         main_answer = main_answer.split(" ")[0]
         correct_threshold = 0.4
         prompt_threshold = 0.3
-    is_name = answer_is_name(main_answer)
 
-    # We want a very high theshold on this
-    # DON'T ACCEPT
-    for reject in [*(rejects.split(" | ") if rejects != "NONE" else [])]:
-        if is_name:
-            is_reject= name_match(reject, guess, threshold=dont_accept_threshold)
-        else:
-            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
-        if is_reject:
-            return -1
- 
+    is_name = answer_is_name(main_answer) or True
+
     # CORRECT
-    for answer in [main_answer, *(accepts.split(" | ") if accepts != "NONE" else [])]:
+    for answer in [main_answer, *(accepts.split(" | ") if (accepts != "NONE" and accepts != "") else [])]:
         if is_name:
             is_correct = name_match(answer, guess, threshold=correct_threshold)
         else:
             is_correct = normal_match(answer, guess, threshold=correct_threshold)
         if is_correct == 1:
             return 1
+
+    # We want a very high theshold on this
+    # DON'T ACCEPT
+    for reject in [*(rejects.split(" | ") if (rejects != "NONE" and rejects != "") else [])]:
+        if is_name:
+            is_reject = name_match(reject, guess, threshold=dont_accept_threshold)
+        else:
+            is_reject = normal_match(reject, guess, threshold=dont_accept_threshold)
+        if is_reject:
+            return -1
         
     if is_correct < correct_threshold and is_correct > prompt_threshold:
         return 0
             
-    for prompt in [*(prompts.split(" | ") if prompts != "NONE" else [])]:
+    for prompt in [*(prompts.split(" | ") if (prompts != "NONE" and prompts != "") else [])]:
         if is_name:
             is_prompt = name_match(prompt, guess, threshold=prompt_threshold)
         else:
@@ -1675,6 +1697,20 @@ def user_join_lobby(hash, lobbyAlias):
 
         if not user:
             return {'message': 'user_join_lobby(): failure', 'error': f'User not found', "code": 400}
+
+        if not lobby_games:
+            # If there is no game, create a game
+            game = Games(
+                lobby_id=lobby.get("id"),
+                teams={},
+                rounds=[]
+            )
+            session.add(game)
+            
+            session.commit()
+
+            lobby_games = [game]
+
 
         # Set the uesrs's lobby to this lobby
         setattr(user, "current_lobby_id", lobby.id)

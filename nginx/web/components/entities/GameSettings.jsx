@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { Text, HelperText, ActivityIndicator } from "react-native-paper";
+import { HelperText, ActivityIndicator } from "react-native-paper";
 import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 import GameRule from "./GameRule";
@@ -38,7 +38,21 @@ const GAMEMODES = [
     },
 ];
 
-const LEVELS = ["All", "Middle School", "High School", "Collegiate", "Open"]
+// TODO: FIX LEVELS CHANGING
+const LEVELS = [
+    "Pop Culture",
+    "Middle School",
+    "Easy High School",
+    "Regular High School",
+    "Hard High School",
+    "National High School",
+    "● / Easy College", 
+    "●● / Medium College", 
+    "●●● / Regionals College",
+    "●●●● / Nationals College",
+    "Open",
+    "All"
+]
 
 const CATEGORIES = [
     "everything",
@@ -180,7 +194,7 @@ export default function GameSettings({
             options={LEVELS.map((l) => {
                 return { title: l };
             })}
-            defaultValue={defaultInfo?.level || 0}
+            defaultValue={defaultInfo?.level || LEVELS.length - 1}
             onChange={handleGameRuleChange}
             disabled={disabled}
         />
@@ -294,8 +308,8 @@ export default function GameSettings({
             <HelperText style={styles.title}>{title}</HelperText>
             <View style={styles.customRules}>
                 {
-                    columnArrangement[columns].map((column) => 
-                        <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]}>
+                    columnArrangement[columns].map((column, i) => 
+                        <View style={[styles.rulesColumn, {maxWidth: 100 / columns - 1 + "%"}]} key={i}>
                             {
                                 column.map((component) => component)
                             }

@@ -87,6 +87,9 @@ export default function SignInScreen() {
 
         postAuthRoute("/login", {email, password})
         .then((data) => {
+            if(!data.access_token) {
+                console.log("signin(): no acces token provided")
+            }
             saveAccessToken(data.access_token)
             // Redirect user to the dashboard page
             router.replace("/")

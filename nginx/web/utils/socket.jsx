@@ -4,6 +4,8 @@ import { getAccessToken } from "./encryption";
 import { RedirectToSignIn } from "./redirects";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
+import { useBanner } from "./banners";
+import { BACKEND_URL } from "./constants";
 
 // Singleton storage for socket instances
 const socketInstances = {
@@ -20,6 +22,7 @@ export function useSocket(namespace, lobbyAlias) {
     const socketRef = useRef(null);
     const listenersRef = useRef(new Map());
     const { showAlert } = useAlert();
+    const {showBanner} = useBanner();
 
     if(namespace !== "game" && namespace !== "lobby")
         throw Error("useSocket(): Invalid namespace")
@@ -37,7 +40,7 @@ export function useSocket(namespace, lobbyAlias) {
             .then((token) => {
                 if (!isMounted || socketInstances[namespace]) return;
 
-                const socket = io(`https://app.localhost/${namespace}`, {
+                const socket = io(`${BACKEND_URL}/${namespace}`, {
                     path: "/socket.io",
                     transports: ["websocket"],
                     auth: { token },
@@ -64,9 +67,10 @@ export function useSocket(namespace, lobbyAlias) {
                 });
 
                 socket.on("failed_connection", (data) => {
+                    console.log("DATA", data)
                     if (data.message === "Invalid token") {
-                        showAlert("Your session has expired. Please log in again.");
-                        router.replace("/signin");
+                        showBanner("Your session has expired. Please log in again.");
+                        router.push("/signin");
                     }
                 });
             })
@@ -114,6 +118,7 @@ export function useSocket(namespace, lobbyAlias) {
 
     const removeAllEventListeners = () => {
         const socket = socketInstances[namespace] || socketRef.current;
+        if(!socket) return
         socket.removeAllListeners();
         for (let event of listenersRef.current.keys()) {
             const cb = listenersRef.current.get(event);

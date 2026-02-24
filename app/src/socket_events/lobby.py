@@ -122,13 +122,13 @@ def on_connect(auth):
         user_hash = decoded.get("sub")
         
     except Exception as e:
-        print("Invalid token")
+        print("Invalid token: ", e)
         emit("failed_connection", {"message": "Invalid token", "code": 401})
         return
     
     user = get_user_by_hash(user_hash)
 
-    if not user:
+    if not user or not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return
     
@@ -145,13 +145,16 @@ def on_connect(auth):
     join_room(f"party:{party_hash}")
     request.environ["party"] = party_hash
 
+    # Set this in a session so that we can use them on disconnect
+    session["user_hash"] = user_hash
+    session["party_hash"] = party_hash
+
     print(f"Socket connected to /lobby: user={user_hash}")
 
 @socketio.on("disconnect", "/lobby")
 def on_disconnect():
-    user_hash = request.environ.get("user_hash")
-    lobby = request.environ.get("lobby")
-    party_hash = request.environ.get("party")
+    user_hash = session.get("user_hash")
+    party_hash = session.get("party_hash")
 
     print(f"Received disconnect from /lobby: user={user_hash}")
 
@@ -186,18 +189,18 @@ def on_enter_lobby(data):
         request.environ["party"] = party_hash
 
     # Put the user in the pre-lobby room
-    lobby = data.get("lobbyAlias")
-    request.environ["prelobby"] = lobby
-    join_room(f"prelobby:{lobby}")
+    lobby_alias = data.get("lobbyAlias")
+    request.environ["prelobby"] = lobby_alias
+    join_room(f"prelobby:{lobby_alias}")
 
-    if not lobby:
+    if not lobby_alias:
         emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
     # Get the number of current players in the lobby
-    lobby_data = get_lobby_by_alias(lobby)
+    lobby = get_lobby_by_alias(lobby_alias)
 
-    if not lobby_data:
+    if not lobby:
         emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
         return;
 
@@ -220,7 +223,7 @@ def on_enter_lobby(data):
     # Get friend requests
     friend_requests = get_friend_requests_by_hash(user_hash)
 
-    emit("prelobby_joined", {"user": user, "user": user, "party_members": party_members, "lobby": lobby_data, "friends": added_friends, "friend_requests": friend_requests})
+    emit("prelobby_joined", {"user": user, "user": user, "party_members": party_members, "lobby": lobby, "friends": added_friends, "friend_requests": friend_requests})
 
 # Partying
 
@@ -424,6 +427,8 @@ def on_custom_settings_changed(data):
     if user_hash != parties[party_hash]["leader_hash"]:
         return;
 
+    # TODO: Actually change settings
+
     # Simply just tell the other party members what the leader changed
     emit("changed_custom_settings", {"settings": data.get("settings")}, room=f"party:{party_hash}")
 
@@ -432,9 +437,6 @@ def on_custom_settings_changed(data):
 
 @socketio.on("search_users", "/lobby")
 def on_search_users(data):
-    user_hash = request.environ["user_hash"]
-    lobby = request.environ["prelobby"]
-
     query = data.get("query")
     if not query:
         emit("users_found", {"users": []})
@@ -518,7 +520,7 @@ def on_remove_friend(data):
 # Finding lobbies
 
 @socketio.on("search_lobbies", "/lobby")
-def on_search_users(data):
+def on_search_lobbies(data):
     user_hash = request.environ["user_hash"]
     lobby = request.environ["prelobby"]
 

@@ -3,6 +3,7 @@
 
 
 from .scraping import *
+from .qbreader_scraper import *
 from .config import *
 from .classifiers.ml.ml import train_and_save_model
 from .classifiers.bayesian.bayesian import *
@@ -52,3 +53,6 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 
 # create_word_histogram(labeled_questions, diagnostics="./logs/create_histogram.txt")
 # create_category_frequency(labeled_questions)
+
+# Scrape questions from qb reader
+scrape_all_questions(4000)

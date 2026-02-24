@@ -8,6 +8,8 @@
 certs
 certs-old
 
+.env.prod
+
 dist
 
 /nginx/web/dist/
@@ -20,3 +22,4 @@ dist
 /webscraper/packets
 /webscraper/pdf_packets
 /webscraper/__pycache__
+/webscraper/qbreader_data

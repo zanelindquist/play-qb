@@ -33,7 +33,20 @@ import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
 import ustyles from "../../assets/styles/ustyles";
 
-const LEVELS = ["Middle School", "High School", "Collegiate", "Open"];
+const LEVELS = [
+    "Pop Culture",
+    "Middle School",
+    "Easy High School",
+    "Regular High School",
+    "Hard High School",
+    "National High School",
+    "● / Easy College", 
+    "●● / Medium College", 
+    "●●● / Regionals College",
+    "●●●● / Nationals College",
+    "Open",
+    "All"              
+]
 
 const collapsedHeight = 40;
 const TICK_MS = 16; // 60 FPS
@@ -51,6 +64,7 @@ const Question = ({
     rightIcon,
     onSave = null,
     saveIcon,
+    showAnswers,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
     ANSWER_MS = 5000,
@@ -293,8 +307,7 @@ const Question = ({
                                 s
                             </HelperText>
                         }
-                        {/* <HelperText>{question.answers.main}</HelperText> */}
-                        {state == "dead" && (
+                        {(state == "dead" || showAnswers) && (
                             <Answers
                                 answers={question.answers}
                                 style={styles.answerComponent}

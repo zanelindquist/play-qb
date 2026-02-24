@@ -12,3 +12,14 @@
 1. Remove the so users don't have to type it
 2. Hanging ings and s
 3. Quotes
+
+# Answer Parsing
+- This is really important because it sets us up with clean data to answer check
+
+# Answer Checking V2
+1. After answer parsing, there should be four different types of answers to check against
+    - Main answer (mostly for display to the user)
+    - Accepts
+    - Prompts
+    - Rejects
+2. Using these types of answers, 
