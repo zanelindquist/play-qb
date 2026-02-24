@@ -5,6 +5,7 @@ import { RedirectToSignIn } from "./redirects";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
 import { useBanner } from "./banners";
+import { BACKEND_IP } from "./constants";
 
 // Singleton storage for socket instances
 const socketInstances = {
@@ -39,7 +40,7 @@ export function useSocket(namespace, lobbyAlias) {
             .then((token) => {
                 if (!isMounted || socketInstances[namespace]) return;
 
-                const socket = io(`https://app.localhost/${namespace}`, {
+                const socket = io(`${BACKEND_IP}/${namespace}`, {
                     path: "/socket.io",
                     transports: ["websocket"],
                     auth: { token },
