@@ -5,13 +5,13 @@ FROM node:18 as builder
 WORKDIR /react-native-app
 
 # Copy package.json and package-lock.json
-COPY package.json package-lock.json ./
+COPY web/package.json web/package-lock.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy app source code
-COPY . .
+COPY web ./
 
 # Build the React Native web app
 ENV NODE_ENV=production
