@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    container_name: qb-app
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - qb_network
+
+  db:
+    image: mysql:8.0
+    container_name: qb-db
+    env_file:
+      - .env.prod
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - qb_network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.prod
+    container_name: qb-nginx_proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - qb_network
+
+volumes:
+  mysql_data:
+
+networks:
+  qb_network:
+    driver: bridge

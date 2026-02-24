@@ -8,6 +8,8 @@
 certs
 certs-old
 
+.env.prod
+
 dist
 
 /nginx/web/dist/

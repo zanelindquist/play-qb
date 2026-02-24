@@ -2,10 +2,10 @@ import axios from "axios"
 import { getAccessToken } from "./encryption.js"
 import { RedirectToSignIn } from "./redirects.jsx"
 import { router } from "expo-router"
-import {BACKEND_IP} from "./constants.js"
+import {BACKEND_URL} from "./constants.js"
 
-const api = axios.create({baseURL: `${BACKEND_IP}/api/v1`})
-const auth = axios.create({baseURL: `${BACKEND_IP}/auth`})
+const api = axios.create({baseURL: `${BACKEND_URL}/api/v1`})
+const auth = axios.create({baseURL: `${BACKEND_URL}/auth`})
 
 // ===== MISC =====
 function handleNoAccessToken() {
