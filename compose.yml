@@ -9,6 +9,7 @@ services:
     environment:
       - FLASK_APP=app
       - FLASK_RUN_HOST=0.0.0.0
+      - JWT_SECRET_KEY=abcdefghijklmnopqrstuvwxyz1234567890
       - MYSQL_HOST=db
       - MYSQL_USER=root
       - MYSQL_PASSWORD=password

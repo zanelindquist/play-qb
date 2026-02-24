@@ -18,35 +18,23 @@ const hashPassword = async (password) => {
     }
 };
 
-const secretKey = "abcdefghijklmnopqrstuvwxyz1234567890";
-
 // Save encrypted token
 const saveAccessToken = async (token) => {
     try {
-        const encryptedToken = CryptoJS.AES.encrypt(
-            token,
-            secretKey
-        ).toString();
-        await AsyncStorage.setItem("access_token", encryptedToken);
-
+        await AsyncStorage.setItem("access_token", token);
         console.log("Access token saved");
     } catch (error) {
-        console.error("Error saving token:", error);
+        console.error("Error saving access token:", error);
     }
 };
 
 // Retrieve and decrypt token
 const getAccessToken = async () => {
     try {
-        const encryptedToken = await AsyncStorage.getItem("access_token");
-        if (encryptedToken) {
-            const bytes = CryptoJS.AES.decrypt(encryptedToken, secretKey);
-            const token = bytes.toString(CryptoJS.enc.Utf8);
-            return token;
-        }
-        return null;
+        const token = await AsyncStorage.getItem("access_token");
+        return token; // return token directly, no decryption
     } catch (error) {
-        console.error("Error retrieving token:", error);
+        console.error("Error retrieving access token:", error);
         return null;
     }
 };

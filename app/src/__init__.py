@@ -19,9 +19,20 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     # Remove this later-- its just so we can use a different localhost port in development
-    # TODO: Remove 8081 because its development
-    CORS(app, resources={r"/*": {"origins": ["http://localhost:8081", "https://localhost", "https://app.localhost", "http://10.104.5.175", "https://10.104.5.175"]}}) #, 
+    # Load environment
+    ENV = os.environ.get("ENV", "development")  # default to development
+    if ENV == "production":
+        allowed_origins = ["https://morequizbowl.com"]
+    else:
+        allowed_origins = [
+            "http://localhost:8081",
+            "https://localhost",
+            "https://app.localhost",
+            "http://10.104.5.175",
+            "https://10.104.5.175",
+        ]
 
+    CORS(app, resources={r"/*": {"origins": allowed_origins}})
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
@@ -40,8 +51,8 @@ def create_app(test_config=None):
     except OSError:
         pass
     
-    # Initialize JWT with the app
-    app.config["JWT_SECRET_KEY"] = "abcdefghijklmnopqrstuvwxyz1234567890"
+    # Load JWT securely
+    app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=2)
 
     from src.db.utils import Session

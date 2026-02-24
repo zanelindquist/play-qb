@@ -2,6 +2,7 @@
 
 # Security
 /assets/oauth
+.env
 
 # dependencies
 node_modules/
