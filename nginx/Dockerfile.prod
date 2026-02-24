@@ -15,7 +15,7 @@ COPY web ./
 
 # Build the React Native web app
 ENV NODE_ENV=production
-RUN npm run build
+# RUN npm run build
 
 # Stage 2: NGINX
 FROM nginx:latest
