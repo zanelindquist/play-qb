@@ -62,27 +62,6 @@ const GAMEMODES = [
   }
 ];
 
-const DEMO = [
-    {
-        name: "1. Select a game",
-        // description: "Take on opponents in quiz bowl solos. Only tossups.",
-        image: require("../assets/images/demo/lobby_humans.png"),
-        color: "#e64646ff" // brighter slate / sky blue
-    },
-    {
-        name: "2. Invite friends",
-        // description: "Take on opponents in quiz bowl solos. Only tossups.",
-        image: require("../assets/images/demo/invite_friends_humans.png"),
-        color: "#46e6b9ff" // brighter slate / sky blue
-    },
-    {
-        name: "3. Play!",
-        // description: "Take on opponents in quiz bowl solos. Only tossups.",
-        image: require("../assets/images/demo/play_humans.png"),
-        color: "#f2de46ff" // brighter slate / sky blue
-    },
-]
-
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
 

@@ -19,4 +19,4 @@ COPY . .
 
 # Use gunicorn for production server
 # Bind to 0.0.0.0:5000 internally (matches your compose.yml internal network)
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-k", "eventlet", "-b", "0.0.0.0:5000", "server:app"]

@@ -1,0 +1,10 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<!-- Define the path for the cool S -->
+<path d="M50,50 L70,30 L90,50 L70,70 Z
+            M50,50 L50,90 L70,110 L70,70 Z
+            M90,50 L90,90 L70,110 L70,70 Z
+            M50,90 L70,110 L90,90 L70,70 Z" 
+        fill="none" 
+        stroke="black" 
+        stroke-width="5"/>
+</svg>

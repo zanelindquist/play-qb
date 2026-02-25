@@ -1,7 +1,7 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # Security
-/assets/oauth
+# /assets/oauth
 .env
 
 # dependencies
