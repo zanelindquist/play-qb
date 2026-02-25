@@ -24,6 +24,7 @@ import GlassyView from '../../components/custom/GlassyView.jsx';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 import { useAlert } from '../../utils/alerts.jsx';
 import { useBanner } from '../../utils/banners.jsx';
+import EarthVideo from "../../public/videos/Earth.mp4"
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed

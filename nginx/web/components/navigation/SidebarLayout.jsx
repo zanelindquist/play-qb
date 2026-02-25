@@ -36,6 +36,7 @@ import TopNavItem from "./TopNavItem";
 import Logo from "../custom/Logo";
 import { useBanner } from "@/utils/banners";
 import ustyles from "@/assets/styles/ustyles";
+import EarthVideo from "../../public/videos/Earth.mp4"
 
 const iconColor = theme.primary;
 

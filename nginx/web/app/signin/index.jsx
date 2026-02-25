@@ -22,6 +22,7 @@ import { useAlert } from '../../utils/alerts.jsx';
 
 import GlassyView from "../../components/custom/GlassyView.jsx"
 import Video from 'react-native-video';
+import EarthVideo from "../../public/videos/Earth.mp4"
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 
 

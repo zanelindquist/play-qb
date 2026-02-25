@@ -44,7 +44,6 @@ const AlertProvider = ({ children }) => {
 };
 
 const CustomAlert = ({ content, onClose, modalStyle }) => {
-    console.log("content:: ", content, typeof content)
     return (
         <Portal>
             <Dialog
