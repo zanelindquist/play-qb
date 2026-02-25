@@ -74,6 +74,21 @@ CATEGORY_CODES = [
 # TODO: protect ranked lobbies
 PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5", "custom", "ranked"]
 
+DEFAULT_SETTINGS = {
+    "public": False,
+    "is_ranked": False,
+    "total_games": 0,
+    "level": 0,  # All, middle school, high school, college, open
+    "category": 0,  # Everything, science, history, literature, social science, philosophy, religion, mythology, geography, fine arts, current events, custom
+    "speed": 400,
+    "gamemode": "solos",
+    "rounds": 20,
+    "bonuses": False,
+    "allow_multiple_buzz": True,
+    "allow_question_skip": True,
+    "allow_question_pause": True,
+}
+
 # Cleaning up database
 LOBBY_DELETE_DAYS = 10
 

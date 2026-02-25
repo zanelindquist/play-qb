@@ -16,7 +16,7 @@ class Users(Base, CreatedAtColumn):
     password = Column(String(60), nullable=True)
     username = Column(String(20), nullable=False, unique=True)
     phone_number = Column(String(14), nullable=True)
-    birthday = Column(Date, nullable=False)
+    birthday = Column(Date, nullable=True)
     account_disabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
     is_online = Column(Boolean, default=False)

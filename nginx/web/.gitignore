@@ -5,17 +5,17 @@
 .env
 
 # dependencies
-node_modules/
+./node_modules/
 
 # Expo
 .expo/
-# dist/
+./dist/
 web-build/
 expo-env.d.ts
 
 # FILES
-# .mp4
-# public/videos
+.mp4
+public/videos
 
 # Native
 .kotlin/

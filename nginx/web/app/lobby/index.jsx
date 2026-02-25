@@ -302,6 +302,7 @@ export default function LobbyScreen() {
 
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
+                console.log("ENTER LOBBY", { lobbyAlias: params.mode ? params.mode : gameMode })
                 send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
                 setEnteredLobby(true)
             }

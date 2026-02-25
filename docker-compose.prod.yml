@@ -1,5 +1,6 @@
 services:
   app:
+    image: zanelindquist/qb-app:latest
     build:
       context: ./app
       dockerfile: Dockerfile.prod
@@ -24,6 +25,7 @@ services:
       - qb_network
 
   nginx:
+    image: zanelindquist/qb-nginx:latest
     build:
       context: ./nginx
       dockerfile: Dockerfile.prod

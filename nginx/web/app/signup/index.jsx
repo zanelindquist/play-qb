@@ -23,6 +23,7 @@ import { postAuthRoute, postProtectedAuthRoute, validateEmail , handleExpiredAcc
 import GlassyView from '../../components/custom/GlassyView.jsx';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 import { useAlert } from '../../utils/alerts.jsx';
+import { useBanner } from '../../utils/banners.jsx';
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -30,6 +31,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const SignUp = () => {
     const {showAlert} = useAlert()
+    const {showBanner} = useBanner()
 
     const {promptAsync, disabled} = useGoogleAuth(true, handleAccountCreation)
     const [createWithGoogle, setCreateWithGoogle] = useState(false)
@@ -185,7 +187,7 @@ const SignUp = () => {
             .then(() => {
                 // We are all good to forward the user to the main page
                 router.replace("/?tutorial=true")
-                showAlert("Account created!")
+                showBanner("Account created!")
             })
             .catch((error) => {
                 showAlert("There was an error while setting your username:" + error)
@@ -215,10 +217,8 @@ const SignUp = () => {
             })
             .catch((error) => {
                 console.log(error)
+                showAlert("There was an error: " + error)
             })
-            
-            // Now, lets redirect them to the dashboard page
-            router.replace("/")
         } catch (error) {
             console.log(error)
             // Handle data input errors
@@ -401,12 +401,12 @@ const styles = StyleSheet.create({
         justifyContent: "space-around",
         alignItems: "center",
         width: "200vw", // Twice the screen width
-        
     },
     phaseContainer: {
         flexDirection: "column",
         gap: 10,
         alignItems: "center",
+        maxWidth: 500,
         flex: 1,
     },
     header: {

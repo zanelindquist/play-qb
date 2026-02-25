@@ -193,16 +193,26 @@ def on_enter_lobby(data):
     request.environ["prelobby"] = lobby_alias
     join_room(f"prelobby:{lobby_alias}")
 
-    if not lobby_alias:
-        emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+    if not lobby_alias:        
+        emit("prelobby_not_found", {"message": "No lobby alias given", "code": 404})
         return;
 
     # Get the number of current players in the lobby
     lobby = get_lobby_by_alias(lobby_alias)
 
     if not lobby:
-        emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
-        return;
+        # If there is no lobby alias found for a central lobby, then we want to create it:
+        if lobby_alias in PROTECTED_LOBBIES:
+            default_settings = DEFAULT_SETTINGS
+
+            # Set my root account as the creator
+            default_settings["creator_id"] = 1
+            default_settings["name"] = lobby_alias
+
+            create_lobby(default_settings)
+        else:
+            emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+            return;
 
     # Tell this player's friends what gamemode they are now in
 
@@ -409,6 +419,20 @@ def on_changed_gamemode(data):
     new_lobby_alias = data.get("lobby_alias")
 
     lobby_data = get_lobby_by_alias(new_lobby_alias)
+
+    if not lobby_data:
+        # If there is no lobby alias found for a central lobby, then we want to create it:
+        if new_lobby_alias in PROTECTED_LOBBIES:
+            default_settings = DEFAULT_SETTINGS
+
+            # Set my root account as the creator
+            default_settings["creator_id"] = 1
+            default_settings["name"] = new_lobby_alias
+
+            create_lobby(default_settings)
+        else:
+            emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+            return;
 
     if new_lobby_alias == "custom":
         lobby_data["name"] = generate_random_lobby_name()

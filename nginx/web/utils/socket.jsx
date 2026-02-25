@@ -49,6 +49,11 @@ export function useSocket(namespace, lobbyAlias) {
                 socketRef.current = socket;
                 socketInstances[namespace] = socket;
 
+                // --- Add audit logging for all events ---
+                socket.onAny((event, ...args) => {
+                    console.log(`[SOCKET ${namespace}] Event:`, event, "Data:", args);
+                });
+
                 socket.on("connect", () => {
                     console.log(`Socket connected to ${namespace}:`, socket.id);
                     readyCallbacksStore[namespace].forEach(callback => callback(socket));
