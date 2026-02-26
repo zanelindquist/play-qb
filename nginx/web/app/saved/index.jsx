@@ -72,17 +72,12 @@ export default function StatsPage() {
     const unsaveTimeoutRef = useRef(null)
     const restoreCallbackRef = useRef(null)
 
-    useEffect(()=> {
-        console.log("ST", savedType)
-    }, [savedType])
-
     useEffect(() => {
         loadStats()
     }, [offset, limit, savedType, category])
 
 
     function loadStats() {
-        console.log("LOAD STATS")
         postProtectedRoute("/saved", {
             offset: offset,
             limit: limit,

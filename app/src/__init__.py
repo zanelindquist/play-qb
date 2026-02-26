@@ -21,6 +21,7 @@ def create_app(test_config=None):
     # Remove this later-- its just so we can use a different localhost port in development
     # Load environment
     ENV = os.environ.get("ENV", "development")  # default to development
+    print("RUNNING IN " + ENV + " ENVIRONMENT")
     if ENV == "production":
         allowed_origins = ["https://morequizbowl.com"]
     else:

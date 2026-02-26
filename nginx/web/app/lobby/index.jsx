@@ -259,7 +259,7 @@ export default function LobbyScreen() {
             })
 
             addEventListener("failed_lobby_creation", (error) => {
-                console.log(error)
+                console.log("FAILED LOBBY CREATION", error)
                 showBanner("Failled to create lobby: " + error?.message, {backgroundColor: theme.error})
                 setIsReady(false)
             })
@@ -310,10 +310,21 @@ export default function LobbyScreen() {
         // useEffect() cleanup
         return () => {
             // We want to keep contact with the lobby socket
-            // if(socket) socket.disconnect()
             removeAllEventListeners()
         };
+        
+    // TODO: Remove prop list and use refs instead
+    // so we dont have to teardown everything all of the time
+    // At least reduce the frequently changes ones, like customSettings.
+    // Use refs instead
     }, [gameMode, partySlots, myHash, myPM, customSettings]);
+
+    // When this page is torn down we want to disconnect from the socket
+    useEffect(() => {
+        return ()=> {
+            if(socket) disconnect()
+        }
+    }, [])
 
     useEffect(() => {
         // console.log("CUSTOM INFO", customSettings)

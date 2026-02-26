@@ -87,6 +87,9 @@ def join_party(user_hash: str, party_hash: str) -> tuple:
     return (party_hash, parties[party_hash])
         
 def leave_party(user_hash: str) -> None:
+    if not user_hash:
+        return;
+
     for party_id, party in list(parties.items()):
         # Remove user hashs
         if user_hash in list(party["members"].keys()):
@@ -152,7 +155,7 @@ def on_connect(auth):
     print(f"Socket connected to /lobby: user={user_hash}")
 
 @socketio.on("disconnect", "/lobby")
-def on_disconnect():
+def on_disconnect(data):
     user_hash = session.get("user_hash")
     party_hash = session.get("party_hash")
 
@@ -162,7 +165,10 @@ def on_disconnect():
 
     user = get_user_by_hash(user_hash)
 
-    leave_party(user.get("hash"))
+    if not user_hash or not user:
+        return;
+
+    leave_party(user_hash)
 
     emit("user_disconnected", {"user_hash": user.get("hash")}, room=f"party:{party_hash}")
 
@@ -193,16 +199,26 @@ def on_enter_lobby(data):
     request.environ["prelobby"] = lobby_alias
     join_room(f"prelobby:{lobby_alias}")
 
-    if not lobby_alias:
-        emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+    if not lobby_alias:        
+        emit("prelobby_not_found", {"message": "No lobby alias given", "code": 404})
         return;
 
     # Get the number of current players in the lobby
     lobby = get_lobby_by_alias(lobby_alias)
 
     if not lobby:
-        emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
-        return;
+        # If there is no lobby alias found for a central lobby, then we want to create it:
+        if lobby_alias in PROTECTED_LOBBIES:
+            default_settings = DEFAULT_SETTINGS
+
+            # Set my root account as the creator
+            default_settings["creator_id"] = 1
+            default_settings["name"] = lobby_alias
+
+            create_lobby(default_settings)
+        else:
+            emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+            return;
 
     # Tell this player's friends what gamemode they are now in
 
@@ -409,6 +425,20 @@ def on_changed_gamemode(data):
     new_lobby_alias = data.get("lobby_alias")
 
     lobby_data = get_lobby_by_alias(new_lobby_alias)
+
+    if not lobby_data:
+        # If there is no lobby alias found for a central lobby, then we want to create it:
+        if new_lobby_alias in PROTECTED_LOBBIES:
+            default_settings = DEFAULT_SETTINGS
+
+            # Set my root account as the creator
+            default_settings["creator_id"] = 1
+            default_settings["name"] = new_lobby_alias
+
+            create_lobby(default_settings)
+        else:
+            emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
+            return;
 
     if new_lobby_alias == "custom":
         lobby_data["name"] = generate_random_lobby_name()

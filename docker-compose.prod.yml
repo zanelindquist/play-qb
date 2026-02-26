@@ -1,9 +1,7 @@
 services:
   app:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.prod
-    container_name: qb-app
+    image: zanelindquist/play-qb-app:latest
+    container_name: qb-app-prod
     env_file:
       - .env.prod
     depends_on:
@@ -14,20 +12,20 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: qb-db
+    container_name: qb-db-prod
     env_file:
       - .env.prod
     volumes:
       - mysql_data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
     restart: unless-stopped
     networks:
       - qb_network
 
   nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile.prod
-    container_name: qb-nginx_proxy
+    image: zanelindquist/play-qb-nginx:latest
+    container_name: qb-nginx_proxy-prod
     ports:
       - "80:80"
     depends_on:

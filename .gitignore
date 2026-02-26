@@ -1,5 +1,6 @@
 *.joblib
 *.pyc
+*.ctl
 
 *secrets.py
 
@@ -23,3 +24,5 @@ dist
 /webscraper/pdf_packets
 /webscraper/__pycache__
 /webscraper/qbreader_data
+/webscraper/logs/*.txt
+!/webscraper/logs/.gitkeep

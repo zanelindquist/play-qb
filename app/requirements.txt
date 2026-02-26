@@ -11,3 +11,4 @@ mysql-connector-python
 apscheduler
 google-auth
 google-auth-oauthlib
+gunicorn

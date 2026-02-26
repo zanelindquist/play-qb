@@ -1,15 +1,15 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # Security
-/assets/oauth
+# /assets/oauth
 .env
 
 # dependencies
-node_modules/
+./node_modules/
 
 # Expo
 .expo/
-dist/
+dist
 web-build/
 expo-env.d.ts
 

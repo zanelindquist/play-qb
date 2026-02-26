@@ -21,7 +21,7 @@ class Questions(Base, CreatedAtColumn):
     subcategory = Column(String(30))
     question = Column(Text, nullable=False)
     answers = Column(Text, nullable=False)
-    category_confidence = Column(Float, nullable=False, default=0.5)
+    category_confidence = Column(Float, nullable=True, default=0.5)
     hand_labeled = Column(Boolean, default=False)
 
     # Ranked information
