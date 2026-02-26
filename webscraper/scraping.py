@@ -28,23 +28,8 @@ from .classifier_models import *
 from .utils import *
 from .classifiers.ml.ml import *
 
-
-
-connection = mysql.connector.connect(
-    host="127.0.0.1",
-    port=3306,
-    user="root",
-    password="password",
-    database="play-qb"
-)
-
-# Connect to database
-DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/play-qb"
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
-session = SessionLocal()
-
+# Import database connection
+from .database import *
 
 # SCRAPING
 

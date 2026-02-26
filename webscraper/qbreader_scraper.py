@@ -11,22 +11,8 @@ from .config import *
 from .utils import *
 from .classifiers.ml.ml import *
 
-
-
-connection = mysql.connector.connect(
-    host="127.0.0.1",
-    port=3306,
-    user="root",
-    password="password",
-    database="play-qb"
-)
-
-# Connect to database
-DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/play-qb"
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
-session = SessionLocal()
+# Import database connection
+from .database import *
 
 # Scraping data
 BASE_URL = 'https://qbreader.org/api/query'
@@ -78,6 +64,14 @@ def scrape_all_questions(number=2000):
 
     if row is None:
         scrape_offset = 0
+        # Create a row for the offset
+        insert = """
+        INSERT INTO rating_params
+        (name, value, description, created_at)
+        VALUES
+        ("scrape_offset", 0, "Webscraper variable to track the question query scraping index", NOW());
+        """
+        cursor.execute(insert)
     else:
         scrape_offset = int(row[0])
 
@@ -208,10 +202,10 @@ def write_questions_to_sql(questions, diagnostics=False):
             query = """
                 INSERT INTO questions (
                     hash, scraped_hex, tournament, type, year, level,
-                    difficulty, category, subcategory, question, answers,
+                    difficulty, category, category_confidence, subcategory, question, answers,
                     created_at, hand_labeled, difficulty_mu, difficulty_sigma
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             """
             # Define values
             values = (
@@ -224,6 +218,7 @@ def write_questions_to_sql(questions, diagnostics=False):
                 level, # level(ms, hs, college, open)
                 difficulty, # difficulty
                 category, # category
+                1.0, # category_confidence
                 subcategory,
                 question,  # question
                 parsed_answer,  # answers
