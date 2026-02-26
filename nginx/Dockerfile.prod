@@ -1,5 +1,5 @@
 # Stage 1: Build React Native Web app
-FROM node:18 as builder
+FROM node:18 AS builder
 
 # Set working directory
 WORKDIR /react-native-app

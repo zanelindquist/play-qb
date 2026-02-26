@@ -87,6 +87,9 @@ def join_party(user_hash: str, party_hash: str) -> tuple:
     return (party_hash, parties[party_hash])
         
 def leave_party(user_hash: str) -> None:
+    if not user_hash:
+        return;
+
     for party_id, party in list(parties.items()):
         # Remove user hashs
         if user_hash in list(party["members"].keys()):
@@ -152,7 +155,7 @@ def on_connect(auth):
     print(f"Socket connected to /lobby: user={user_hash}")
 
 @socketio.on("disconnect", "/lobby")
-def on_disconnect():
+def on_disconnect(data):
     user_hash = session.get("user_hash")
     party_hash = session.get("party_hash")
 
@@ -162,7 +165,10 @@ def on_disconnect():
 
     user = get_user_by_hash(user_hash)
 
-    leave_party(user.get("hash"))
+    if not user_hash or not user:
+        return;
+
+    leave_party(user_hash)
 
     emit("user_disconnected", {"user_hash": user.get("hash")}, room=f"party:{party_hash}")
 
