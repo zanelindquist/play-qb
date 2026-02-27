@@ -15,7 +15,7 @@ expo-env.d.ts
 
 # FILES
 .mp4
-public/videos
+public/videos/Earth.mp4
 
 # Native
 .kotlin/

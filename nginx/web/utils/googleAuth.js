@@ -3,12 +3,12 @@ import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from "react";
 
 import {postAuthRoute} from "../utils/requests"
-import {saveAccessToken} from "../utils/encryption.js"
 
 import oauth from "../assets/oauth/google_keys.json";
 import { router } from "expo-router";
 import { useAlert } from "./alerts";
 import { useBanner } from "./banners.jsx";
+import { useAuth } from '../context/AuthContext.js';
 
 // Add this at the top of your file
 WebBrowser.maybeCompleteAuthSession();
@@ -17,7 +17,8 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
     const [hasRequested, setHasRequested] = useState(false)
-    
+    const {login} = useAuth()
+
     const discovery = {
         authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenEndpoint: 'https://oauth2.googleapis.com/token',
@@ -67,7 +68,7 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                         console.error("No access_token in response");
                         return;
                     }
-                    saveAccessToken(token);
+                    login(token);
 
                     // Make sure that this was not just a log in because the account already existed
                     if(data.message == "User already exists"){
@@ -101,7 +102,7 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                         console.error("No access_token in response");
                         return;
                     }
-                    saveAccessToken(token); 
+                    login(token); 
                     router.replace("/"); 
                     showBanner("Logged in!")
                 })

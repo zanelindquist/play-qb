@@ -6,7 +6,7 @@ import {
 } from "react-native-paper";
 
 import { AlertProvider } from "../utils/alerts";
-
+import { AuthProvider } from "../context/AuthContext";
 // Make it work for mobile
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import theme from "../assets/themes/theme";
@@ -29,14 +29,16 @@ export default function RootLayout() {
             <PaperProvider theme={customTheme}>
                 <AlertProvider>
                     <BannerProvider>
-                        <Stack
-                            screenOptions={{
-                                headerShown: false,
-                                unmountOnBlur: true,
-                                animation: "slide_from_right",
-                                animationDuration: 1000
-                            }}
-                        />
+                        <AuthProvider>
+                            <Stack
+                                screenOptions={{
+                                    headerShown: false,
+                                    unmountOnBlur: true,
+                                    animation: "slide_from_right",
+                                    animationDuration: 1000
+                                }}
+                            />
+                        </AuthProvider>
                     </BannerProvider>
                 </AlertProvider>
             </PaperProvider>
