@@ -563,7 +563,6 @@ def get_user_by_hash(hash, gentle=True, advanced=False, rel_depths=None, depth=0
         else:
             return to_dict_safe(user, gentle=gentle, rel_depths=rel_depths, depth=depth)
     except Exception as e:
-        print(e)
         return None
     finally:
         session.remove()
@@ -1191,13 +1190,19 @@ def write_user_stats(player_hash: str, stats: dict) -> dict:
     finally:
         session.commit()
 
-def set_lobby_settings(lobbyAlias: str, settings: dict) -> dict:
+def set_lobby_settings(lobbyAlias: str, settings: dict, user: dict) -> dict:
+    if not user:
+        return {"message": "User not passed", "code": 404}
     session = get_session()
     try:
         lobby = session.execute(
             select(Lobbies)
             .where(Lobbies.name == lobbyAlias)
         ).scalars().first()
+
+        # Make sure the user can enter the lobby
+        if lobby.creator_id != user.get("id") and user.get("username") != "admin":
+            return {"message": "User lacks permission", "code": 401}
         
         columns = {}
 

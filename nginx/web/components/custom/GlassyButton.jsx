@@ -38,6 +38,7 @@ export default function GlassyButton({
     return (
         <Pressable
             onPress={onPress}
+            style={[style, styles.pressable]}
             onHoverIn={() => setHovered(true)}
             onHoverOut={()=> setHovered(false)}
             {...prev}
@@ -81,6 +82,9 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 15,
+    },
+    pressable: {
+        borderRadius: 999
     },
     filled: {
         backgroundImage: theme.gradients.button,

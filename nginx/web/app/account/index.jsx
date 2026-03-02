@@ -72,7 +72,6 @@ export default function AccountPage() {
         setIsLoading(true)
         getProtectedRoute("/my_account")
         .then((response) => {
-            console.log(response.data)
             setAccount(response.data)
             setUsername(response.data.username)
             setIsLoading(false)

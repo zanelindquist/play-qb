@@ -19,11 +19,12 @@ import theme from '../../assets/themes/theme.js';
 import { getAccessToken, saveAccessToken } from "../../utils/encryption.js"
 import { postAuthRoute, getProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
 import { useAlert } from '../../utils/alerts.jsx';
-
+import { useSocket } from "../../utils/socket.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx"
 import Video from 'react-native-video';
 import EarthVideo from "../../public/videos/Earth.mp4"
 import { useGoogleAuth } from '../../utils/googleAuth.js';
+import { useAuth } from '../../context/AuthContext.js';
 
 
 let { width, height } = Dimensions.get("window");
@@ -33,6 +34,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 export default function SignInScreen() {
     const {showAlert} = useAlert()
     const {promptAsync, disabled} = useGoogleAuth(false)
+    const {login} = useAuth()
 
     // States
     const [email, setEmail] = React.useState("");
@@ -81,26 +83,34 @@ export default function SignInScreen() {
     }
 
     async function submit() {
-        // Reset data field helper text in case they get it right this time ;)
         setHTVisibleStates({
-            email: false, password: false
-        })
+            email: false,
+            password: false
+        });
 
-        postAuthRoute("/login", {email, password})
-        .then((data) => {
-            if(!data.access_token) {
-                console.log("signin(): no acces token provided")
+        try {
+            const data = await postAuthRoute("/login", { email, password });
+
+            if (!data.access_token) {
+                console.log("signin(): no access token provided");
+                return;
             }
-            saveAccessToken(data.access_token)
-            // Redirect user to the dashboard page
-            router.replace("/")
-        })
-        .catch((error) => {
-            console.log(error)
-            if (error.response?.data?.error) handleInvalidField(error.response.data.error)
-            else setHTVisibleStates((prevStates) => ({...prevStates, password: error.response?.data?.error || "An error occurred"}))
-        })
-            
+
+            await login(data.access_token)
+
+            // Now navigate
+            router.replace("/");
+
+        } catch (error) {
+            console.log(error);
+            if (error.response?.data?.error)
+                handleInvalidField(error.response.data.error);
+            else
+                setHTVisibleStates(prev => ({
+                    ...prev,
+                    password: error.response?.data?.error || "An error occurred"
+                }));
+        }
     }
 
   return ( 
@@ -163,7 +173,7 @@ export default function SignInScreen() {
                     mode="outlined"
                     contentStyle={styles.googleButton}
                     rippleColor={theme.primary}
-                    onPress={() => promptAsync()}
+                    onPress={promptAsync}
                     disabled={disabled}
                 >
                     <Image

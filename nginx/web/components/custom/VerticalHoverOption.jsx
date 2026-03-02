@@ -13,7 +13,7 @@ import { router } from "expo-router";
 import theme from "../../assets/themes/theme";
 import ustyles from "../../assets/styles/ustyles"
 
-const HOVER_DELAY = 50
+const HOVER_DELAY = 0
 
 export default function VerticalHoverOption ({
     title,

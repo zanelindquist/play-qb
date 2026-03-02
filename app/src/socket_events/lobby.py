@@ -183,7 +183,10 @@ def on_disconnect(data):
 # This is where we get information about a lobby
 @socketio.on("enter_lobby", "/lobby")
 def on_enter_lobby(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     party_hash = request.environ["party"]
 
     user = get_user_by_hash(user_hash)
@@ -245,7 +248,10 @@ def on_enter_lobby(data):
 
 @socketio.on("search_friends", "/lobby")
 def on_search_friends(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -260,7 +266,10 @@ def on_search_friends(data):
 
 @socketio.on("invite_friend", "/lobby")
 def on_invite_friend(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -281,7 +290,10 @@ def on_invite_friend(data):
 
 @socketio.on("accepted_invite", "/lobby")
 def on_accepted_invite(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
 
     new_party_hash = data.get("party_hash")
@@ -322,7 +334,10 @@ def on_accepted_invite(data):
 
 @socketio.on("leave_party", "/lobby")
 def on_leave_party(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -355,7 +370,10 @@ def on_leave_party(data):
 # Entering the game
 @socketio.on("party_member_ready", "/lobby")
 def on_party_member_ready(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -372,7 +390,10 @@ def on_party_member_ready(data):
 
 @socketio.on("clients_ready", "/lobby")
 def on_party_member_ready(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -410,7 +431,10 @@ def on_party_member_ready(data):
 
 @socketio.on("change_gamemode", "/lobby")
 def on_changed_gamemode(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -449,7 +473,10 @@ def on_changed_gamemode(data):
 
 @socketio.on("custom_settings_changed", "/lobby")
 def on_custom_settings_changed(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
@@ -478,7 +505,10 @@ def on_search_users(data):
 
 @socketio.on("add_friend", "/lobby")
 def on_add_friend(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
 
     hash = data.get("hash")
@@ -531,7 +561,10 @@ def on_add_friend(data):
 
 @socketio.on("remove_friend", "/lobby")
 def on_remove_friend(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
 
     hash = data.get("hash")
@@ -551,7 +584,10 @@ def on_remove_friend(data):
 
 @socketio.on("search_lobbies", "/lobby")
 def on_search_lobbies(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ["prelobby"]
 
     user = get_user_by_hash(user_hash)

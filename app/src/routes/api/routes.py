@@ -40,6 +40,9 @@ def on_my_stats():
     hash = get_jwt_identity()
 
     stats = get_stats_by_hash(hash)
+
+    if not stats:
+        return None, 404
     
     return stats, 200
 
@@ -48,9 +51,15 @@ def on_my_stats():
 def on_my_account():
     hash = get_jwt_identity()
 
+    if not hash:
+        return None, 404
+
     account = get_user_by_hash(hash, gentle=False, rel_depths={"created_lobbies": 0, "friends": 0})
     
-    del account["password"]
+    if account:
+        del account["password"]
+    else:
+        return None, 404
 
     return account, 200
 
@@ -73,6 +82,9 @@ def on_saved():
     data = request.get_json()
 
     user = get_user_by_hash(hash)
+
+    if not user:
+        return None, 404
     
     offset = data.get("offset")
     limit = data.get("limit")
@@ -101,15 +113,5 @@ def on_unsave_question():
 @jwt_required()
 def identity():
     hash = get_jwt_identity()
-    print(hash)
+
     return hash, 200
-
-@bp.route("/account")
-@jwt_required()
-def account():
-    hash = get_jwt_identity()
-
-    user = get_user_by_hash(hash)
-
-    print(hash)
-    return jsonify(user), 200

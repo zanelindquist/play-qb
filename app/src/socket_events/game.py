@@ -71,7 +71,10 @@ def connect(auth):
 # When a player joins the lobby
 @socketio.on("join_lobby", namespace="/game")
 def on_join_lobby(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = data.get("lobbyAlias")
     request.environ["lobby"] = lobby
     join_room(f"lobby:{lobby}")
@@ -163,7 +166,10 @@ def on_join_lobby(data):
 
 @socketio.on("change_game_settings", "/game")
 def on_change_game_settings(data):
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     lobby = request.environ.get("lobby")
     user = get_user_by_hash(user_hash)
 
@@ -183,7 +189,7 @@ def on_change_game_settings(data):
     # TODO: see if the user can edit the settings
 
     # Change lobby settings
-    result = set_lobby_settings(lobby, settings)
+    result = set_lobby_settings(lobby, settings, user)
 
     if result.get("code") >= 400:
         emit("changed_game_settings_failure", {"message": "An error occurred", "error": result.get("error"), "code": 500})
@@ -201,7 +207,10 @@ def on_change_game_settings(data):
 @socketio.on("buzz", namespace="/game")
 def on_buzz(data): # Timestamp, AnswerContent
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     game_hash = request.environ.get("game_hash")
 
     if not game_hash:
@@ -261,7 +270,10 @@ def on_buzz(data): # Timestamp, AnswerContent
 @socketio.on("typing", namespace="/game")
 def on_typing(data): # AnswerContent
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
     if not lobby:
         emit("reconnect")
@@ -281,7 +293,10 @@ def on_typing(data): # AnswerContent
 @socketio.on("submit", namespace="/game")
 def on_submit(data): # FinalAnswer
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     game_hash = request.environ.get("game_hash")
 
     if not game_hash:
@@ -395,7 +410,10 @@ def on_submit(data): # FinalAnswer
 @socketio.on("next_question", namespace="/game")
 def on_next_question(data):
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
     game_hash = request.environ.get("game_hash")
 
     if not game_hash:
@@ -439,7 +457,10 @@ def on_next_question(data):
 @socketio.on("game_resume", namespace="/game")
 def on_game_resume(): # Empty
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
     user = get_user_by_hash(user_hash)
 
@@ -449,7 +470,10 @@ def on_game_resume(): # Empty
 @socketio.on("game_pause", namespace="/game")
 def on_game_pause(): # Empty
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
     user = get_user_by_hash(user_hash)
 
@@ -459,7 +483,10 @@ def on_game_pause(): # Empty
 @socketio.on("save_question", namespace="/game")
 def on_save_question(data): # Question hash
     lobby = request.environ.get("lobby")
-    user_hash = request.environ["user_hash"]
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
     user = get_user_by_hash(user_hash)
 
