@@ -52,7 +52,7 @@ export default function Logo({ width, height, text = false, image = true, style 
                 style={{ width: 75, height: 75 }}
                 resizeMode="contain"
             />}
-            {text && <Text style={styles.text}>PlayQB</Text>}
+            {text && <Text style={styles.text}>MoreQB</Text>}
         </Pressable>
     );
 }

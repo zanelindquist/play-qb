@@ -34,6 +34,9 @@ import {
     usePathname,
 } from "expo-router";
 import { useAlert } from "../../utils/alerts.jsx";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
 
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import GlassyView from "@/components/custom/GlassyView.jsx";
@@ -58,6 +61,7 @@ import LabeledToggle from "../../components/custom/LabeledToggle.jsx";
 import FriendOptions from "../../components/entities/FriendOptions.jsx";
 import DropDown from "../../components/custom/DropDown.jsx";
 import ustyles from "../../assets/styles/ustyles.js";
+
 
 // TODO: Make this in a config or something, or get from server
 const GAMEMODES = [
@@ -133,6 +137,14 @@ export default function LobbyScreen() {
     // Mobile style
     const [mobileFriendsDisplayed, setMobileFriendsDisplayed] = useState(null)
     
+    // See if we are a user. Otherwise, logout
+    useFocusEffect(
+        useCallback(() => {
+            // Runs every time this screen comes into focus
+            getProtectedRoute("/my_account");
+        }, [])
+    );
+
     useEffect(() => {
         onReady(() => {
             addEventListener("prelobby_joined", ({ player, party_members, user, lobby, friends, friend_requests }) => {
@@ -320,11 +332,11 @@ export default function LobbyScreen() {
     }, [gameMode, partySlots, myHash, myPM, customSettings]);
 
     // When this page is torn down we want to disconnect from the socket
-    useEffect(() => {
-        return ()=> {
-            if(socket) disconnect()
-        }
-    }, [])
+    // useEffect(() => {
+    //     return ()=> {
+    //         if(socket) disconnect()
+    //     }
+    // }, [])
 
     useEffect(() => {
         // console.log("CUSTOM INFO", customSettings)
@@ -543,7 +555,7 @@ export default function LobbyScreen() {
                     <View style={isMobile ? mstyles.partySlots : styles.partySlots}>
                     {
                         partySlots.length > 0 ?
-                        partySlots.sort((slot, i) => isMobile && i == 2 ? -1 : 0).map((user, i) => 
+                        partySlots.sort((a, b) => isMobile && i == 2 ? -1 : 0).map((user, i) => 
                             <PartySlot
                                 player={user}
                                 style={isMobile ? mstyles.partySlot : styles.partySlot}

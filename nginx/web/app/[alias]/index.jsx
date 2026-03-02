@@ -37,6 +37,8 @@ import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
 import Beta from "../../components/custom/Beta.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -88,6 +90,14 @@ const Play = () => {
 
     // Admin
     const [showAnswers, setShowAnswers] = useState(false)
+
+    // See if we are a user. Otherwise, logout
+    useFocusEffect(
+        useCallback(() => {
+        // Runs every time this screen comes into focus
+        getProtectedRoute("/my_account");
+        }, [])
+    );
 
     // Register keybinds
     useEffect(() => {
@@ -407,7 +417,7 @@ const Play = () => {
     }
 
     function handleGameRuleChange(rules) {
-        if (myUser?.id !== lobby?.creator_id) return
+        if (myUser?.id !== lobby?.creator_id && myUser?.username !== "admin") return
 
         if (rateLimitRef.current) {
             clearTimeout(rateLimitRef.current)
@@ -467,7 +477,7 @@ const Play = () => {
                         defaultInfo={lobby}
                         expanded={true}
                         // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myUser?.id !== lobby?.creator_id}
+                        disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}
                         nameDisabled={true}
                         title={"Game Settings"}
                         onGameRuleChange={handleGameRuleChange}
@@ -597,7 +607,7 @@ const Play = () => {
                         </>
                     }
                     {
-                        myUser?.id === 1 &&
+                        myUser?.username === "admin" &&
                         <GameRule
                             label="Show question answers"
                             dataName="qa_visible"
@@ -634,7 +644,7 @@ const Play = () => {
                         columns={1}
                         defaultInfo={lobby}
                         // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myUser?.id !== lobby?.creator_id}
+                        disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}
                         nameDisabled={true}
                         title={"Game Settings"}
                         onGameRuleChange={handleGameRuleChange}

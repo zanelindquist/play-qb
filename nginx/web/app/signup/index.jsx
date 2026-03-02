@@ -24,7 +24,9 @@ import GlassyView from '../../components/custom/GlassyView.jsx';
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 import { useAlert } from '../../utils/alerts.jsx';
 import { useBanner } from '../../utils/banners.jsx';
+import { useSocket } from "../../utils/socket.jsx";
 import EarthVideo from "../../public/videos/Earth.mp4"
+import { useAuth } from '../../context/AuthContext.js';
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -33,6 +35,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 const SignUp = () => {
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
+    const {login} = useAuth()
 
     const {promptAsync, disabled} = useGoogleAuth(true, handleAccountCreation)
     const [createWithGoogle, setCreateWithGoogle] = useState(false)
@@ -170,64 +173,61 @@ const SignUp = () => {
     };
 
     const submit = async () => {
-        if(!username) {
-            setHTVisibleStates((prev) => {
-                return {
-                    ...prev,
-                    username: "Required*"
-                }
-            })
-            return
+        // Validate required fields first
+        if (!username) {
+            setHTVisibleStates(prev => ({
+                ...prev,
+                username: "Required*"
+            }));
+            return;
         }
-        // If we are creating with google, then we just need to update the username and or password
-        if(createWithGoogle) {
-            postProtectedAuthRoute("/google_set_username", {
-                username: username,
-                phone_number: phoneNumber || "0"
-            })
-            .then(() => {
-                // We are all good to forward the user to the main page
-                router.replace("/?tutorial=true")
-                showBanner("Account created!")
-            })
-            .catch((error) => {
-                showAlert("There was an error while setting your username:" + error)
-            })
 
-            return
-        }
-        // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
-        setHTVisibleStates(defaultHTStates)
-        
+        // Reset helper text
+        setHTVisibleStates(defaultHTStates);
+
         try {
-            console.log(username)
-            postAuthRoute("/register", {
-                email: email,
-                password: password,
-                username: username,
+            // --- Google flow ---
+            if (createWithGoogle) {
+                await postProtectedAuthRoute("/google_set_username", {
+                    username,
+                    phone_number: phoneNumber || "0"
+                });
+
+                showBanner("Account created!");
+                router.replace("/?tutorial=true");
+                return;
+            }
+
+            // --- Normal registration flow ---
+            const data = await postAuthRoute("/register", {
+                email,
+                password,
+                username,
                 phone_number: phoneNumber || "0",
-            }).then((data) => {
-                const token = data?.access_token; 
-                if (!token) {
-                    console.error("No access_token in response");
-                    return;
-                }
-                saveAccessToken(token);
-                
-                router.replace("/?tutorial=true")
-            })
-            .catch((error) => {
-                console.log(error)
-                showAlert("There was an error: " + error)
-            })
+            });
+
+            const token = data?.access_token;
+
+            if (!token) {
+                console.error("No access_token in response");
+                showAlert("Registration failed. Please try again.");
+                return;
+            }
+
+            await login(token);
+
+            router.replace("/?tutorial=true");
+
         } catch (error) {
-            console.log(error)
-            // Handle data input errors
-            if(error.response.data.error) {
-                handleInvalidField(error.response.data.error)
+            console.error(error);
+
+            if (error?.response?.data?.error) {
+                handleInvalidField(error.response.data.error);
+            } else {
+                showAlert("There was an error during registration.");
             }
         }
-    }
+    };
 
     function handleAccountCreation () {
         goToNextPhase(true)
