@@ -7,6 +7,13 @@ import re
 from html import unescape
 import time
 import json
+import gzip
+import io
+import pickle
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 from .config import *
 from .utils import *
@@ -14,6 +21,8 @@ from .classifiers.ml.ml import *
 
 # Import database connection
 from .database import *
+
+BASE_DIR = os.path.dirname(__file__)
 
 # Scraping data
 BASE_URL = 'https://qbreader.org/api/query'
@@ -33,6 +42,46 @@ LEVEL_DICT = {
     9: "●●●● / Nationals College",
     10: "Open"
 }
+
+# Google drive information
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "credentials/oauth-client.json")
+FOLDER_ID = '1O8vUu3j-5RlBdoyheuWhRDFHpcmK8tzj'
+
+creds = InstalledAppFlow.from_client_secrets_file(
+    SERVICE_ACCOUNT_FILE,
+    scopes=SCOPES
+)
+
+def get_drive_service():
+    creds = None
+
+    PICKLE_PATH = os.path.join(BASE_DIR, 'credentials/token.pickle')
+
+    # Token file stores user's access & refresh tokens
+    if os.path.exists(PICKLE_PATH):
+        with open(PICKLE_PATH, 'rb') as token:
+            creds = pickle.load(token)
+
+    # If no valid credentials, log in
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                SERVICE_ACCOUNT_FILE,
+                SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+
+        # Save token for future runs
+        with open(PICKLE_PATH, 'wb') as token:
+            pickle.dump(creds, token)
+
+    return build('drive', 'v3', credentials=creds)
+
+service = get_drive_service()
+
 
 # Parsing
 # Underlined AND bold
@@ -108,14 +157,13 @@ def scrape_all_questions(number=2000):
     return;
 
 # Scrapes tournaments from the set list api
-def scrape_tournaments(limit=100):
+def scrape_tournaments(limit=100, save_to_drive=True):
     # Get offset
     if not connection.is_connected():
         connection.reconnect()
     cursor = connection.cursor()
 
     # Open the tournaments id data
-    BASE_DIR = os.path.dirname(__file__)
     file = os.path.join(BASE_DIR, "./qbreader_data/tournaments.json")
     all_tournaments = {}
     with open(file, "r", encoding="utf-8") as f:
@@ -151,7 +199,7 @@ def scrape_tournaments(limit=100):
     for i in range(limit):
         scraping_tournament = all_tournaments[scrape_index + i]
 
-        result = scrape_single_tournament(scraping_tournament, diagnostics="./logs/scrape_qbreader.txt")
+        result = scrape_single_tournament(scraping_tournament, save_to_drive=save_to_drive, diagnostics="./logs/scrape_qbreader.txt")
 
         written = result.get("questions_written")
         total = result.get("total_questions")
@@ -222,7 +270,7 @@ def scrape_questions(limit, page=0, diagnostics=False):
 
 # Used by scrape_tournaments
 # uses iteration to scrape from the set list api
-def scrape_single_tournament(tournament_data, diagnostics="./logs/scrape_qbreader.txt"):
+def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics="./logs/scrape_qbreader.txt"):
     if not tournament_data:
         append_to_diagnostics_file(diagnostics, f"scrape_single_tournament(): tournament data not given")
         return 1
@@ -232,6 +280,7 @@ def scrape_single_tournament(tournament_data, diagnostics="./logs/scrape_qbreade
     url = TOURNAMENT_METADATA_URL + f"?setId={tournament_data.get("_id")}"
     questions_written = 0
     total_questions = 0
+    drive_questions = []
 
     # GET the packet information from the tournament page
     response = requests.get(url)
@@ -250,8 +299,10 @@ def scrape_single_tournament(tournament_data, diagnostics="./logs/scrape_qbreade
         if packet_response.status_code == 200:
             questions = packet_response.json()
 
-            result = write_questions_to_sql(questions, diagnostics=diagnostics)
-            if result:
+            result = write_questions_to_sql(questions, save_to_drive=True, diagnostics=diagnostics)
+            if result and result != 1:
+                if save_to_drive:
+                    drive_questions.extend(drive_questions)
                 questions_written += result.get("questions_written")
                 total_questions += result.get("total_questions")
             else:
@@ -260,6 +311,24 @@ def scrape_single_tournament(tournament_data, diagnostics="./logs/scrape_qbreade
         else:
             append_to_diagnostics_file(diagnostics, f"query_questions(): Error: code {packet_response.status_code} while querrying {url}")
             return 1
+        
+    # Write questions to drive if need be
+    if save_to_drive:
+        try:
+            compressed = compress_questions_to_memory(drive_questions)
+
+            file_id = upload_compressed_to_drive(
+                service,
+                FOLDER_ID,
+                "2026_PACE_NSC.gz",
+                compressed
+            )
+
+            append_to_diagnostics_file(diagnostics, f"UPLOADED TO DRIVE: {file_id}")
+        except Exception as e:
+            append_to_diagnostics_file(diagnostics, f"ERROR UPLOADING TO DRIVE: {e}")
+            # Debugging
+            raise e
 
     
     append_to_diagnostics_file(diagnostics, f"Wrote {result.get("questions_written")} / {result.get("total_questions")} questions. Sleeping 2 seconds...")
@@ -287,12 +356,14 @@ def query_questions(page=0, limit=20, diagnostics=False):
         return 1
 
 # Writes a given question dict object with bonuses and tossups to the database
-def write_questions_to_sql(questions, diagnostics=False):
+def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
     if not connection.is_connected():
         connection.reconnect()
     cursor = connection.cursor()
 
     base = None
+
+    drive_questions = []
 
     if type(questions.get("tossups")) == dict and questions["tossups"].get("questionArray"):
         base = {"tossups": questions["tossups"]["questionArray"], "bonuses": questions["bonuses"]["questionArray"]}
@@ -323,6 +394,7 @@ def write_questions_to_sql(questions, diagnostics=False):
                 continue
 
             # Set data properties
+            hash = generate_unique_hash()
             tournament = tossup["set"]["name"]
             year = tossup["set"]["year"]
             difficulty = tossup["difficulty"]
@@ -375,6 +447,36 @@ def write_questions_to_sql(questions, diagnostics=False):
             
             # For diagnostics
             questions_written += 1;
+        
+            # Now write to the drive
+            if save_to_drive:
+                question_obj = {
+                    "hash": hash,
+                    "meta": {
+                        "tournament": tournament,
+                        "year": year,
+                        "level": level,
+                        "type": 0,
+                    },
+                    "classification": {
+                        "category": category,
+                        "subcategory": subcategory,
+                        "confidence": 1.0
+                    },
+                    "rating": {
+                        "difficulty": difficulty,
+                        "mu": difficulty_mu,
+                        "sigma": difficulty_sigma
+                    },
+                    "content": {
+                        "question": question,
+                        "answers": parsed_answer
+                    },
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "hand_labeled": False
+                }
+
+                drive_questions.append(question_obj)
         except Exception as e:
             #TODO: Have error checking and logging for malformed data
             
@@ -408,6 +510,7 @@ def write_questions_to_sql(questions, diagnostics=False):
                 continue
 
             # Set data properties
+            hash = generate_unique_hash()
             tournament = bonus["set"]["name"]
             year = bonus["set"]["year"]
             difficulty = bonus["difficulty"]
@@ -435,7 +538,7 @@ def write_questions_to_sql(questions, diagnostics=False):
             # Define values
             values = (
                 # id auto generates
-                generate_unique_hash(), # hash
+                hash, # hash
                 scraped_hex, # scraped_hex
                 tournament, # tournament
                 1,        # type (bonus)
@@ -460,6 +563,38 @@ def write_questions_to_sql(questions, diagnostics=False):
             
             # For diagnostics
             questions_written += 1;
+        
+            # Now write to the drive
+            if save_to_drive:
+                question_obj = {
+                    "hash": generate_unique_hash(),
+                    "meta": {
+                        "scraped_hex": scraped_hex,
+                        "tournament": tournament,
+                        "year": year,
+                        "level": level,
+                        "type": 1  # bonus
+                    },
+                    "classification": {
+                        "category": category,
+                        "subcategory": subcategory,
+                        "confidence": 1.0
+                    },
+                    "rating": {
+                        "difficulty": difficulty,
+                        "mu": difficulty_mu,
+                        "sigma": difficulty_sigma
+                    },
+                    "content": {
+                        "question": question,
+                        "answers": parsed_answers
+                    },
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "hand_labeled": False
+                }
+
+                drive_questions.append(question_obj)
+
         except Exception as e:
             #TODO: Have error checking and logging for malformed data
             
@@ -473,7 +608,53 @@ def write_questions_to_sql(questions, diagnostics=False):
     cursor.close()
     connection.close()
 
-    return {"questions_written": questions_written, "total_questions": total_questions}
+    return {
+        "questions_written": questions_written,
+        "total_questions": total_questions,
+        "drive_questions": drive_questions
+    }
+
+def compress_questions_to_memory(drive_questions):
+    """
+    Takes a Python dict/list (drive_questions),
+    returns gzipped JSON as bytes in memory.
+    """
+
+    # Convert dict to JSON string
+    json_string = json.dumps(drive_questions, ensure_ascii=False)
+
+    # Create in-memory bytes buffer
+    buffer = io.BytesIO()
+
+    # Write compressed data into buffer
+    with gzip.GzipFile(fileobj=buffer, mode="wb") as gz_file:
+        gz_file.write(json_string.encode("utf-8"))
+
+    # Move cursor back to start
+    buffer.seek(0)
+
+    return buffer.getvalue()
+
+def upload_compressed_to_drive(service, folder_id, filename, compressed_bytes):
+
+    file_metadata = {
+        "name": filename,
+        "parents": [folder_id]
+    }
+
+    media = MediaIoBaseUpload(
+        io.BytesIO(compressed_bytes),
+        mimetype="application/gzip",
+        resumable=True
+    )
+
+    file = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id"
+    ).execute()
+
+    return file.get("id")
 
 # Parses a qbreader question based on the html tags attached to the unparsed questions and answers
 def parse_answer_html(answer: str) -> str:
