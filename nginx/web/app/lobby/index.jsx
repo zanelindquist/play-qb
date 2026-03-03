@@ -404,7 +404,10 @@ export default function LobbyScreen() {
                     return prev
                 }
             }
-            if(prev[2]) {
+
+            // TODO: Handle more than 5 party members, or cap at 5
+            // Add from the middle out on PC, but top down on mobile
+            if(prev[ isMobile ? 0 : 2]) {
                 for (let i = 0; i < prev.length; i++)
                     if(!prev[i]) return [...prev.slice(0, i), user, ...prev.slice(i + 1, prev.length)]
             } else {
@@ -555,7 +558,7 @@ export default function LobbyScreen() {
                     <View style={isMobile ? mstyles.partySlots : styles.partySlots}>
                     {
                         partySlots.length > 0 ?
-                        partySlots.sort((a, b) => isMobile && i == 2 ? -1 : 0).map((user, i) => 
+                        partySlots.map((user, i) => 
                             <PartySlot
                                 player={user}
                                 style={isMobile ? mstyles.partySlot : styles.partySlot}

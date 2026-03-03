@@ -12,3 +12,4 @@ apscheduler
 google-auth
 google-auth-oauthlib
 gunicorn
+jellyfish

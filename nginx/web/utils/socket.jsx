@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { useAlert } from "./alerts";
 import { useBanner } from "./banners";
 import { useAuth } from "@/context/AuthContext";
-import { BACKEND_URL } from "./constants";
+import { BACKEND_URL, ENV } from "./constants";
 import {getProtectedRoute} from "./requests"
 import theme from "@/assets/themes/theme";
 
@@ -65,9 +65,11 @@ export function useSocket(namespace, lobbyAlias) {
         socketInstances[namespace] = socket;
 
         // --- Audit logging ---
-        socket.onAny((event, ...args) => {
-            console.log(`[SOCKET ${namespace}] Event:`, event, "Data:", args);
-        });
+        if(ENV === "development") {
+            socket.onAny((event, ...args) => {
+                console.log(`[SOCKET ${namespace}] Event:`, event, "Data:", args);
+            });
+        }
 
         socket.on("connect", () => {
             console.log(`Socket connected to ${namespace}:`, socket.id);
@@ -89,8 +91,6 @@ export function useSocket(namespace, lobbyAlias) {
         });
 
         socket.on("failed_connection", (data) => {
-            console.log("DATA", data);
-
             if (
                 data.message === "Invalid token" ||
                 data.message === "No token provided"

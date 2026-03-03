@@ -9,6 +9,9 @@ import React, { createContext, useContext, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Portal, Modal, HelperText, Button, Dialog } from "react-native-paper";
 import theme from "../assets/themes/theme";
+import ustyles from "@/assets/styles/ustyles";
+import GlassyButton from "@/components/custom/GlassyButton";
+import GlassyView from "@/components/custom/GlassyView";
 
 const AlertContext = createContext();
 
@@ -44,12 +47,13 @@ const AlertProvider = ({ children }) => {
 };
 
 const CustomAlert = ({ content, onClose, modalStyle }) => {
+    const isString = typeof content === "string";
     return (
         <Portal>
             <Dialog
                 visible
                 onDismiss={onClose}
-                style={[styles.dialog, modalStyle]}
+                style={[ustyles.modals.floatingModal, modalStyle]}
                 theme={{
                     ...theme,
                     colors: {
@@ -59,18 +63,15 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
                 }}
             >
                 <Dialog.Content>
-                    {typeof content === "string" ? (
-                        <HelperText>{content}</HelperText>
+                    {isString ? (
+                        <GlassyView style={[ustyles.flex.flexColumnCenterItems, styles.basicContainer]}>
+                            <HelperText style={[ustyles.text.shadowText, ustyles.text.header]}>{content}</HelperText>
+                            <GlassyButton style={styles.closeButton} onPress={onClose} mode="filled">Close</GlassyButton>                            
+                        </GlassyView>
                     ) : (
                         React.cloneElement(content, { close: onClose })
                     )}
                 </Dialog.Content>
-
-                {typeof content === "string" && (
-                    <Dialog.Actions>
-                        <Button onPress={onClose}>Close</Button>
-                    </Dialog.Actions>
-                )}
             </Dialog>
         </Portal>
     );
@@ -84,12 +85,20 @@ const styles = StyleSheet.create({
     },
     dialog: {
         backgroundColor: theme.surface,
-        borderRadius: 10
+        borderRadius: 10,
+        width: "80%",
+        maxWidth: 1000,
+        alignSelf: "center"
     },
     modal: {
         width: "100vw",
         height: "100vh",
         backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    basicContainer: {
+        width: "80%",
+        maxWidth: 1000,
+        alignSelf: "center"
     },
     container: {
         backgroundColor: theme.surface,
@@ -97,6 +106,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         margin: "auto",
         width: "80%",
+        maxWidth: 100,
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.1)",
         zIndex: 20,
@@ -106,11 +116,15 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginBottom: 10,
     },
+    text: {
+        fontSize: 16,
+        textAlign: "center"
+    },
     buttonContainer: {
         flexDirection: "row",
         justifyContent: "center",
     },
     closeButton: {
-        maxWidth: 300,
+        width: 200
     },
 });
