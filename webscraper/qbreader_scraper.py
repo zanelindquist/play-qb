@@ -302,7 +302,7 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
             result = write_questions_to_sql(questions, save_to_drive=True, diagnostics=diagnostics)
             if result and result != 1:
                 if save_to_drive:
-                    drive_questions.extend(drive_questions)
+                    drive_questions.extend(result.get("drive_questions"))
                 questions_written += result.get("questions_written")
                 total_questions += result.get("total_questions")
             else:
@@ -320,7 +320,7 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
             file_id = upload_compressed_to_drive(
                 service,
                 FOLDER_ID,
-                "2026_PACE_NSC.gz",
+                tournament_data.get("setName"),
                 compressed
             )
 

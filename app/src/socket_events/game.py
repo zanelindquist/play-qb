@@ -362,7 +362,6 @@ def on_submit(data): # FinalAnswer
         )
 
         data["question"] = new_question
-        set_question_to_game(new_question, lobby)
 
         game_m = game_mem.get_game(game_hash)
 
@@ -371,10 +370,10 @@ def on_submit(data): # FinalAnswer
         if lobby == "ranked" and game_m.get("current_question"):
             ranked_on_next_question(game_m, emit)
 
-        game_mem.next_question(question, game_hash)
+        game_mem.next_question(new_question, game_hash)
 
         # Set this question as the game's DB question
-        set_question_to_game(question, lobby)
+        set_question_to_game(new_question, lobby)
 
         emit("next_question", data, room=f"lobby:{lobby}")
 

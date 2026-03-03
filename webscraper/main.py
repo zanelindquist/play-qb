@@ -61,4 +61,4 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # test_parser(100)
 
 # Scrape from qb reader all tournament set list
-scrape_tournaments(2)
+scrape_tournaments(10)
