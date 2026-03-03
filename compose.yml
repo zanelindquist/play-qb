@@ -16,7 +16,7 @@ services:
       - MYSQL_DATABASE=play-qb
       - MYSQL_PORT=3306
 
-      - DATABASE_URL=mysql+mysqlconnector://playqb:qCrXMynrpYVjpkOQ@db:3306/play-qb
+      - DATABASE_URL=mysql+mysqlconnector://root:password@db:3306/play-qb
     depends_on:
       - db
     volumes:
