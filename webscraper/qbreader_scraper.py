@@ -380,7 +380,6 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
             exists = cursor.fetchone() is not None
 
             if exists:
-                print("QUESTION EXISTS", scraped_hex)
                 continue
 
             # Set data properties
@@ -399,6 +398,12 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
             # Parse answer into the parts "main || accept || prompt || reject"
             parsed_answer = parse_answer_html(answer)
+
+            # We need to know if there is an error in parsing at all (no answer, for example)
+            if parsed_answer == 1:
+                # Non-fatal error, on a question based level, so continue writing, but log it to diagnostics
+                append_to_diagnostics_file(diagnostics, "ERROR WRITING QUESTION: malformed parsing data")
+                continue 
 
             # Define query
             query = """
@@ -513,8 +518,20 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
             difficulty_mu = 1000 + difficulty * 115 - 150
             difficulty_sigma = 300 - difficulty * 10
 
+            # TODO: CHECK PARSED ANSER FOR ERRORS
+            parsed_parts = [parse_answer_html(answer) for answer in answers]
+            for part in parsed_parts:
+                # If there was an error
+                if part == 1:
+                    # Flag the parts
+                    parsed_parts = None
+            # Check and see if the parts got flagged
+            if not parsed_parts:
+                # Non-fatal error, on a question based level, so continue writing, but log it to diagnostics
+                append_to_diagnostics_file(diagnostics, "ERROR WRITING QUESTION: malformed parsing data")
+                continue
             # Parse answer into the parts "main1 || main2 || main3 ||| accept1 || NONE || accept2_1 | accept2_2 | accept2_3 ||| prompt1 || prompt2 || prompt3 ||| NONE"
-            parsed_answers = " ||| ".join([parse_answer_html(answer) for answer in answers])
+            parsed_answers = " ||| ".join(parsed_parts)
 
             # Define query
             query = """
@@ -674,10 +691,21 @@ def parse_answer_html(answer: str) -> str:
     # Just don't do rejects
 
     # Fill "NONE" for empty fields
-    main = accepts[0] if accepts else "NONE"
+    main = accepts[0] if accepts else None
     accepts_str = ' | '.join(accepts[1:]) if len(accepts) > 1 else "NONE"
     prompts_str = ' | '.join(prompts) if prompts else "NONE"
     rejects_str = "NONE"
+
+    # If there is no main, then the correct answers are probably only contained in <u></u> tags
+    # therefore, we will have to set the main answer as the prompts
+    if not main:
+        # Fall back onto the prompts
+        if prompts:
+            main = prompts[0]
+            accepts_str = ' | '.join(prompts[1:]) if len(prompts) > 1 else "NONE"
+            prompts_str = "NONE"
+        else:
+            return 1    
 
     return f"{main} || {accepts_str} || {prompts_str} || {rejects_str}"
 
