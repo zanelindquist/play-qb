@@ -1,6 +1,3 @@
-import mysql.connector
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import requests
 import math
 import re
