@@ -2,11 +2,11 @@
 # python -m webscraper.main
 
 
-from .scraping import *
+# from .scraping import *
 from .qbreader_scraper import *
 from .config import *
-from .classifiers.ml.ml import train_and_save_model
-from .classifiers.bayesian.bayesian import *
+# from .classifiers.ml.ml import train_and_save_model
+# from .classifiers.bayesian.bayesian import *
 
 html = False;
 
@@ -61,4 +61,4 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # test_parser(100)
 
 # Scrape from qb reader all tournament set list
-scrape_tournaments(10)
+scrape_tournaments(1)

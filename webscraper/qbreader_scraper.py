@@ -14,8 +14,6 @@ from googleapiclient.http import MediaIoBaseUpload
 
 from .config import *
 from .utils import *
-from .classifiers.ml.ml import *
-
 # Import database connection
 from .database import *
 
