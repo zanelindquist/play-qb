@@ -192,17 +192,6 @@ def scrape_tournaments(limit=100, save_to_drive=True):
 
     # Loop and 
     for i in range(limit):
-        scraping_tournament = all_tournaments[scrape_index + i]
-
-        result = scrape_single_tournament(scraping_tournament, save_to_drive=save_to_drive, diagnostics="./logs/scrape_qbreader.txt")
-
-        written = result.get("questions_written")
-        total = result.get("total_questions")
-
-        # If we hit an error
-        if not total or result == 1:
-            continue
-        
         # Sometimes the cursor can disconnect while we are scraping since it could take a second
         if not connection.is_connected():
             connection.reconnect()
@@ -215,8 +204,17 @@ def scrape_tournaments(limit=100, save_to_drive=True):
         SET value = value + %s
         WHERE name = %s;
         """
+        # Increment this first in case it fails so we can move on from the bad packet
         cursor.execute(query, (1, "scrape_index"))
         connection.commit()
+
+        # Get scraping data and scrape tournament
+        scraping_tournament = all_tournaments[scrape_index + i]
+        result = scrape_single_tournament(scraping_tournament, save_to_drive=save_to_drive, diagnostics="./logs/scrape_qbreader.txt")
+
+        # If we hit a fatal tournament-level error
+        if result == 1:
+            continue
 
         # Sleep 1 seconds to go slow on the API
         time.sleep(1)
@@ -283,8 +281,8 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
     if response.status_code == 200:
         packet_list = response.json()
     else:
-        
-        append_to_diagnostics_file(diagnostics, f"query_questions(): Error: code {response.status_code} while querrying {url}")
+        append_to_diagnostics_file(diagnostics, f"query_questions(): Error while scraping metadata: code {response.status_code} while querrying {url}")
+        # Fatal error, continue to the next tournament
         return 1
     
     # Now for each packet in this tournament
@@ -302,10 +300,10 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
                 total_questions += result.get("total_questions")
             else:
                 append_to_diagnostics_file(diagnostics, f"Error occurred while scraping. Check logs.")
-                return 1
+                # Continue on, non-fatal error
         else:
-            append_to_diagnostics_file(diagnostics, f"query_questions(): Error: code {packet_response.status_code} while querrying {url}")
-            return 1
+            append_to_diagnostics_file(diagnostics, f"query_questions(): Error while scraping packet: code {packet_response.status_code} while querrying {url}")
+            # Just continue on, one packet failed but we can keep going
         
     # Write questions to drive if need be
     if save_to_drive:
@@ -321,16 +319,13 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
 
             append_to_diagnostics_file(diagnostics, f"UPLOADED TO DRIVE: {file_id}")
         except Exception as e:
-            append_to_diagnostics_file(diagnostics, f"ERROR UPLOADING TO DRIVE: {e}")
+            append_to_diagnostics_file(diagnostics, f"ERROR UPLOADING TO DRIVE --continuing: {e}")
             # Debugging
-            raise e
 
     
     append_to_diagnostics_file(diagnostics, f"Wrote {result.get("questions_written")} / {result.get("total_questions")} questions. Sleeping 2 seconds...")
 
     append_to_diagnostics_file(diagnostics, f"SUCCESS: Process complete. Wrote {questions_written} / {total_questions} questions.")
-
-    print(f"SUCCESS: Process complete. Wrote {questions_written} / {total_questions} questions.")
 
     return {"questions_written": questions_written, "total_questions": total_questions}
 
