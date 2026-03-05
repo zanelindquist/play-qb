@@ -17,6 +17,9 @@ from .utils import *
 # Import database connection
 from .database import *
 
+# Create https session
+session = requests.Session()
+
 BASE_DIR = os.path.dirname(__file__)
 
 # Scraping data
@@ -276,7 +279,7 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
     drive_questions = []
 
     # GET the packet information from the tournament page
-    response = requests.get(url)
+    response = session.get(url)
     packet_list = None
     if response.status_code == 200:
         packet_list = response.json()
@@ -287,7 +290,7 @@ def scrape_single_tournament(tournament_data, save_to_drive=True, diagnostics=".
     
     # Now for each packet in this tournament
     for packet in packet_list.get("data"):
-        packet_response = requests.get(PACKET_URL + f"?_id={packet.get("_id")}")
+        packet_response = session.get(PACKET_URL + f"?_id={packet.get("_id")}")
         append_to_diagnostics_file(diagnostics, f"Scraping packet url: {PACKET_URL + f"?_id={packet.get("_id")}"}")
         if packet_response.status_code == 200:
             questions = packet_response.json()
@@ -336,7 +339,7 @@ def query_questions(page=0, limit=20, diagnostics=False):
     
     print(f"Preparing to query: {BASE_URL}{params}")
 
-    response = requests.get(BASE_URL + params)
+    response = session.get(BASE_URL + params)
 
     if response.status_code == 200:
         return response.json()
@@ -363,24 +366,11 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
     questions_written = 0
     total_questions = len(base.get("tossups")) + len(base.get("bonuses"))
 
-    for tossup in base.get("tossups"):
-        # Save tossups to DB
-        try:
+    # Scrape tossups and bonuses
+    try:
+        for tossup in base.get("tossups"):
+            # Save tossups to DB
             scraped_hex = tossup["_id"]
-
-            # If this question is already in the database, don't write it
-            query = """
-            SELECT 1
-            FROM questions
-            WHERE scraped_hex = %s
-            LIMIT 1
-            """
-
-            cursor.execute(query, (scraped_hex,))
-            exists = cursor.fetchone() is not None
-
-            if exists:
-                continue
 
             # Set data properties
             hash = generate_unique_hash()
@@ -407,7 +397,7 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
             # Define query
             query = """
-                INSERT INTO questions (
+                INSERT IGNORE INTO questions (
                     hash, scraped_hex, tournament, type, year, level,
                     difficulty, category, category_confidence, subcategory, question, answers,
                     created_at, hand_labeled, difficulty_mu, difficulty_sigma
@@ -438,11 +428,11 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
             # Execute and commit
             cursor.execute(query, values)
-            connection.commit()
             
             # For diagnostics
-            questions_written += 1;
-        
+            if cursor.rowcount == 1:
+                questions_written += 1
+
             # Now write to the drive
             if save_to_drive:
                 question_obj = {
@@ -472,38 +462,11 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
                 }
 
                 drive_questions.append(question_obj)
-        except Exception as e:
-            #TODO: Have error checking and logging for malformed data
-            
-            append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
-            connection.rollback()
-            # Throw the error again so that the final code does notrun
-            print(e)
 
-    # TODO: add bonuses
-    # The bonus element seperater is ||| and the part seperater is || and the answer seperater is |
-    for bonus in base.get("bonuses"):
-        # Save tossups to DB
-        try:
+        # The bonus element seperater is ||| and the part seperater is || and the answer seperater is |
+        for bonus in base.get("bonuses"):
             scraped_hex = bonus["_id"]
-
-            # If this question is already in the database, don't write it
-            query = """
-            SELECT 1
-            FROM questions
-            WHERE scraped_hex = %s
-            LIMIT 1
-            """
-
-            # Make sure we have not already scraped this exact question
-            cursor.execute(query, (scraped_hex,))
-            exists = cursor.fetchone() is not None
-
-            if exists:
-                append_to_diagnostics_file(diagnostics, "WRITE TO SQL: question already exists: " + scraped_hex)
-                print("QUESTION EXISTS", scraped_hex)
-                continue
-
+            
             # Set data properties
             hash = generate_unique_hash()
             tournament = bonus["set"]["name"]
@@ -535,7 +498,7 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
             # Define query
             query = """
-                INSERT INTO questions (
+                INSERT IGNORE INTO questions (
                     hash, scraped_hex, tournament, type, year, level,
                     difficulty, category, category_confidence, subcategory, question, answers,
                     created_at, hand_labeled, difficulty_mu, difficulty_sigma
@@ -566,10 +529,10 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
             # Execute and commit
             cursor.execute(query, values)
-            connection.commit()
             
             # For diagnostics
-            questions_written += 1;
+            if cursor.rowcount == 1:
+                questions_written += 1
         
             # Now write to the drive
             if save_to_drive:
@@ -602,18 +565,17 @@ def write_questions_to_sql(questions, diagnostics=False, save_to_drive=True):
 
                 drive_questions.append(question_obj)
 
-        except Exception as e:
-            #TODO: Have error checking and logging for malformed data
-            
-            append_to_diagnostics_file(diagnostics, f"Error while creating question SQL row: {e}")
-            connection.rollback()
-            # Throw the error again so that the final code does notrun
-            print(e)
+        # Once the loop is done, we want to commit the data     
+        connection.commit()
+    except Exception as e:
+        append_to_diagnostics_file(diagnostics, f"Error while writing questions to SQL: {e}")
+        connection.rollback()
+        # Throw the error again so that the final code does notrun
+        print(e)
+    finally:
+        cursor.close()            
 
     append_to_diagnostics_file(diagnostics, f"SUCCESS: wrote {questions_written} of {total_questions} to database")
-            
-    cursor.close()
-    connection.close()
 
     return {
         "questions_written": questions_written,

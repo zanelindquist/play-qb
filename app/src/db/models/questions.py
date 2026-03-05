@@ -11,7 +11,7 @@ class Questions(Base, CreatedAtColumn):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
-    scraped_hex = Column(String(24))
+    scraped_hex = Column(String(24), unique=True)
     tournament = Column(String(50), default="Untitled Tournament", nullable=False)
     type = Column(Integer, default=0)
     year = Column(String(9))
