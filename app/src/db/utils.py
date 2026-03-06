@@ -15,10 +15,11 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
 
 from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
-from .db import engine
+from .db import *
 from .models.hash import *
 import src.db.ranked as ranked
 from src.db.classes import *
+from src.db.cache import *
 import jellyfish
 
 
@@ -46,7 +47,7 @@ COMMON_WORDS  = {
 # Creating a lobby
 MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause", "public", "creator_id"]
 CATEGORIES = [
-    "everything",
+    "all",
     "science",
     "history",
     "literature",
@@ -104,12 +105,6 @@ def normalize(s: str) -> str:
 def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
-
-# Database session
-Session = scoped_session(sessionmaker(bind=engine))
-
-def get_session():
-    return Session
 
 #========HELPER FUNCTIONS=======
 
@@ -568,67 +563,42 @@ def get_user_by_hash(hash, gentle=True, advanced=False, rel_depths=None, depth=0
     finally:
         session.remove()
 
-def get_random_question(type=0, level=0, category="all", confidence_threshold=0.1, hand_labeled=False):
-    session = get_session()
-
+def get_random_question(difficulty="all", category="all", tournament="all", type=0):
     try:
-        base_query = (
-            select(Questions)
-            .where(Questions.category_confidence >= confidence_threshold)
-            .where(Questions.type == type)
-        )
+        ids = get_cached_question_ids(type=type, difficulty=difficulty, category=category, tournament=tournament)
 
-        # Optional filters (only apply if non-zero / non-null)
-        if level != 11: # 11 is the code for everything
-            base_query = base_query.where(Questions.level == level)
-
-        if category != "everything":
-            # TODO: Handle custom
-
-            base_query = base_query.where(Questions.category == category)
-
-        if hand_labeled:
-            base_query = base_query.where(Questions.hand_labeled == False)
-
-        # Count filtered rows
-        count = session.execute(
-            select(func.count()).select_from(base_query.subquery())
-        ).scalar()
-
-        if count == 0:
+        if not ids:
             return {
                 "code": 404,
                 "error": "No questions meet this query"
             }
 
-        # Pick random offset
-        offset = random.randint(0, count - 1)
+        random_id = random.choice(ids)
+
+        session = get_session()
 
         question = session.execute(
-            base_query.offset(offset).limit(1)
+            select(Questions).where(Questions.id == random_id)
         ).scalars().first()
 
         q = to_dict_safe(question, depth=0)
 
         parsed_answers = {}
         keys = ["main", "accept", "prompt", "reject", "suggested_category"]
-        index = 0;
-        for part in q.get("answers").split(" || "):
-            parsed_answers[keys[index]] = part.split(" | ") if (part != "NONE" or part != "") else None
-            index += 1
 
-        # Make the main answer not a list
+        for index, part in enumerate(q.get("answers").split(" || ")):
+            parsed_answers[keys[index]] = (
+                part.split(" | ") if (part != "NONE" and part != "") else None
+            )
+
         parsed_answers["main"] = parsed_answers["main"][0]
 
-        # Parse answer
         q["answers"] = parsed_answers
 
         return q
 
-
     except Exception as e:
         return {"code": 400, "error": str(e)}
-
 def get_question_by_hash(hash):
     try:
         session = get_session()

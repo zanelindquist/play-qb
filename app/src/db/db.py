@@ -2,8 +2,8 @@ import mysql.connector
 from mysql.connector import Error
 
 from sqlalchemy import create_engine, Column, DateTime
+from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 import os
 
@@ -41,3 +41,9 @@ def init_db():
         Base.metadata.create_all(engine)
     except Exception as e:
         print(f'Error: {e}')
+
+# Database session
+Session = scoped_session(sessionmaker(bind=engine))
+
+def get_session():
+    return Session

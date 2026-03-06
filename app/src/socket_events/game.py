@@ -357,8 +357,9 @@ def on_submit(data): # FinalAnswer
         # Get question ACCORDING TO LOBBY SETTINGS
         new_question = get_random_question(
             type=0, # Tossup
-            level=lobby_data.get("level"), # All, ms, hs, college, open
-            category=CATEGORIES[lobby_data.get("category")]
+            difficulty=lobby_data.get("level"),
+            category=CATEGORIES[lobby_data.get("category")], # Convert category number to string
+            tournament=lobby_data.get("tournament", "all") # No tournament setting yet
         )
 
         data["question"] = new_question
@@ -434,8 +435,9 @@ def on_next_question(data):
     # Get question ACCORDING TO LOBBY SETTINGS
     question = get_random_question(
         type=0, # Tossup
-        level=lobby_data.get("level"), # All, ms, hs, college, open
-        category=CATEGORIES[lobby_data.get("category")]
+        difficulty=lobby_data.get("level"),
+        category=CATEGORIES[lobby_data.get("category")], # Convert category number to string
+        tournament=lobby_data.get("tournament", "all") # No tournament setting yet
     )
 
     game_m = game_mem.get_game(game_hash)

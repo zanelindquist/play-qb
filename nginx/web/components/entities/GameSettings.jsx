@@ -55,7 +55,7 @@ const LEVELS = [
 ]
 
 const CATEGORIES = [
-    "everything",
+    "all",
     "science",
     "history",
     "literature",

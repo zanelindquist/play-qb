@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Table, Text, ForeignKey, Integer, Float, String, DateTime, Date, Boolean
+from sqlalchemy import Column, Index, Table, Text, ForeignKey, Integer, Float, String, DateTime, Date, Boolean
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -7,15 +7,18 @@ from .hash import generate_unique_hash
 
 class Questions(Base, CreatedAtColumn):
     __tablename__ = 'questions'
-    __table_args__ = {'mysql_engine':'InnoDB'}
+    __table_args__ = (
+        Index("idx_question_lookup", "type", "difficulty", "category", "tournament"),
+        {'mysql_engine':'InnoDB'}
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     hash = Column(String(16), default=generate_unique_hash, unique=True, nullable=False)
     scraped_hex = Column(String(24), unique=True)
     tournament = Column(String(50), default="Untitled Tournament", nullable=False)
-    type = Column(Integer, default=0)
+    type = Column(Integer, default=0) # 0 for tossup, 1 for bonus
     year = Column(String(9))
-    level = Column(Integer, default=2)
+    level = Column(Integer, default=2) # Depricated, use difficulty now
     difficulty = Column(Integer, default=0)
     category = Column(String(20), default="Unknown")
     subcategory = Column(String(30))

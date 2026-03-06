@@ -98,7 +98,9 @@ const styles = StyleSheet.create({
     basicContainer: {
         width: "80%",
         maxWidth: 1000,
-        alignSelf: "center"
+        alignSelf: "center",
+        margin: 0,
+        padding: 0
     },
     container: {
         backgroundColor: theme.surface,
