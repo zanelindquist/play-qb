@@ -573,12 +573,12 @@ def on_remove_friend(data):
         emit("removed_friend", {"message": "remove_friend(): hash not provided", "code": 400})
         return
 
-    result = remove_friend_by_email_to_hash(user_hash, hash)
+    result = remove_friend_by_hash(user_hash, hash)
 
     added_friends = get_friends_by_hash(user_hash, online=False)
 
     # Tell the user
-    emit("removed_friend", {"message": result.get("message"), "friends": added_friends})
+    emit("removed_friend", {"message": result.get("message"), "error": result.get("error"), "friends": added_friends})
 
 # Finding lobbies
 

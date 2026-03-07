@@ -3,6 +3,7 @@ import os
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.socket_events.constructor import socketio
@@ -33,11 +34,27 @@ def create_app(test_config=None):
             "https://10.104.5.175",
         ]
 
+    # Make this play nice with cloudflare
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=1,
+        x_proto=1,
+        x_host=1,
+        x_port=1
+    )
+
     CORS(app, resources={r"/*": {"origins": allowed_origins}})
+    app.config["PREFERRED_URL_SCHEME"] = "https"
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
+
+    # Apply headers to allow Google popup
+    @app.after_request
+    def apply_headers(response):
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+        return response
 
     if test_config is None:
         # load the instance config, if it exists, when not testing

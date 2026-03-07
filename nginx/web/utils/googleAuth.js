@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import { router } from "expo-router";
 import { useAlert } from "./alerts";
 import { useBanner } from "./banners.jsx";
 import { useAuth } from '../context/AuthContext.js';
+import { ENV } from "./constants.js";
 
 // Add this at the top of your file
 WebBrowser.maybeCompleteAuthSession();
@@ -24,16 +26,23 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
         tokenEndpoint: 'https://oauth2.googleapis.com/token',
     };
 
+    const redirectUri =
+    Platform.OS === "web"
+        ? (ENV == "development" ? "http://localhost:8081/authenticated" : "https://morequizbowl.com/authenticated")
+        : AuthSession.makeRedirectUri({
+            scheme: "your-app-scheme",
+            path: "authenticated",
+        });
+
+    console.log("Redirect URI: ", redirectUri)   
+
     const [request, response, promptAsync] = AuthSession.useAuthRequest(
         {
             clientId: oauth.web.client_id,
             scopes: ['openid', 'profile', 'email'],
-            redirectUri: AuthSession.makeRedirectUri({
-                scheme: 'your-app-scheme', // e.g., 'myapp' or use native: 'myapp://'
-                path: "authenticated",
-            }),
+            redirectUri: redirectUri,
             responseType: AuthSession.ResponseType.Code,
-            usePKCE: false, // Important: disable PKCE
+            usePKCE: true,
             extraParams: {
                 access_type: 'offline',
             },
@@ -60,7 +69,8 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
                 // Handle signup
                 postAuthRoute("/google_auth_register", {
                     code: code,
-                    redirect_uri: redirectUri
+                    redirect_uri: redirectUri,
+                    code_verifier: request?.codeVerifier,
                 })
                 .then((data) => {
                     const token = data?.access_token; 
@@ -94,7 +104,8 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
             } else {
                 postAuthRoute("/google_auth_login", {
                     code: code,
-                    redirect_uri: redirectUri
+                    redirect_uri: redirectUri,
+                    code_verifier: request?.codeVerifier,
                 })
                 .then((data) => {                    
                     const token = data?.access_token; 

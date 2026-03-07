@@ -53,7 +53,7 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
             <Dialog
                 visible
                 onDismiss={onClose}
-                style={[ustyles.modals.floatingModal, modalStyle]}
+                style={[isString && ustyles.modals.floatingModal, !isString && styles.basicContainer, modalStyle]}
                 theme={{
                     ...theme,
                     colors: {

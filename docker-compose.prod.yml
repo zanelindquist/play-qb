@@ -15,6 +15,7 @@ services:
     container_name: qb-db-prod
     env_file:
       - .env.prod
+    command: --innodb-buffer-pool-size=128M
     volumes:
       - mysql_data:/var/lib/mysql
     ports:

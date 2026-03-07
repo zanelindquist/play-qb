@@ -300,8 +300,12 @@ export default function LobbyScreen() {
             })
 
             addEventListener("removed_friend", ({message, friends}) => {
-                showBanner(message, {backgroundColor: theme.error})
-                if(friends !== undefined) setFriends(friends)
+                if(friends !== undefined) {
+                    setFriends(friends)
+                    showBanner(message, {backgroundColor: theme.error})
+                } else {
+                    showBanner("Error unfriending", {backgroundColor: theme.error})
+                }
             })
 
             addEventListener("friend_now_online", ({friend}) => {

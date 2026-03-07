@@ -51,6 +51,7 @@ def login():
 def google_auth_login():
     code = request.json.get("code")
     redirect_uri = request.json.get("redirect_uri")
+    code_verifier = request.json.get("code_verifier")
 
     if not code:
         return jsonify({"error": "No authorization code provided"}), 400
@@ -66,7 +67,8 @@ def google_auth_login():
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
             "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code"
+            "grant_type": "authorization_code",
+            "code_verifier": code_verifier
         }
         
         token_response = requests.post(token_url, data=token_data)
@@ -152,6 +154,8 @@ def google_auth_register():
     
     if not redirect_uri:
         return jsonify({"error": "No redirect URI provided"}), 400
+    
+    code_verifier = request.json.get("code_verifier")
 
     try:
         # Exchange authorization code for tokens
@@ -161,11 +165,14 @@ def google_auth_register():
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
             "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code"
+            "grant_type": "authorization_code",
+            "code_verifier": code_verifier
         }
         
         token_response = requests.post(token_url, data=token_data)
-        token_response.raise_for_status()
+        if token_response.status_code != 200:
+            print("GOOGLE TOKEN ERROR:", token_response.text)
+            return jsonify({"error": token_response.text}), 400
         tokens = token_response.json()
         
         # Verify the ID token

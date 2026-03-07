@@ -1395,11 +1395,11 @@ def delete_inactive_lobbies():
     finally:
         session.commit()
 
-def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
+def remove_friend_by_hash(from_hash: str, to_hash: str) -> dict:
     session = get_session()
     try:
-        user = get_user_by_email(email)
-        target = get_user_by_hash(hash)
+        user = get_user_by_hash(from_hash)
+        target = get_user_by_hash(to_hash)
 
         # See if there is already a friend request
         friend = session.execute(
@@ -1421,7 +1421,7 @@ def remove_friend_by_email_to_hash(email: str, hash: str) -> dict:
         return {'message': 'Unfriended ' + target.get("username"), "code": 200}
     except Exception as e:
         session.rollback()
-        return {'message': 'remove_friend_by_email_to_hash(): failure', 'error': f'{e}', "code": 400}
+        return {'message': 'remove_friend_by_hash(): failure', 'error': f'{e}', "code": 400}
     finally:
         session.commit()
 
