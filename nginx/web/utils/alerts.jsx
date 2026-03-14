@@ -53,7 +53,11 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
             <Dialog
                 visible
                 onDismiss={onClose}
-                style={[isString && ustyles.modals.floatingModal, !isString && styles.basicContainer, modalStyle]}
+                style={[
+                    isString && ustyles.modals.floatingModal,
+                    !isString && styles.basicContainer,
+                    modalStyle,
+                ]}
                 theme={{
                     ...theme,
                     colors: {
@@ -64,9 +68,27 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
             >
                 <Dialog.Content>
                     {isString ? (
-                        <GlassyView style={[ustyles.flex.flexColumnCenterItems, styles.basicContainer]}>
-                            <HelperText style={[ustyles.text.shadowText, ustyles.text.header]}>{content}</HelperText>
-                            <GlassyButton style={styles.closeButton} onPress={onClose} mode="filled">Close</GlassyButton>                            
+                        <GlassyView
+                            style={[
+                                ustyles.flex.flexColumnCenterItems,
+                                styles.basicContainer,
+                            ]}
+                        >
+                            <HelperText
+                                style={[
+                                    ustyles.text.shadowText,
+                                    ustyles.text.header,
+                                ]}
+                            >
+                                {content}
+                            </HelperText>
+                            <GlassyButton
+                                style={styles.closeButton}
+                                onPress={onClose}
+                                mode="filled"
+                            >
+                                Close
+                            </GlassyButton>
                         </GlassyView>
                     ) : (
                         React.cloneElement(content, { close: onClose })
@@ -80,15 +102,13 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
 export { CustomAlert, useAlert, AlertProvider };
 
 const styles = StyleSheet.create({
-    portal: {
-
-    },
+    portal: {},
     dialog: {
         backgroundColor: theme.surface,
         borderRadius: 10,
         width: "80%",
         maxWidth: 1000,
-        alignSelf: "center"
+        alignSelf: "center",
     },
     modal: {
         width: "100vw",
@@ -100,7 +120,7 @@ const styles = StyleSheet.create({
         maxWidth: 1000,
         alignSelf: "center",
         margin: 0,
-        padding: 0
+        padding: 20,
     },
     container: {
         backgroundColor: theme.surface,
@@ -120,13 +140,13 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 16,
-        textAlign: "center"
+        textAlign: "center",
     },
     buttonContainer: {
         flexDirection: "row",
         justifyContent: "center",
     },
     closeButton: {
-        width: 200
+        width: 200,
     },
 });

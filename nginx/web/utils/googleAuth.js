@@ -12,14 +12,13 @@ import { useBanner } from "./banners.jsx";
 import { useAuth } from '../context/AuthContext.js';
 import { ENV } from "./constants.js";
 
-// Add this at the top of your file
 WebBrowser.maybeCompleteAuthSession();
 
 export function useGoogleAuth(isSignUp, onAccountCreation=null) {
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
+    const {pendingOAuthCode, consumeOAuthCode, login} = useAuth()
     const [hasRequested, setHasRequested] = useState(false)
-    const {login} = useAuth()
 
     const discovery = {
         authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -33,8 +32,6 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
             scheme: "your-app-scheme",
             path: "authenticated",
         });
-
-    console.log("Redirect URI: ", redirectUri)   
 
     const [request, response, promptAsync] = AuthSession.useAuthRequest(
         {
@@ -51,88 +48,64 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
     );
 
     useEffect(() => {
-        if(hasRequested) return
-        if (response?.type === "success") {
+        console.log("PENDING UATH CODE", pendingOAuthCode)
+        if (!pendingOAuthCode) return;
+        if (hasRequested) return;
 
-            const code = response.params?.code;
-            const redirectUri = request?.redirectUri;
-            
-            console.log("Authorization code:", code);
-            console.log("Redirect URI:", redirectUri);
-            
-            if(!code || !redirectUri) {
-                console.error("Missing code or redirectUri");
-                return;
-            }
-            
-            if(isSignUp) {
-                // Handle signup
-                postAuthRoute("/google_auth_register", {
-                    code: code,
-                    redirect_uri: redirectUri,
-                    code_verifier: request?.codeVerifier,
-                })
-                .then((data) => {
-                    const token = data?.access_token; 
-                    if (!token) {
-                        console.error("No access_token in response");
-                        return;
-                    }
-                    login(token);
+        const { code, verifier } = consumeOAuthCode();
 
-                    // Make sure that this was not just a log in because the account already existed
-                    if(data.message == "User already exists"){
-                        showBanner("Account already exists. Logged in.")
-                        // Go straigt to the login page
-                        router.replace("/")
-                    }
-                    
-                    // Here we have to make the user set a username
-                    if(onAccountCreation) onAccountCreation()
-                    setHasRequested(true)
-                })
-                .catch((error) => {
-                    const message = error?.response?.data?.error
-                    if(message === "Email does not exist") {
-                        router.replace("/signup")
-                        showAlert("Email not found. Please make an account.")
-                        return
-                    }
-                    console.log("ERROR LOGGING IN", error); 
-                    showAlert("There was an error logging in: " + message); 
-                });
-            } else {
-                postAuthRoute("/google_auth_login", {
-                    code: code,
-                    redirect_uri: redirectUri,
-                    code_verifier: request?.codeVerifier,
-                })
-                .then((data) => {                    
-                    const token = data?.access_token; 
-                    if (!token) {
-                        console.error("No access_token in response");
-                        return;
-                    }
-                    login(token); 
-                    router.replace("/"); 
-                    showBanner("Logged in!")
-                })
-                .catch((error) => {
-                    const message = error?.response?.data?.error
-                    if(message === "Email does not exist") {
-                        router.replace("/signup")
-                        showAlert("Email not found. Please make an account.")
-                        return
-                    }
-                    console.log("ERROR LOGGING IN", error); 
-                    showAlert("There was an error logging in: " + message); 
-                });
-            }
-        } else if (response?.type === "error") {
-            console.error("Auth error:", response.error);
-            showAlert("Authentication failed" + "Please try again");
+        if (!code) return;
+
+        if (isSignUp) {
+            postAuthRoute("/google_auth_register", {
+                code,
+                redirect_uri: redirectUri,
+                code_verifier: request.codeVerifier,
+            })
+            .then((data) => {
+                const token = data?.access_token;
+                if (!token) { console.error("No access_token in response"); return; }
+                login(token);
+                if (data.message == "User already exists") {
+                    showBanner("Account already exists. Logged in.");
+                    router.replace("/");
+                }
+                if (onAccountCreation) onAccountCreation();
+                setHasRequested(true);
+            })
+            .catch((error) => {
+                const message = error?.response?.data?.error;
+                if (message === "Email does not exist") {
+                    router.replace("/signup");
+                    showAlert("Email not found. Please make an account.");
+                    return;
+                }
+                showAlert("There was an error logging in: " + message);
+            });
+        } else {
+            postAuthRoute("/google_auth_login", {
+                code,
+                redirect_uri: redirectUri,
+                code_verifier: verifier,
+            })
+            .then((data) => {
+                const token = data?.access_token;
+                if (!token) { console.error("No access_token in response"); return; }
+                login(token);
+                router.replace("/");
+                showBanner("Logged in!");
+            })
+            .catch((error) => {
+                const message = error?.response?.data?.error;
+                if (message === "Email does not exist") {
+                    router.replace("/signup");
+                    showAlert("Email not found. Please make an account.");
+                    return;
+                }
+                showAlert("There was an error logging in: " + message);
+            });
         }
-    }, [response]);
+    }, [pendingOAuthCode]); // fires whenever layout sets a new code
 
-    return { promptAsync, disabled: !request };
+    return { promptAsync, disabled: !request, request };
 }

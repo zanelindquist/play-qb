@@ -4,21 +4,22 @@ import {
     PaperProvider,
     Modal,
 } from "react-native-paper";
-
 import { AlertProvider } from "../utils/alerts";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 // Make it work for mobile
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import theme from "../assets/themes/theme";
 import { Platform } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { BannerProvider } from "../utils/banners";
+import AuthUrlListener from "../context/AuthUrlListener";
 
 if (Platform.OS === "web") {
     require("../assets/css/scrollbar.css");
 }
 
 export default function RootLayout() {
+
     const customTheme = {
         ...DefaultTheme,
         colors: theme, // Copy it from the color codes scheme and then use it here
@@ -30,10 +31,11 @@ export default function RootLayout() {
                 <AlertProvider>
                     <BannerProvider>
                         <AuthProvider>
+                            <AuthUrlListener />
                             <Stack
                                 screenOptions={{
                                     headerShown: false,
-                                    unmountOnBlur: true,
+                                    // unmountOnBlur: true,
                                     animation: "slide_from_right",
                                     animationDuration: 1000
                                 }}

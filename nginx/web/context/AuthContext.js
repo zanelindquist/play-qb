@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+    const [pendingOAuthCode, setPendingOAuthCode] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -26,6 +27,19 @@ export function AuthProvider({ children }) {
         setAccessToken(null);
     };
 
+    // Call this from _layout when code is intercepted
+    const setOAuthCode = (code, verifier) => {
+        console.log("SET AUTH CODE FIRED")
+        setPendingOAuthCode({ code, verifier });
+    };
+
+    // Call this from signup to consume it
+    const consumeOAuthCode = () => {
+        const val = pendingOAuthCode;
+        setPendingOAuthCode(null);
+        return val;
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -33,7 +47,10 @@ export function AuthProvider({ children }) {
                 isAuthenticated: !!accessToken,
                 login,
                 logout,
-                loading
+                loading,
+                pendingOAuthCode,
+                setOAuthCode,
+                consumeOAuthCode
             }}
         >
             {children}

@@ -25,6 +25,7 @@ import Video from 'react-native-video';
 import EarthVideo from "../../public/videos/Earth.mp4"
 import { useGoogleAuth } from '../../utils/googleAuth.js';
 import { useAuth } from '../../context/AuthContext.js';
+import GoogleAuthentication from '../../components/custom/GoogleAuthentiation.jsx';
 
 
 let { width, height } = Dimensions.get("window");
@@ -33,7 +34,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 export default function SignInScreen() {
     const {showAlert} = useAlert()
-    const {promptAsync, disabled} = useGoogleAuth(false)
+    const {promptAsync, disabled, request} = useGoogleAuth(false)
     const {login} = useAuth()
 
     // States
@@ -113,6 +114,11 @@ export default function SignInScreen() {
         }
     }
 
+    async function handleSignInWithGoogle() {
+        localStorage.setItem('oauth_code_verifier', request.codeVerifier);
+        promptAsync({windowFeatures: {popup: false}})
+    }
+
   return ( 
     <View style={styles.container}>
         <View style={styles.bg} >                
@@ -169,19 +175,10 @@ export default function SignInScreen() {
             <Divider style={styles.dividerBottom}/>  
 
             <View style={styles.buttonRow}>
-                <Button
-                    mode="outlined"
-                    contentStyle={styles.googleButton}
-                    rippleColor={theme.primary}
-                    onPress={promptAsync}
-                    disabled={disabled}
-                >
-                    <Image
-                        source={require("../../assets/images/google_logo.png")}
-                        style={styles.googleIcon}
-                    />
-                    <HelperText style={[styles.googleText, styles.textShadow]}>Sign in with Google</HelperText>
-                </Button>
+                <GoogleAuthentication
+                    onPress={handleSignInWithGoogle}
+                    text="Sign in with Google"    
+                />
                 <Button
                     mode="contained"
                     rippleColor={theme.primary}
@@ -240,19 +237,6 @@ const styles = StyleSheet.create({
     },
     dividerBottom: {
         marginBottom: 10
-    },
-    googleButton: {
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 10,
-    },
-    googleIcon: {
-        height: 16,
-        width: 16,
-    },
-    googleText: {
-        fontSize: "0.8rem"
     },
     dividerBoth: {
         marginTop: 10,

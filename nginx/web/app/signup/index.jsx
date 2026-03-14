@@ -27,6 +27,7 @@ import { useBanner } from '../../utils/banners.jsx';
 import { useSocket } from "../../utils/socket.jsx";
 import EarthVideo from "../../public/videos/Earth.mp4"
 import { useAuth } from '../../context/AuthContext.js';
+import GoogleAuthentication from '../../components/custom/GoogleAuthentiation.jsx';
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -37,7 +38,7 @@ const SignUp = () => {
     const {showBanner} = useBanner()
     const {login} = useAuth()
 
-    const {promptAsync, disabled} = useGoogleAuth(true, handleAccountCreation)
+    const {promptAsync, disabled, request} = useGoogleAuth(true, handleAccountCreation)
     const [createWithGoogle, setCreateWithGoogle] = useState(false)
 
     const [email, setEmail] = useState("");
@@ -235,7 +236,8 @@ const SignUp = () => {
 
     function handleCreateWithGoogle() {
         setCreateWithGoogle(true)
-        promptAsync()
+        localStorage.setItem('oauth_code_verifier', request.codeVerifier);
+        promptAsync({windowFeatures: {popup: false}})
     }
 
     return (
@@ -317,20 +319,10 @@ const SignUp = () => {
                         </Pressable>
                     </Text>
                     <Divider />
-                    <Button
-                        mode="outlined"
+                    <GoogleAuthentication
                         style={styles.nextButton}
-                        contentStyle={styles.googleButtonContent}
-                        rippleColor={theme.primary}
-                        onPress={handleCreateWithGoogle}
-                        disabled={disabled}
-                    >
-                        <Image
-                            source={require("../../assets/images/google_logo.png")}
-                            style={styles.googleIcon}
-                        />
-                        <HelperText style={[styles.googleText, styles.textShadow]}>Create an account with Google</HelperText>
-                    </Button>
+                        text="Create an account with Google"
+                    />
                 </GlassyView>
 
                 {/* Phase 2 */}
