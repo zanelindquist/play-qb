@@ -50,6 +50,13 @@ class Users(Base, CreatedAtColumn):
         foreign_keys="Lobbies.creator_id"
     )
 
+    email_verification = relationship(
+        "Email_Verifications",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
     @property
     def friends(self):
         """Return accepted friends as a list of Users"""
