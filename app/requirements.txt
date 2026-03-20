@@ -4,6 +4,7 @@ Flask-SQLAlchemy
 Flask-Session
 flask-cors
 flask-socketio
+Flask-Mail
 eventlet
 redis
 flask_bcrypt

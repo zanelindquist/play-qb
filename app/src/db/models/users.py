@@ -51,7 +51,7 @@ class Users(Base, CreatedAtColumn):
     )
 
     email_verification = relationship(
-        "Email_Verifications",
+        "EmailVerifications",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan"

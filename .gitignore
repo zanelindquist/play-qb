@@ -12,6 +12,7 @@ certs
 certs-old
 
 .env.prod
+.env
 
 dist
 

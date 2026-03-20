@@ -10,6 +10,7 @@ from src.socket_events.constructor import socketio
 
 from datetime import timedelta, datetime
 
+from src.extensions import mail
 from src.db.utils import delete_inactive_lobbies
 
 jwt = JWTManager()
@@ -18,6 +19,11 @@ jwt = JWTManager()
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
+
+    # Init mail service
+    # Get mail service config
+    app.config.from_object("src.config.Config")
+    mail.init_app(app)
 
     # Remove this later-- its just so we can use a different localhost port in development
     # Load environment

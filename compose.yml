@@ -6,17 +6,8 @@ services:
       - "5000:5000"
     expose:
       - "5000"  # Internal port exposed to other containers
-    environment:
-      - FLASK_APP=app
-      - FLASK_RUN_HOST=0.0.0.0
-      - JWT_SECRET_KEY=abcdefghijklmnopqrstuvwxyz1234567890
-      - MYSQL_HOST=db
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=password
-      - MYSQL_DATABASE=play-qb
-      - MYSQL_PORT=3306
-
-      - DATABASE_URL=mysql+mysqlconnector://root:password@db:3306/play-qb
+    env_file:
+      - .env
     depends_on:
       - db
     volumes:

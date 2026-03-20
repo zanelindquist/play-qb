@@ -10,15 +10,23 @@ from flask_bcrypt import Bcrypt
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import requests
+import random
+
+from src.db.utils import *
+from src.routes.auth.email import *
+
+
+# Get Google Keys from environement
+from src.config import Config
+GOOGLE_CLIENT_ID = Config.GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET = Config.GOOGLE_CLIENT_SECRET
+
 
 bcrypt = Bcrypt()
-
-from ...db.utils import *
-
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# TODO: Put this in an environment variable or something. Do the same for the front end one.
-from .secrets import *
+def generate_code():
+    return str(random.randint(100000, 999999))
 
 @bp.route("/test", methods=["POST"])
 def test():
