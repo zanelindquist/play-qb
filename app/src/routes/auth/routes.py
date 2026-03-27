@@ -25,9 +25,6 @@ GOOGLE_CLIENT_SECRET = Config.GOOGLE_CLIENT_SECRET
 bcrypt = Bcrypt()
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-def generate_code():
-    return str(random.randint(100000, 999999))
-
 @bp.route("/test", methods=["POST"])
 def test():
     print("TESTTTT")
@@ -55,75 +52,12 @@ def login():
 
     # We need to find the password associated with the email
 
-@bp.route("/google_auth_login", methods=["POST"])
-def google_auth_login():
-    code = request.json.get("code")
-    redirect_uri = request.json.get("redirect_uri")
-    code_verifier = request.json.get("code_verifier")
-
-    if not code:
-        return jsonify({"error": "No authorization code provided"}), 400
-    
-    if not redirect_uri:
-        return jsonify({"error": "No redirect URI provided"}), 400
-
-    try:
-        # Exchange authorization code for tokens
-        token_url = "https://oauth2.googleapis.com/token"
-        token_data = {
-            "code": code,
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-            "code_verifier": code_verifier
-        }
-        
-        token_response = requests.post(token_url, data=token_data)
-        token_response.raise_for_status()
-        tokens = token_response.json()
-        
-        # Verify the ID token
-        id_token_str = tokens.get("id_token")
-        if not id_token_str:
-            return jsonify({"error": "No ID token in response"}), 400
-            
-        info = id_token.verify_oauth2_token(
-            id_token_str, 
-            google_requests.Request(), 
-            GOOGLE_CLIENT_ID,
-            clock_skew_in_seconds=10
-        )
-
-        data = {
-            "email": info["email"],
-            "name": info["name"],
-            "google_id": info["sub"]
-        }
-
-        email = data.get("email")
-        user = get_user_by_email(email, gentle=False)
-
-        if user is None:
-            return jsonify({"error": "Email does not exist"}), 400
-
-        # If the user exists here, we log them in
-        access_token = create_access_token(identity=str(user.get("hash")))
-        
-        # Optionally store refresh_token for later use
-        # refresh_token = tokens.get("refresh_token")
-        
-        return jsonify({"access_token": access_token}), 200
-        
-    except Exception as e:
-        print(f"Error during Google OAuth: {str(e)}")
-        return jsonify({"error": "Failed to authenticate with Google"}), 400
-    
 @bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
+    username = data.get("username")
 
     # The front end should validate our password, but its just good to do it twice bc Im using postman
     try:
@@ -137,9 +71,7 @@ def register():
 
     data["password"] = hashed_password
 
-    print(data)
-
-    result = create_user(data)
+    result = create_user({"email": email, "password": hashed_password, "username": username})
 
     code = result["code"]
     del result["code"]
@@ -147,10 +79,65 @@ def register():
     if(result.get("error")):
         return jsonify(result), code
     
+    # Send the user a verification email
+    send_verification_email(result["user"])
+    
+    return jsonify(result), code
+
+@bp.route("/resend_verification_email", methods=["POST"])
+def resend_verification_email():
+    data = request.get_json()
+    email = data.get("email")
+    # Find the user with the specified email and unverified email
+    
+    user = get_user_by_email(email, rel_depths={"email_verification": 0})
+
+    if not user:
+        return {"message": f"User with email {email} not found"}, 200
+    
+    if user.get("email_verified"):
+        return {"message": f"Email is already verified"}, 200
+
+    # Send the user a verification email
+    send_verification_email(user)
+
+    return {"message": f"Resent verification email to {user.get("email")}"}, 200
+
+@bp.route("/verify_email", methods=["POST"])
+def verify_email_route():
+    data = request.to_json()
+    code = data.get("code")
+    email = data.get("email")
+
+    result = verify_email(email, code)
+
+    print(result)
+
+    code = result["code"]
+    del result["code"]
+
+    if result.get("error"):
+        return jsonify(result), code
+
     result["access_token"] = create_access_token(identity=str(result["user"]["hash"]))
 
-    # Process the data or respond
     return jsonify(result), code
+
+@bp.route("/email", methods=["POST"])
+def email():
+    data = request.get_json()
+    email = data.get("email")
+
+    try:
+        validate_email(email)
+
+        # If we have made it here, the check did not raise any emails and the email is good
+        return jsonify({"email": email}), 200
+    except ValueError as e:
+        return jsonify({"error": f"{e}"}), 400
+
+
+# Sign in / Sign up with Google
 
 @bp.route("/google_auth_register", methods=["POST"])
 def google_auth_register():
@@ -246,16 +233,67 @@ def google_set_username():
     
     return jsonify(), 200
 
+@bp.route("/google_auth_login", methods=["POST"])
+def google_auth_login():
+    code = request.json.get("code")
+    redirect_uri = request.json.get("redirect_uri")
+    code_verifier = request.json.get("code_verifier")
 
-@bp.route("/email", methods=["POST"])
-def email():
-    data = request.get_json()
-    email = data.get("email")
+    if not code:
+        return jsonify({"error": "No authorization code provided"}), 400
+    
+    if not redirect_uri:
+        return jsonify({"error": "No redirect URI provided"}), 400
 
     try:
-        validate_email(email)
+        # Exchange authorization code for tokens
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,  # This stays secure on backend
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+            "code_verifier": code_verifier
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        token_response.raise_for_status()
+        tokens = token_response.json()
+        
+        # Verify the ID token
+        id_token_str = tokens.get("id_token")
+        if not id_token_str:
+            return jsonify({"error": "No ID token in response"}), 400
+            
+        info = id_token.verify_oauth2_token(
+            id_token_str, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
+        )
 
-        # If we have made it here, the check did not raise any emails and the email is good
-        return jsonify({"email": email}), 200
-    except ValueError as e:
-        return jsonify({"error": f"{e}"}), 400
+        data = {
+            "email": info["email"],
+            "name": info["name"],
+            "google_id": info["sub"]
+        }
+
+        email = data.get("email")
+        user = get_user_by_email(email, gentle=False)
+
+        if user is None:
+            return jsonify({"error": "Email does not exist"}), 400
+
+        # If the user exists here, we log them in
+        access_token = create_access_token(identity=str(user.get("hash")))
+        
+        # Optionally store refresh_token for later use
+        # refresh_token = tokens.get("refresh_token")
+        
+        return jsonify({"access_token": access_token}), 200
+        
+    except Exception as e:
+        print(f"Error during Google OAuth: {str(e)}")
+        return jsonify({"error": "Failed to authenticate with Google"}), 400
+    

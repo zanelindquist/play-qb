@@ -105,6 +105,9 @@ def normalize(s: str) -> str:
 def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
+def generate_code():
+    return str(random.randint(100000, 999999))
+
 
 #========HELPER FUNCTIONS=======
 
@@ -281,15 +284,17 @@ def get_category_from_code(index: int):
 # CREATING RESOURCES
 
 def create_user(data):
-
     try:
         data["email"] = validate_email(data.get("email"))
         data["password"] = validate_password_hash(data.get("password"))
     except Exception as e:
-        return {'message': 'create_user(): failure', "code": 400, "error": e}
+        return {'message': 'create_user(): failure', "code": 400, "error": f"{e}"}
 
     try:
         session = get_session()
+
+        data["account_disabled"] = True
+        data["email_verified"] = False
 
         new_user = Users(
             **data
@@ -337,9 +342,6 @@ def create_stat_for_all_users_temp():
 
     session.commit()
     print("Added stats for all users")
-
-# create_stat_for_all_users_temp()
-
 
 # Creates a game by default for this lobby
 # If the games get deleted somehow, just go into a custom and create lobbies with the name and it will auto create the game
@@ -922,6 +924,22 @@ def get_rating_params() -> RatingParameters:
     finally:
         session.remove()
 
+def get_email_verification_by_user_id(user_id: int) -> dict:
+    try:
+        session = get_session()
+        verification = session.execute(
+            select(EmailVerifications)
+            .where(EmailVerifications.user_id == user_id)
+        ).scalars().first()
+
+        return to_dict_safe(verification)
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        session.remove()
+
+
 
 # EDITING RESOURCES
 
@@ -1279,6 +1297,29 @@ def update_game_active_at(hash: str, active_at: datetime):
     finally:
         session.remove()
 
+def verify_email(email, code) -> str:
+    session = get_session()
+    user = Users.query.filter_by(email=email).first()
+
+    # If the user's email is already verified, tell them
+    # This way, if the user's account is disabled they cant go throught the verification process again to re-enable it
+    if user.email_verified:
+        return {"message": "Email is already verified", "code": 400}
+
+    verification = EmailVerifications.query.filter_by(user_id=user.get("id")).first()
+
+    # Check if it's expired
+    if verification.expires_at < datetime.now(timezone.utc):
+        return {"message": "Verification code is expired", "code": 400}
+    
+    if verification.code == code:
+        user.account_disabled = False
+        user.email_verified = True
+        session.commit()
+        return {"message": "Successfully verified email", "code": 200}
+    else:
+        return {"message": "Invalid verification code", "code": 401}
+        
 
 
 # DELETING RESOURCES

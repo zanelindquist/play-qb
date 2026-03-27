@@ -18,4 +18,4 @@ class EmailVerifications(Base, CreatedAtColumn):
     user = relationship("Users", back_populates="email_verification")
 
     def __repr__(self):
-        return f"<Email_Verification(id={self.id}, user_id={self.user_id})>"
+        return f"<EmailVerification(id={self.id}, user_id={self.user_id})>"

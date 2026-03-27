@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -28,21 +28,30 @@ import { useSocket } from "../../utils/socket.jsx";
 import EarthVideo from "../../public/videos/Earth.mp4"
 import { useAuth } from '../../context/AuthContext.js';
 import GoogleAuthentication from '../../components/custom/GoogleAuthentiation.jsx';
+import ustyles from '../../assets/styles/ustyles.js';
+import VerificationCode from '../../components/custom/VerificationCode.jsx';
+import { detectCurseWords } from '../../utils/text.js';
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
 
 
 const SignUp = () => {
+    const params = useLocalSearchParams()
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
     const {login} = useAuth()
-
     const {promptAsync, disabled, request} = useGoogleAuth(true, handleAccountCreation)
+    
     const [createWithGoogle, setCreateWithGoogle] = useState(false)
+
+    const defaultHTStates = { email: false, password: false, phone: false, username: false, code: false }
+    const [HTVisibleStates, setHTVisibleStates] = useState(defaultHTStates)
 
     const [email, setEmail] = useState("");
     const [emailDebounce, setEmailDebounce] = useState(null)
+    const [secondaryVerificationEmail, setSecondaryVerificationEmail] = useState("")
+    const [sentVerificationEmail, setSentVerificationEmail] = useState(false)
 
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -51,16 +60,14 @@ const SignUp = () => {
     const [username, setUsername] = useState("")
     const [phoneNumber, setPhoneNumber] = useState("");
 
+    const translateX = useRef(new Animated.Value(width/2)).current;
 
-    // Helper text visibility
-    const defaultHTStates = { email: false, password: false, phone: false, username: false }
-    const [HTVisibleStates, setHTVisibleStates] = useState(defaultHTStates)
+    useEffect(() => {
+        console.log("params", params)
+        if(params.verify === "true") goToPhase(3)
+    }, [])
 
-
-    // State to manage phases
-    const [phase, setPhase] = useState(1);
-
-
+    // Data entry useEffects
     // Validate password as we type
     useEffect(() => {
         setHTVisibleStates((prev) => {
@@ -72,7 +79,6 @@ const SignUp = () => {
 
         if(!password) return
 
-        
         // In case the user had input incorrect info and then edited it, lets set all of the helper text to invisible to start the procces fresh
         setHTVisibleStates(defaultHTStates)
         // First, make sure the passwords match
@@ -96,7 +102,6 @@ const SignUp = () => {
             else return handleInvalidField(value)
         }
     }, [password, confirmPassword])
-
     // Validate email as we type
     useEffect(() => {
         setHTVisibleStates((prev) => {
@@ -121,6 +126,15 @@ const SignUp = () => {
             }, 500)
         )
     }, [email])
+    useEffect(() => {
+        // Check for curse words
+        if(!username) return
+
+        setHTVisibleStates(prev => ({
+            ...prev,
+            username: detectCurseWords(username) ? "Username contains banned words" : false
+        }));
+    }, [username])
 
     // Handle invalid field inputs with helper text
     function handleInvalidField(error) {
@@ -134,19 +148,16 @@ const SignUp = () => {
         setHTVisibleStates(newState)
     }
 
-    const isMobile = width < 680;
-    const router = useRouter()
-
-    // Animated value to handle sliding
-    const translateX = useRef(new Animated.Value(width/2)).current;
-
     // Slide animation function
-    function goToNextPhase(ignoreErrors) {
+    function goToPhase(phase) {
         // Check for errors
-        if(ignoreErrors !== true) {
+        if(true && params.verify !== "true") {
             if(password && email) {
+                // Don't let the user continue if there are errors with the email
                 if(Object.values(HTVisibleStates).some(v => v !== false)) return
-            } else {
+            }
+            // Don't let the user continue if there is no email and password
+            else {
                 setHTVisibleStates((prev) => {
                     return {
                         ...prev,
@@ -156,24 +167,40 @@ const SignUp = () => {
                 })
                 return
             }
+            if(phase == 2) {
+                if(username) {
+                    if(Object.values(HTVisibleStates).some(v => v !== false)) return
+                } else {
+                    setHTVisibleStates((prev) => {
+                        return {
+                            ...prev,
+                            username: "Required*",
+                        }
+                    })
+                }
+            }
         }
 
+        console.log(phase)
+
         Animated.timing(translateX, {
-            toValue: -width/2, // Slide left by one screen width
+            toValue: -width/2 * (phase > 2 ? 3 : 1), // Don't touch it, it works :)
             duration: 250,
             useNativeDriver: true,
-        }).start(() => setPhase(2));
+        }).start();
     };
-
-    const goToPreviousPhase = () => {
+    function goToPreviousPhase() {
         Animated.timing(translateX, {
         toValue: width/2, // Slide back to the first phase
         duration: 500,
         useNativeDriver: true,
-        }).start(() => setPhase(1));
+        }).start();
     };
 
-    const submit = async () => {
+
+    // Account creation functions
+
+    async function registerAccount() {
         // Validate required fields first
         if (!username) {
             setHTVisibleStates(prev => ({
@@ -187,38 +214,16 @@ const SignUp = () => {
         setHTVisibleStates(defaultHTStates);
 
         try {
-            // --- Google flow ---
-            if (createWithGoogle) {
-                await postProtectedAuthRoute("/google_set_username", {
-                    username,
-                    phone_number: phoneNumber || "0"
-                });
-
-                showBanner("Account created!");
-                router.replace("/?tutorial=true");
-                return;
-            }
-
             // --- Normal registration flow ---
-            const data = await postAuthRoute("/register", {
+            await postAuthRoute("/register", {
                 email,
                 password,
-                username,
-                phone_number: phoneNumber || "0",
+                username
             });
 
-            const token = data?.access_token;
+            // Error handled by catch block
 
-            if (!token) {
-                console.error("No access_token in response");
-                showAlert("Registration failed. Please try again.");
-                return;
-            }
-
-            await login(token);
-
-            router.replace("/?tutorial=true");
-
+            goToPhase(3)
         } catch (error) {
             console.error(error);
 
@@ -230,8 +235,73 @@ const SignUp = () => {
         }
     };
 
+    async function validateVerificationCode(code) {
+
+        
+        
+        // Only receive token once the account is verified
+        
+        const token = data?.access_token;
+
+        if (!token) {
+            console.error("No access_token in response");
+            showAlert("Registration failed. Please try again.");
+            return
+        }
+
+        await login(token);
+    }
+
+    async function resendVerificationEmail() {
+        // Validate required fields first
+        if (!email && !secondaryVerificationEmail) {
+            setHTVisibleStates(prev => ({
+                ...prev,
+                email: "Required*"
+            }));
+            return;
+        }
+
+        try {
+            // --- Normal registration flow ---
+            const response = await postAuthRoute("/resend_verification_email", {
+                email: email || secondaryVerificationEmail
+            });
+
+            console.log("RESPONSE", response)
+
+            showAlert(response.message)
+
+        } catch (error) {
+            console.error(error);
+
+            if (error?.response?.data?.error) {
+                handleInvalidField(error.response.data.error);
+            } else {
+                showAlert("There was an error during registration.");
+            }
+        }
+    }
+
+    async function setUsernameGoogle() {
+        // --- Google flow ---
+        if (createWithGoogle) {
+            const response = await postProtectedAuthRoute("/google_set_username", {
+                username,
+            });
+
+            if(response.data.code > 300) {
+                showBanner("There was an error setting your username");
+                return
+            }
+
+            showBanner("Account created!");
+            router.replace("/?tutorial=true");
+        }
+    }
+
     function handleAccountCreation () {
-        goToNextPhase(true)
+        goToPhase(2)
     }
 
     function handleCreateWithGoogle() {
@@ -258,119 +328,192 @@ const SignUp = () => {
                     { transform: [{ translateX }] },
                 ]}
             >
-                <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
-                    <HelperText style={[styles.header, styles.textShadow]}>Create Account</HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Email*"
-                        value={email}
-                        mode='outlined'
-                        onChangeText={text => setEmail(text)}
-                    />
-                    <HelperText style={styles.error} visible={!!HTVisibleStates.email}>
-                        {HTVisibleStates.email}
-                    </HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Password*"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={secureTextEntry}
-                        mode="outlined"
-                        right={
-                        <TextInput.Icon
-                            icon={secureTextEntry ? "eye-off" : "eye"}
-                            onPress={() => setSecureTextEntry(!secureTextEntry)}
+                {/* Phase 1: Login info */}
+                <View style={styles.page}>
+                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                        <HelperText style={[styles.header, styles.textShadow]}>Create Account</HelperText>
+                        <TextInput
+                            style={styles.input}
+                            label="Email*"
+                            value={email}
+                            mode='outlined'
+                            onChangeText={text => setEmail(text)}
                         />
-                        }
-                    />
-                    <HelperText style={styles.error} visible={!!HTVisibleStates.password}>
-                        {HTVisibleStates.password}
-                    </HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Confirm password*"
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry={secureTextEntry}
-                        mode="outlined"
-                        right={
+                        <HelperText style={styles.error} visible={!!HTVisibleStates.email}>
+                            {HTVisibleStates.email}
+                        </HelperText>
+                        <TextInput
+                            style={styles.input}
+                            label="Password*"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={secureTextEntry}
+                            mode="outlined"
+                            right={
                             <TextInput.Icon
                                 icon={secureTextEntry ? "eye-off" : "eye"}
                                 onPress={() => setSecureTextEntry(!secureTextEntry)}
                             />
-                        }
-                    />
-                    <Button
-                        mode="contained"
-                        rippleColor={theme.primary}
-                        onPress={goToNextPhase}
-                        style={[styles.nextButton, isMobile && mstyles.nextButton]}
-                    >
-                        Next
-                    </Button>
-                    <Text style={[styles.linkText, styles.textShadow]}>
-                        Already have an account?
-                        <Pressable
-                            onPress={() => router.replace("/signin")}>
-                            <HelperText
-                                style={styles.linkButton}
-                            >Sign in</HelperText>
-                        </Pressable>
-                    </Text>
-                    <Divider />
-                    <GoogleAuthentication
-                        style={styles.nextButton}
-                        text="Create an account with Google"
-                    />
-                </GlassyView>
-
-                {/* Phase 2 */}
-                <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
-                    <HelperText style={[styles.header, styles.textShadow]}>Select A Username</HelperText>
-                    <TextInput
-                        style={styles.input}
-                        label="Username*"
-                        value={username}
-                        mode='outlined'
-                        onChangeText={setUsername}
-                    />
-                    <HelperText style={styles.error} visible={!!HTVisibleStates.username}>
-                        {HTVisibleStates.username}
-                    </HelperText>
-                    {/* <TextInput
-                        style={styles.input}
-                        label="Phone number"
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        mode='outlined'
-                        keyboardType="numeric"
-                    />
-                    <HelperText style={styles.error} visible={!!HTVisibleStates.phone}>
-                        {HTVisibleStates.phone}
-                    </HelperText> */}
+                            }
+                        />
+                        <HelperText style={styles.error} visible={!!HTVisibleStates.password}>
+                            {HTVisibleStates.password}
+                        </HelperText>
+                        <TextInput
+                            style={styles.input}
+                            label="Confirm password*"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry={secureTextEntry}
+                            mode="outlined"
+                            right={
+                                <TextInput.Icon
+                                    icon={secureTextEntry ? "eye-off" : "eye"}
+                                    onPress={() => setSecureTextEntry(!secureTextEntry)}
+                                />
+                            }
+                        />
+                        <Button
+                            mode="contained"
+                            rippleColor={theme.primary}
+                            onPress={() => goToPhase(2)}
+                            style={[styles.nextButton, isMobile && mstyles.nextButton]}
+                        >
+                            Next
+                        </Button>
+                        <Text style={[styles.linkText, styles.textShadow]}>
+                            Already have an account?
+                            <Pressable
+                                onPress={() => router.replace("/signin")}>
+                                <HelperText
+                                    style={styles.linkButton}
+                                >Sign in</HelperText>
+                            </Pressable>
+                        </Text>
+                        <Divider />
+                        <GoogleAuthentication
+                            style={styles.nextButton}
+                            text="Create an account with Google"
+                        />
+                    </GlassyView>
+                </View>
                 
+                {/* Phase 2: Choose username */}
+                <View style={styles.page}>
+                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                        <HelperText style={[styles.header, styles.textShadow]}>Select A Username</HelperText>
+                        <TextInput
+                            style={styles.input}
+                            label="Username*"
+                            value={username}
+                            mode='outlined'
+                            onChangeText={setUsername}
+                        />
+                        <HelperText style={styles.error} visible={!!HTVisibleStates.username}>
+                            {HTVisibleStates.username}
+                        </HelperText>
+                        {/* <TextInput
+                            style={styles.input}
+                            label="Phone number"
+                            value={phoneNumber}
+                            onChangeText={setPhoneNumber}
+                            mode='outlined'
+                            keyboardType="numeric"
+                        />
+                        <HelperText style={styles.error} visible={!!HTVisibleStates.phone}>
+                            {HTVisibleStates.phone}
+                        </HelperText> */}
+                        <Divider style={styles.divider}/>
+                        <Divider style={styles.divider}/>
+                        <Button
+                                mode="outlined"
+                                rippleColor={theme.primary}
+                                onPress={goToPreviousPhase}
+                                style={styles.nextButton}
+                            >
+                                Back
+                        </Button>
+                        <Button
+                            mode="contained"
+                            rippleColor={theme.primary}
+                            onPress={registerAccount}
+                            style={[styles.nextButton, isMobile && mstyles.nextButton]}
+                        >
+                            Next
+                        </Button>
+                    </GlassyView>
+                </View>
 
-                    <Divider style={styles.divider}/>
-                    
-                    <Button
+                {/* Phase 3: Verify email */}
+                <View style={styles.page}>
+                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                        <HelperText style={[styles.header, styles.textShadow]}>Verify your Email</HelperText>
+                        <HelperText style={[ustyles.text.text, styles.textShadow]}>
+                        {
+                            !email ? "Please verify your account by entering your email and pressing the \"Send Verification Email\" button."
+                            : "We sent an email to {email}. Please enter the 6 digit verification code."
+                        }
+                        </HelperText>
+                        {
+                            !email &&
+                            <>
+                            {
+                                !sentVerificationEmail &&
+                                <>
+                                    <TextInput
+                                        style={styles.input}
+                                        label="Email*"
+                                        value={secondaryVerificationEmail}
+                                        mode='outlined'
+                                        onChangeText={text => setSecondaryVerificationEmail(text)}
+                                    />
+                                    <HelperText style={styles.error} visible={!!HTVisibleStates.email}>
+                                        {HTVisibleStates.email}
+                                    </HelperText>
+                                    <Button
+                                        mode="contained"
+                                        rippleColor={theme.primary}
+                                        onPress={resendVerificationEmail}
+                                        style={styles.nextButton}
+                                    >
+                                        Send Verification Email
+                                    </Button>
+                                </>
+                            }
+                            </>
+                        }
+                        {
+                            (email || sentVerificationEmail) &&
+                            <>
+                                <VerificationCode
+                                    onCodeInput={validateVerificationCode}
+                                />
+                                <HelperText style={styles.error} visible={!!HTVisibleStates.code}>
+                                    {HTVisibleStates.code}
+                                </HelperText>                
+                                <Divider style={styles.divider}/>
+                                <Divider style={styles.divider}/>
+                                <Button
+                                    mode="contained"
+                                    rippleColor={theme.primary}
+                                    onPress={validateVerificationCode}
+                                    style={styles.nextButton}
+                                >
+                                    Create Account
+                                </Button>
+                            </>
+                        }
+                        <Button
                             mode="outlined"
                             rippleColor={theme.primary}
                             onPress={goToPreviousPhase}
                             style={styles.nextButton}
                         >
                             Back
-                    </Button>
-                    <Divider style={styles.divider}/>
-                    <Button
-                            mode="contained"
-                            rippleColor={theme.primary}
-                            onPress={submit}
-                            style={styles.nextButton}
-                        >
-                            Create Account
-                    </Button>
-                </GlassyView>
+                        </Button>
+                    </GlassyView>
+                </View>
+
             </Animated.View>
         </View>
   );
@@ -378,29 +521,33 @@ const SignUp = () => {
 
 const styles = StyleSheet.create({
     container: {
-        height: "100vh",
-        width: "100vw",
-        alignItems: 'center',
+        flex: 1,
+        alignItems: "center",
         justifyContent: "center",
         backgroundColor: theme.background,
-        overflow: "hidden"
     },
     bg: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "black",
     },
     animatedContainer: {
-        flexDirection: 'row',
-        justifyContent: "space-around",
+        flexDirection: "row",
         alignItems: "center",
-        width: "200vw", // Twice the screen width
+        marginLeft: width,
+        width: width * 3, // three pages
+    },
+    page: {
+        width: width,
+        alignItems: "center",
+        justifyContent: "center",
     },
     phaseContainer: {
         flexDirection: "column",
         gap: 10,
         alignItems: "center",
-        maxWidth: 500,
-        flex: 1,
+        width: width / 2,
+        minWidth: 600,
+        maxWidth: 1000,
     },
     header: {
         fontSize: 24,

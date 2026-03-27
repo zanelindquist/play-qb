@@ -16,6 +16,7 @@ const CURSE_WORDS = [
     "cock",
     "vigina",
     "pusy",
+    "notallowed"
 ];
 
 const PEOPLE = [

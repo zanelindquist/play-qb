@@ -11,6 +11,7 @@ SERIALIZATION_CONFIG = {
             "stats": "Stats",
             "sent_requests": "Friends",
             "received_requests": "Friends",
+            "email_verification": "Email_Verifications"
         },
     },
     "Stats": {
@@ -66,6 +67,12 @@ SERIALIZATION_CONFIG = {
     },
     "RatingParams": {
         "fields": ["id", "name", "value"]
+    },
+    "Email_verifications": {
+        "fields": ["id", "hash", "code", "expires_at", "user_id"],
+        "relationships": {
+            "user": "Users"
+        }
     }
 }
 
