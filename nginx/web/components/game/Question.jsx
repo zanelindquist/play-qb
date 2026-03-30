@@ -215,6 +215,13 @@ const Question = ({
                 <GlassyView
                     style={[styles.container, { height: expandedHeight }]}
                     onPress={handleDeadPressed}
+                    gradient={
+                        {
+                            colors: theme.gradients.questionTint,
+                            start: { x: 1, y: 0 },
+                            end: { x: 1, y: 1 },
+                        }
+                    }
                 >
                     <View style={styles.top}>
                         <View style={styles.progressBarContainer}>

@@ -64,6 +64,7 @@ const CATEGORIES = [
     "religion",
     "mythology",
     "geography",
+    "fine arts",
     "custom",
 ];
 
