@@ -38,6 +38,7 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 const SignUp = () => {
     const params = useLocalSearchParams()
+    const router = useRouter()
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
     const {login} = useAuth()
@@ -52,6 +53,7 @@ const SignUp = () => {
     const [emailDebounce, setEmailDebounce] = useState(null)
     const [secondaryVerificationEmail, setSecondaryVerificationEmail] = useState("")
     const [sentVerificationEmail, setSentVerificationEmail] = useState(false)
+    const [verificationCode, setVerificationCode] = useState("")
 
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -63,7 +65,6 @@ const SignUp = () => {
     const translateX = useRef(new Animated.Value(width/2)).current;
 
     useEffect(() => {
-        console.log("params", params)
         if(params.verify === "true") goToPhase(3)
     }, [])
 
@@ -181,8 +182,6 @@ const SignUp = () => {
             }
         }
 
-        console.log(phase)
-
         Animated.timing(translateX, {
             toValue: -width/2 * (phase > 2 ? 3 : 1), // Don't touch it, it works :)
             duration: 250,
@@ -235,21 +234,36 @@ const SignUp = () => {
         }
     };
 
-    async function validateVerificationCode(code) {
+    async function validateVerificationCode() {
+        try {
+            // --- Normal registration flow ---
+            const response = await postAuthRoute("/verify_email", {
+                email: email || secondaryVerificationEmail,
+                code: verificationCode
+            });
 
-        
-        
-        // Only receive token once the account is verified
-        
-        const token = data?.access_token;
+            // Only receive token once the account is verified
+            
+            const token = response?.access_token;
 
-        if (!token) {
-            console.error("No access_token in response");
-            showAlert("Registration failed. Please try again.");
-            return
+            if (!token) {
+                console.error("No access_token in response");
+                showAlert("Registration failed. Please try again.");
+                return
+            }
+
+            await login(token);
+
+            showAlert("Account was successfully verified. Welcome to More Quiz Bowl!")
+
+        } catch (error) {
+            console.error(error)
+            if (error?.response?.data?.error) {
+                showAlert(error.response.data.error)
+            } else {
+                showAlert("There was an error during registration.");
+            }
         }
-
-        await login(token);
     }
 
     async function resendVerificationEmail() {
@@ -268,9 +282,9 @@ const SignUp = () => {
                 email: email || secondaryVerificationEmail
             });
 
-            console.log("RESPONSE", response)
-
             showAlert(response.message)
+
+            setSentVerificationEmail(true)
 
         } catch (error) {
             console.error(error);
@@ -486,7 +500,7 @@ const SignUp = () => {
                             (email || sentVerificationEmail) &&
                             <>
                                 <VerificationCode
-                                    onCodeInput={validateVerificationCode}
+                                    onCodeInput={setVerificationCode}
                                 />
                                 <HelperText style={styles.error} visible={!!HTVisibleStates.code}>
                                     {HTVisibleStates.code}

@@ -98,14 +98,19 @@ def resend_verification_email():
     if user.get("email_verified"):
         return {"message": f"Email is already verified"}, 200
 
-    # Send the user a verification email
-    send_verification_email(user)
+    user["email"] = email;
 
+    # Send the user a verification email
+    status_code = send_verification_email(user)
+
+    if status_code == 400:
+        return {"message": f"Verification code is still valid for {user.get("email")}"}, 200
+    
     return {"message": f"Resent verification email to {user.get("email")}"}, 200
 
 @bp.route("/verify_email", methods=["POST"])
 def verify_email_route():
-    data = request.to_json()
+    data = request.get_json()
     code = data.get("code")
     email = data.get("email")
 
@@ -116,7 +121,7 @@ def verify_email_route():
     code = result["code"]
     del result["code"]
 
-    if result.get("error"):
+    if result.get("error") or code > 300:
         return jsonify(result), code
 
     result["access_token"] = create_access_token(identity=str(result["user"]["hash"]))

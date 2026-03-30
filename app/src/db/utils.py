@@ -1297,28 +1297,30 @@ def update_game_active_at(hash: str, active_at: datetime):
     finally:
         session.remove()
 
-def verify_email(email, code) -> str:
+def verify_email(email, code) -> dict:
     session = get_session()
-    user = Users.query.filter_by(email=email).first()
+    user = session.execute(
+        select(Users)
+        .where(Users.email == email)
+    ).scalars().first()
 
     # If the user's email is already verified, tell them
     # This way, if the user's account is disabled they cant go throught the verification process again to re-enable it
     if user.email_verified:
-        return {"message": "Email is already verified", "code": 400}
-
-    verification = EmailVerifications.query.filter_by(user_id=user.get("id")).first()
+        return {"error": "Email is already verified", "code": 400}
 
     # Check if it's expired
-    if verification.expires_at < datetime.now(timezone.utc):
-        return {"message": "Verification code is expired", "code": 400}
+    if user.email_verification.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+        return {"error": "Verification code is expired", "code": 400}
     
-    if verification.code == code:
+    if user.email_verification.code == code:
         user.account_disabled = False
         user.email_verified = True
         session.commit()
-        return {"message": "Successfully verified email", "code": 200}
+        # Return the user as well for the token generation process
+        return {"message": "Successfully verified email", "user": to_dict_safe(user), "code": 200}
     else:
-        return {"message": "Invalid verification code", "code": 401}
+        return {"error": "Invalid verification code", "code": 401}
         
 
 
@@ -1520,8 +1522,8 @@ def check_question(question, guess, bonus_number=-1) -> bool:
     is_reject = False
 
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
-    correct_threshold = 0.93
-    prompt_threshold = 0.85
+    correct_threshold = 0.87
+    prompt_threshold = 0.80
     dont_accept_threshold = 0.9
 
     # CORRECT
@@ -1558,7 +1560,7 @@ def check_question(question, guess, bonus_number=-1) -> bool:
 def normal_match(answer: str, guess: str, threshold=0.85):
     guess = guess.lower()
     answer = answer.lower()
-    if len(guess) < max(2, len(answer) // 2):  # guess must be at least half the length of answer
+    if len(guess) < max(2, len(answer) // 2):  # guess must be at least half the length of answer or 2 characters
         return 0
     
     similarity = jellyfish.jaro_winkler_similarity(answer, guess)

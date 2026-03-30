@@ -13,7 +13,7 @@ def generate_code():
     return str(random.randint(100000, 999999))
 
 
-def send_verification_email(user):
+def send_verification_email(user) -> int:
     """
     Create verification code, store it in DB, and email it to the user.
     """
@@ -29,10 +29,12 @@ def send_verification_email(user):
     verification = session.execute(
         select(EmailVerifications)
         .where(EmailVerifications.user_id == user.get("id"))
-    ).first()
+    ).scalars().first()
 
-    # Create or update verification record
-    # verification = get_email_verification_by_user_id(user.get("id"))
+    # If a valid (non-expired) code already exists → skip sending
+    if verification and verification.expires_at > datetime.now(timezone.utc).replace(tzinfo=None):
+        return 400
+
 
     if verification:
         setattr(verification, "code", code)
@@ -78,3 +80,5 @@ def send_verification_email(user):
     """
 
     mail.send(msg)
+
+    return 200
