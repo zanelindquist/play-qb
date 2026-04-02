@@ -54,8 +54,7 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
                 visible
                 onDismiss={onClose}
                 style={[
-                    isString && ustyles.modals.floatingModal,
-                    !isString && styles.basicContainer,
+                    isString ? ustyles.modals.floatingModal : styles.basicContainer,
                     modalStyle,
                 ]}
                 theme={{
@@ -66,7 +65,9 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
                     },
                 }}
             >
-                <Dialog.Content>
+                <Dialog.Content
+                    style={{padding: 0}}
+                >
                     {isString ? (
                         <GlassyView
                             style={[
@@ -119,8 +120,6 @@ const styles = StyleSheet.create({
         width: "80%",
         maxWidth: 1000,
         alignSelf: "center",
-        margin: 0,
-        padding: 20,
     },
     container: {
         backgroundColor: theme.surface,

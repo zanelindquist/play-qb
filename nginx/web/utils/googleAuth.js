@@ -48,7 +48,6 @@ export function useGoogleAuth(isSignUp, onAccountCreation=null) {
     );
 
     useEffect(() => {
-        console.log("PENDING UATH CODE", pendingOAuthCode)
         if (!pendingOAuthCode) return;
         if (hasRequested) return;
 

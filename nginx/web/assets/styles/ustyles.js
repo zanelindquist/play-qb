@@ -84,8 +84,10 @@ export default {
     modals: StyleSheet.create({
         floatingModal: {
             backgroundColor: "transparent",
+            borderColor: "transparent",
             borderWidth: 0,
             padding: 0,
+            margin: 0
         }
     })
 }

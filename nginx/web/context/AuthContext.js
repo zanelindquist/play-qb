@@ -29,7 +29,6 @@ export function AuthProvider({ children }) {
 
     // Call this from _layout when code is intercepted
     const setOAuthCode = (code, verifier) => {
-        console.log("SET AUTH CODE FIRED")
         setPendingOAuthCode({ code, verifier });
     };
 

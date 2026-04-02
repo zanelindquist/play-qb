@@ -288,6 +288,7 @@ def create_user(data):
     try:
         data["email"] = validate_email(data.get("email"))
         data["password"] = validate_password_hash(data.get("password"))
+        data["username"] = validate_username(data.get("username"))
     except Exception as e:
         return {'message': 'create_user(): failure', "code": 400, "error": f"{e}"}
 
@@ -296,6 +297,7 @@ def create_user(data):
 
         data["account_disabled"] = True
         data["email_verified"] = False
+        data["premium"] = True
 
         new_user = Users(
             **data
@@ -1524,9 +1526,9 @@ def check_question(question, guess, bonus_number=-1) -> bool:
     is_reject = False
 
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
-    correct_threshold = 0.87
+    correct_threshold = 0.90
     prompt_threshold = 0.85
-    dont_accept_threshold = 0.9
+    dont_accept_threshold = 0.90
 
     corrects = [main_answer, *(accepts.split(" | ") if accepts else [])]
     mean_correct_length = reduce(lambda acc, correct: acc + len(correct), corrects, 0) // len(corrects)
@@ -1570,13 +1572,21 @@ def normal_match(answer: str, guess: str, threshold=0.85):
     if len(guess) < max(2, len(answer) // 2):  # guess must be at least half the length of answer or 2 characters
         return 0
     
-    # If the guess is longer than the answer by a resonable amount and it contains the answer, say yes???
-    
     similarity = jellyfish.jaro_winkler_similarity(answer, guess)
     if similarity >= threshold:
         return 1
-    else:
-        return similarity
+    
+    highest_similarity = similarity;
+    
+    # If the guess is longer than the answer by a resonable amount and it contains the answer, say yes
+    for guess_word in guess.split():
+        similarity = jellyfish.jaro_winkler_similarity(answer, guess_word)
+        if similarity >= threshold:
+            return 1
+        elif similarity > highest_similarity:
+            highest_similarity = similarity
+
+    return highest_similarity
 
 def answer_is_name(answer: str) -> bool:
     if not answer:
@@ -2024,25 +2034,23 @@ def validate_email(email):
     # Check our database and check if the email is already taken
     session = get_session()
 
-    result = session.execute(select(Users).where(Users.email == email)).first()
+    result = session.execute(select(Users).where(Users.email == email)).scalars().first()
+
     if result is not None:
         raise ValueError("Email is taken.")
     
     return email
 
-def validate_username(email):
-    # Simple regex to validate and sanitize email format
-    if not re.match(r"\s", email):
-        raise ValueError("Email is of invalid format.")
-    
+def validate_username(username): 
     # Check our database and check if the email is already taken
     session = get_session()
 
-    result = session.execute(select(Users).where(Users.email == email)).first()
+    result = session.execute(select(Users).where(Users.username == username)).scalars().first()
+
     if result is not None:
-        raise ValueError("Email is taken.")
+        raise ValueError("Username is taken.")
     
-    return email
+    return username
 
 validation_list = {
     "email": validate_email,

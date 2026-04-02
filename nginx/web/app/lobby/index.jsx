@@ -201,6 +201,7 @@ export default function LobbyScreen() {
             })
 
             addEventListener("member_left_party", ({user, members, lobby}) => {
+                console.log(user)
                 // Set my party member now that its changed
                 setMyPM(members.find((m) => m.hash === myHash))
                 // Redisplay the new data
@@ -217,7 +218,7 @@ export default function LobbyScreen() {
                     return
                 }
 
-                leaveParty(user.hash)
+                leaveParty(user?.hash)
                 showBanner(`${user.username} left the party`, {backgroundColor: theme.error})
             })
 
@@ -294,6 +295,7 @@ export default function LobbyScreen() {
             })
 
             addEventListener("added_friend", ({message, friends, friend_requests})=> {
+                console.log(friend_requests)
                 showBanner(message)
                 if(friends !== undefined) setFriends(friends)
                 if(friend_requests !== undefined) setFriendRequests(friend_requests)

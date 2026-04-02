@@ -341,7 +341,7 @@ def on_leave_party(data):
     lobby = request.environ["prelobby"]
     party_hash = request.environ["party"]
 
-    user = get_user_by_email(user_hash)
+    user = get_user_by_hash(user_hash)
 
     # Leave old party
     leave_party(user_hash)
@@ -541,7 +541,7 @@ def on_add_friend(data):
         
         sender = get_user_by_hash(user_hash)
 
-        friend_requests = get_friend_requests_by_hash(target.get("email"))
+        friend_requests = get_friend_requests_by_hash(target.get("hash"))
         
         # Update their friend requests
         emit("added_friend", {"message": f"New friend request from {sender.get("username")}", "friend_requests": friend_requests}, room=f"user:{hash}")

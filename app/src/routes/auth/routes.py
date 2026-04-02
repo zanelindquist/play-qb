@@ -42,6 +42,12 @@ def login():
 
     if user is None:
         return jsonify({"error": "Email does not exist"}), 400
+    
+    if not user.get("email_verified"):
+        return jsonify({"error": "Email is not verified. Please verify email from the Sign Up page."}), 400
+    
+    if user.get("account_disabled"):
+        return jsonify({"error": "Account is disabled"}), 400
 
     if bcrypt.check_password_hash(user.get("password"), password):
         # Generate an access token to send to the user
@@ -79,6 +85,7 @@ def register():
     if(result.get("error")):
         return jsonify(result), code
     
+    result["user"]["email"] = email
     # Send the user a verification email
     send_verification_email(result["user"])
     
@@ -93,10 +100,10 @@ def resend_verification_email():
     user = get_user_by_email(email, rel_depths={"email_verification": 0})
 
     if not user:
-        return {"message": f"User with email {email} not found"}, 200
+        return {"error": f"User with email {email} not found"}, 400
     
     if user.get("email_verified"):
-        return {"message": f"Email is already verified"}, 200
+        return {"message": f"Email is already verified"}, 400
 
     user["email"] = email;
 
@@ -114,9 +121,12 @@ def verify_email_route():
     code = data.get("code")
     email = data.get("email")
 
-    result = verify_email(email, code)
+    user = get_user_by_email(email, rel_depths={"email_verification": 0})
 
-    print(result)
+    if not user:
+        return {"error": f"User with email {email} not found"}, 400
+
+    result = verify_email(email, code)
 
     code = result["code"]
     del result["code"]

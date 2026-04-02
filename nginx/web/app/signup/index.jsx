@@ -256,6 +256,8 @@ const SignUp = () => {
 
             showAlert("Account was successfully verified. Welcome to More Quiz Bowl!")
 
+            router.push("/")
+
         } catch (error) {
             console.error(error)
             if (error?.response?.data?.error) {
@@ -291,7 +293,9 @@ const SignUp = () => {
 
             if (error?.response?.data?.error) {
                 handleInvalidField(error.response.data.error);
-            } else {
+                showAlert(error.response.data.error)
+            }
+            else {
                 showAlert("There was an error during registration.");
             }
         }
@@ -404,6 +408,15 @@ const SignUp = () => {
                                 >Sign in</HelperText>
                             </Pressable>
                         </Text>
+                        <Text style={[styles.linkText, styles.textShadow]}>
+                            Need to verify an email?
+                            <Pressable
+                                onPress={() => router.replace("/signup?verify=true")}>
+                                <HelperText
+                                    style={styles.linkButton}
+                                >Verify</HelperText>
+                            </Pressable>
+                        </Text>
                         <Divider />
                         <GoogleAuthentication
                             style={styles.nextButton}
@@ -460,12 +473,21 @@ const SignUp = () => {
 
                 {/* Phase 3: Verify email */}
                 <View style={styles.page}>
-                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                    <GlassyView
+                        style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}
+                        gradient={
+                        {
+                            colors: theme.gradients.questionTint,
+                            start: { x: 1, y: 0 },
+                            end: { x: 1, y: 1 },
+                        }
+                    }
+                    >
                         <HelperText style={[styles.header, styles.textShadow]}>Verify your Email</HelperText>
                         <HelperText style={[ustyles.text.text, styles.textShadow]}>
                         {
                             !email ? "Please verify your account by entering your email and pressing the \"Send Verification Email\" button."
-                            : "We sent an email to {email}. Please enter the 6 digit verification code."
+                            : `We sent an email to ${email}. Please enter the 6 digit verification code.`
                         }
                         </HelperText>
                         {
