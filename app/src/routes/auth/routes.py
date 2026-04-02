@@ -103,7 +103,7 @@ def resend_verification_email():
         return {"error": f"User with email {email} not found"}, 400
     
     if user.get("email_verified"):
-        return {"message": f"Email is already verified"}, 400
+        return {"error": f"Email is already verified"}, 400
 
     user["email"] = email;
 

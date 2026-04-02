@@ -66,7 +66,7 @@ const CustomAlert = ({ content, onClose, modalStyle }) => {
                 }}
             >
                 <Dialog.Content
-                    style={{padding: 0}}
+                    style={isString && {padding: 0}}
                 >
                     {isString ? (
                         <GlassyView
