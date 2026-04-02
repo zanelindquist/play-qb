@@ -58,7 +58,6 @@ game_template = {
 def create_game_memory_instance(game_hash: str, settings: dict = {}) -> dict:
     if games.get(game_hash):
         return games.get(game_hash)
-        raise Exception("create_game_memory_instance(): game instance already exists")
     
     # Infuse user passed settings (like total rounds) if they passed any
     games[game_hash] = game_template | settings
@@ -109,7 +108,7 @@ def next_question(question_dict: dict, game_hash: str) -> dict:
     
     return game
 
-def start_interrupt(user_hash: str, game_hash: str, after_character: int = 0) -> dict:
+def start_interrupt(user: str, game_hash: str, after_character: int = 0) -> dict:
     game = get_game(game_hash)
 
     # See if another user already has a buzz with no end_timestamp
@@ -129,8 +128,6 @@ def start_interrupt(user_hash: str, game_hash: str, after_character: int = 0) ->
 
     if unfinished_buzz:
         return 409
-
-    user = db.get_user_by_hash(user_hash)
 
     proportion_through = after_character / len(game["current_question"]["question"])
 

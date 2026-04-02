@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta, date
 import re
 import math
 import random
+from functools import reduce
 from decimal import Decimal
 from difflib import SequenceMatcher
 
@@ -601,6 +602,7 @@ def get_random_question(difficulty="all", category="all", tournament="all", type
 
     except Exception as e:
         return {"code": 400, "error": str(e)}
+
 def get_question_by_hash(hash):
     try:
         session = get_session()
@@ -1523,12 +1525,17 @@ def check_question(question, guess, bonus_number=-1) -> bool:
 
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
     correct_threshold = 0.87
-    prompt_threshold = 0.80
+    prompt_threshold = 0.85
     dont_accept_threshold = 0.9
 
+    corrects = [main_answer, *(accepts.split(" | ") if accepts else [])]
+    mean_correct_length = reduce(lambda acc, correct: acc + len(correct), corrects, 0) // len(corrects)
+
     # CORRECT
-    for answer in [main_answer, *(accepts.split(" | ") if accepts else [])]:
-        is_correct = normal_match(answer, guess, threshold=correct_threshold)
+    for answer in corrects:
+        # Dynamic thresholds
+        # The longer the answer is, the lower the threshold (more typos, etc)
+        is_correct = normal_match(answer, guess, threshold=correct_threshold - mean_correct_length * 0.005)
         if is_correct == 1:
             return 1
 
@@ -1562,6 +1569,8 @@ def normal_match(answer: str, guess: str, threshold=0.85):
     answer = answer.lower()
     if len(guess) < max(2, len(answer) // 2):  # guess must be at least half the length of answer or 2 characters
         return 0
+    
+    # If the guess is longer than the answer by a resonable amount and it contains the answer, say yes???
     
     similarity = jellyfish.jaro_winkler_similarity(answer, guess)
     if similarity >= threshold:

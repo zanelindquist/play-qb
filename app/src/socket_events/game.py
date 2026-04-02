@@ -111,7 +111,7 @@ def on_join_lobby(data):
     # See if we should update the game active_at while we're at it
     update_game_active_at(game.get("hash"), game.get("active_at"))
 
-    mem_game = game_mem.create_game_memory_instance(game.get("hash"), {"total_rounds": game.get("rounds")})
+    mem_game = game_mem.create_game_memory_instance(game.get("hash"), {"total_rounds": game.get("rounds"), "lobby_settings": lobby_data})
 
     # Add the user to the game
     game_mem.add_user_to_game(user, game.get("hash"))
@@ -227,6 +227,10 @@ def on_buzz(data): # Timestamp, AnswerContent
 
     if not game_m.get("current_question"):
         return
+    
+    # Enforce multiple buzzing
+    if not game_m["lobby_settings"]["allow_multiple_buzz"] and user_hash in [interrupt["user"]["hash"] for interrupt in game_m["question_interrupts"]]:
+        return;
 
     question_state = data.get("question_state")
     character_buzz = data.get("after_character")
@@ -236,12 +240,11 @@ def on_buzz(data): # Timestamp, AnswerContent
         # Increment buzzes_encountered for everyone in the room
         increment_score_attribute(game_hash, "buzzes_encountered")
 
-    # TODO: Increment for early buzzes
     if question_state == "running":
         increment_score_attribute(game_hash, "early", player_hash=user_hash)
 
     # Buzz into memory
-    interrupt = game_mem.start_interrupt(user_hash, game_hash, after_character=character_buzz)
+    interrupt = game_mem.start_interrupt(user, game_hash, after_character=character_buzz)
 
     # TODO: Ajust average time to buzz
     proportion_to_buzz = character_buzz / len(game_m["current_question"]["question"])
@@ -382,7 +385,7 @@ def on_submit(data): # FinalAnswer
         # If the answer is a prompt, then we want to emit another buzz
         # Emit a resume and then emit another buzz
         # Add a new interrupt
-        interrupt = game_mem.start_interrupt(user_hash, game_hash, after_character=interrupt.get("after_character"))
+        interrupt = game_mem.start_interrupt(user, game_hash, after_character=interrupt.get("after_character"))
         
         emit("question_resume", data, room=f"lobby:{lobby}")
         emit(
@@ -424,13 +427,15 @@ def on_next_question(data):
         emit("reconnect")
         return
 
+    game_m = game_mem.get_game(game_hash)
+    lobby_data = get_lobby_by_alias(lobby)
 
     # TODO: See if player has authority to skip question
+    # if not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
+    #     return;
 
     # Increment buzzes_encountered
     result = increment_score_attribute(game_hash, "questions_encountered")
-
-    lobby_data = get_lobby_by_alias(lobby)
 
     # Get question ACCORDING TO LOBBY SETTINGS
     question = get_random_question(
@@ -440,7 +445,6 @@ def on_next_question(data):
         tournament=lobby_data.get("tournament", "all") # No tournament setting yet
     )
 
-    game_m = game_mem.get_game(game_hash)
 
     # If the lobby is ranked, then we want to adjust user rank for users who don't answer a question
     #TODO: tell if lobby is ranked

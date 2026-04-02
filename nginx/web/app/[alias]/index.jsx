@@ -618,7 +618,7 @@ const Play = () => {
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
-                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton>
+                    {/* <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton> */}
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend

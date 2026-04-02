@@ -77,7 +77,7 @@ def create_app(test_config=None):
     
     # Load JWT securely
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=2)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
 
     from src.db.utils import Session
 

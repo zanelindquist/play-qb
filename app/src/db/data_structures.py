@@ -80,7 +80,7 @@ RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:user": {"current_game": 0, "current_lobby": 0},
     "client:user": {"stats": 0},
     # "db:player": {"user": 0, "lobby": 0, "stats": 0},
-    "db:lobby": {"players": 0, "games": 0},
+    "db:lobby": {"players": 0, "games": 0, "creator": 0},
     "db:lobby_info": {},
     "db:game": {"current_question": 0},
     "db:users": {},
