@@ -189,14 +189,6 @@ def update_skill(
     # Variance update (same for correct/incorrect)
     sigma_sq_new = skill.sigma**2 * (1 - (skill.sigma**2 / (c**2)) * w)
 
-    print("IS CORRECT", correct)
-    print("DIFF", skill.mu - difficulty.mu)
-    print("DELTA (abs)", delta)
-    print("V", v)
-    print("MU_DELTA", mu_delta)
-    print("MU_NEW", mu_new)
-    print("SIG_SQ_NEW", sigma_sq_new)
-
     return Skill(mu_new, math.sqrt(max(sigma_sq_new, 1e-6)))
 
 

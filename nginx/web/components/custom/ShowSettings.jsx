@@ -10,9 +10,10 @@ import { useBanner } from "../../utils/banners";
 
 export default function ShowSettings ({
     style,
+    defaultValue = false,
     onChange=null
 }) {
-    const [showSettings, setShowSettings] = useState(false)
+    const [showSettings, setShowSettings] = useState(defaultValue)
 
     useEffect(() => {
         if(onChange) onChange(showSettings)

@@ -8,7 +8,7 @@ import time
 import src.db.utils as db
 
 
-ANSWER_MS = 5000
+ANSWER_MS = 7000
 
 class GameMemory:
     def __init__(self, game_hash, settings={}):

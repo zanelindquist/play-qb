@@ -1544,8 +1544,8 @@ def check_question(question, guess, bonus_number=-1) -> bool:
     is_reject = False
 
     # If the answer similarity is > 0.7 but less than the threshold we will then prompt due to spelling
-    correct_threshold = 0.90
-    prompt_threshold = 0.85
+    correct_threshold = 0.93
+    prompt_threshold = 0.87
     dont_accept_threshold = 0.90
 
     corrects = [main_answer, *(accepts.split(" | ") if accepts else [])]
@@ -1852,9 +1852,6 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
         delta_mu = updated.mu - effective_skill.mu
         delta_sigma = updated.sigma - effective_skill.sigma
 
-        print("DELTA MU", delta_mu)
-        print("DELTA SIGMA", delta_sigma)
-
         # Update global and category skills (this is fine)
         g_new = ranked.Skill(g.mu, g.sigma)
         g_new.mu += WEIGHT * delta_mu
@@ -1863,14 +1860,6 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
         c_new = ranked.Skill(c.mu, c.sigma)
         c_new.mu += (1 - WEIGHT) * delta_mu
         c_new.sigma = max(1.0, c_new.sigma + (1 - WEIGHT) * delta_sigma)
-
-        # After calculating g_new and c_new, add:
-        print(f"WEIGHT: {WEIGHT}")
-        print(f"Global skill BEFORE: mu={g.mu}, sigma={g.sigma}")
-        print(f"Global skill AFTER: mu={g_new.mu}, sigma={g_new.sigma}")
-        print(f"Category skill BEFORE: mu={c.mu}, sigma={c.sigma}")
-        print(f"Category skill AFTER: mu={c_new.mu}, sigma={c_new.sigma}")
-        print("=" * 50)
 
         # Save the updated score to the database
         setattr(stats, "skill_mu", g_new.mu)

@@ -43,9 +43,6 @@ import { useCallback } from "react";
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
 
-// TEMPORARY
-const ANSWER_MS = 5000;
-
 const SHOW_EVENTS_INCREMENTS = 20
 
 const Play = () => {
@@ -74,7 +71,7 @@ const Play = () => {
 
     // Lobby state
     const [lobby, setLobby] = useState(null)
-    const [showSettings, setShowSettings] = useState(false)
+    const [showSettings, setShowSettings] = useState(true)
     const [myRankInfo, setMyRankInfo] = useState(null)
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
@@ -628,11 +625,10 @@ const Play = () => {
                             <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
                         </View>
                         :
-                        <GlassyView>
-                            <HelperText>Lobby or lobby.games undefined</HelperText>
-                        </GlassyView>
+                        <ActivityIndicator />
                     }
                     <ShowSettings
+                        defaultValue={showSettings}
                         onChange={setShowSettings}
                     />
                     <GameSettings

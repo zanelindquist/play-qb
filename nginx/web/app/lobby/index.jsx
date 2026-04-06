@@ -518,8 +518,8 @@ export default function LobbyScreen() {
                                     selected={lobbyName == g.name}
                                     onPress={() => handleGameModePress(g.name)}
                                     playersOnline={g.name.toLowerCase() === lobbyName ? playersOnline : "hi"}
-                                    minWidth={200}
-                                    maxWidth={225}
+                                    minWidth={250}
+                                    maxWidth={275}
                                     key={i}    
                                 />
                             ))
@@ -618,12 +618,12 @@ const styles = StyleSheet.create({
         margin: 10,
     },
     left: {
-        width: 225,
+        width: 275,
         gap: 10
     },
     scrollbarContainer: {
         height: 500,
-        width: 250
+        width: 300
     },
     curatedLobbiesScroll: {
         height: 500,

@@ -48,12 +48,8 @@ const LEVELS = [
     "All"              
 ]
 
-const collapsedHeight = 40;
-const TICK_MS = 16; // 60 FPS
-
 const Question = ({
     question,
-    timestamp,
     state = "dead",
     onInterruptOver,
     onFinish,
@@ -67,7 +63,7 @@ const Question = ({
     showAnswers,
     MS_UNTIL_DEAD = 6000,
     // Speed in WPM
-    ANSWER_MS = 5000,
+    ANSWER_MS = 7000,
     EXPANDED_HEIGHT=500,
 }) => {
     // Text variables

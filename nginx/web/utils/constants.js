@@ -72,7 +72,7 @@ const CURATED_LOBBIES = [
     {
         name: "highschool-philosophy",
         description: "High school philosophy questions.",
-        icon: "head-thinking",
+        icon: "brain",
     },
     {
         name: "college-science",
@@ -92,7 +92,7 @@ const CURATED_LOBBIES = [
     {
         name: "college-philosophy",
         description: "College philosophy questions.",
-        icon: "head-thinking",
+        icon: "brain",
     },
 ];
 
