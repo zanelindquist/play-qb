@@ -107,11 +107,20 @@ export default function HomeScreen() {
                     >
                         Welcome to MoreQB!
                     </GradientText>
-                    <HelperText style={[ustyles.text.title, ustyles.text.left]}>Features</HelperText>
-                    <View style={[styles.bottomBoxes, styles.bentoRow]}>
+                    <View style={ustyles.flex.flexRow}>
                         <FeatureCard
-                            icon={"account"}
+                            icon={"account-multiple"}
                             name={"Add Friends"}
+                            description={"Team up with your friends to take on opponents in duos, trios, or 5v5"}
+                            bottom={
+                                <Button
+                                    style={[styles.button]}
+                                    mode="outlined"
+                                    onPress={() => router.replace("/lobby?mode=duos")}
+                                >
+                                    Invite Friends
+                                </Button>
+                            }
                         />
                         <FeatureCard
                             icon={"chart-box"}
@@ -128,8 +137,18 @@ export default function HomeScreen() {
                             }
                         />
                         <FeatureCard
-                            icon={"account"}
-                            name={"View Analytics"}
+                            icon={"lightbulb-on-10"}
+                            name={"AI Insights"}
+                            description={"Get AI analytics that help you improve your game"}
+                            bottom={
+                                <Button
+                                    style={[styles.button]}
+                                    mode="outlined"
+                                    onPress={() => router.replace("/insights")}
+                                >
+                                    View Insights
+                                </Button>
+                            }
                         />
                     </View>
                     {/* <HelperText
@@ -198,7 +217,7 @@ function FeatureCard({icon, name, description, bottom}) {
             title={name}
             description={description}
             bottom={bottom}
-            style={{flexDirection: "column", alignItems: "center", gap: 10}}
+            style={{flexDirection: "column", alignItems: "center", gap: 10, height: 300}}
             dark
         >
 

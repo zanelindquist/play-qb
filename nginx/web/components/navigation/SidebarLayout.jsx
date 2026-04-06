@@ -40,14 +40,13 @@ import EarthVideo from "../../public/videos/Earth.mp4"
 
 const iconColor = theme.primary;
 
-let { width, height } = Dimensions.get("window");
-let isMobile = width <= 768; // Adjust breakpoint as needed
-
 const contentPadding = 16;
 
 const ANIMATION_TIME = 200
 
 const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideDown=null }) => {
+    const { width } = useWindowDimensions();
+    const isMobile = width <= 768;
     // Routing
     const router = useRouter();
     const { showAlert } = useAlert();
@@ -61,7 +60,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
         currentScreen.charAt(0).toUpperCase() + currentScreen.slice(1);
 
     // States
-    const [isDrawerOpen, setDrawerOpen] = useState(!isMobile);
+    const [isDrawerOpen, setDrawerOpen] = useState(false);
     const [drawerAnim] = useState(new Animated.Value(0)); // Initial position: hidden
     const [renderFooter, setRenderFooter] = useState(false);
     const [navBarHeight, setNavBarHeight] = useState(0);
@@ -95,9 +94,10 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
     };
 
     // Interpolate the drawer animation value for slide-in/out effect
+    const hideValue = drawerHeight > 0 ? -drawerHeight : -1000;
     const drawerTranslateY = drawerAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-drawerHeight, 0],
+        outputRange: [hideValue, 0],
     });
 
     function handleLogout() {
@@ -133,6 +133,15 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
             label="Stats"
             onPress={() => router.push("/stats")}
             icon="poll"
+            iconColor={iconColor}
+        />
+    );
+    const analytics = (
+        <TopNavItem
+            inline={isMobile}
+            label="Insights"
+            onPress={() => router.push("/insights")}
+            icon="chart-line"
             iconColor={iconColor}
         />
     );
@@ -204,9 +213,11 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                     {
                         slideDown ||
                         <>
+                        <Logo text={true} image={false} style={{height: "auto"}}/>
                         {play}
                         {saved}
                         {stats}
+                        {analytics}
                         {account}
                         {logout}
                         </>
@@ -232,6 +243,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                             {play}
                             {saved}
                             {stats}
+                            {analytics}
                         </View>
                         <View style={styles.rightNav}>
                             {account}
@@ -251,8 +263,6 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
         </View>
     );
 };
-
-const drawerWidth = isMobile ? 250 : "auto";
 
 const styles = StyleSheet.create({
     root: {
