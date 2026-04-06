@@ -62,35 +62,9 @@ import FriendOptions from "../../components/entities/FriendOptions.jsx";
 import DropDown from "../../components/custom/DropDown.jsx";
 import ustyles from "../../assets/styles/ustyles.js";
 
+import { CURATED_LOBBIES } from "../../utils/constants.js";
 
 // TODO: Make this in a config or something, or get from server
-const GAMEMODES = [
-    {
-        name: "solos",
-        description: "Take on opponents in quiz bowl solos. Only tossups.",
-        icon: "account",
-    },
-    {
-        name: "duos",
-        description: "Partner up to take on other teams. Classic mode with bonuses.",
-        icon: "account-multiple",
-    },
-    {
-        name: "5v5",
-        description: "Full quiz bowl game against other players online.",
-        icon: "account-group",
-    },
-    {
-        name: "custom",
-        description: "Create a custom game and play with your friends.",
-        icon: "hammer-wrench",
-    },
-    {
-        name: "ranked",
-        description: "Test your skill against other players and climb up the global leaderboard.",
-        icon: "medal",
-    },
-];
 
 const MUTATABLE_RULES = ["name", "gamemode", "category", "rounds", "level", "speed", "bonuses", "public", "allow_multiple_buzz", "allow_question_skip", "allow_question_pause"]
 
@@ -104,12 +78,12 @@ export default function LobbyScreen() {
     const params = useLocalSearchParams();
     const {showAlert} = useAlert()
     const {showBanner} = useBanner()
-    const gameModeFromParams =  GAMEMODES.map((g) => g.name).includes(params.mode) ? params.mode : "custom"
+    const lobbyNameFromParams =  CURATED_LOBBIES.map((g) => g.name).includes(params.mode) ? params.mode : "custom"
 
-    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect } = useSocket("lobby", gameModeFromParams);
+    const { socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect } = useSocket("lobby", lobbyNameFromParams);
 
-    // Set the game mode to what the search params indicate, with random ones being set to custom
-    const [gameMode, setGameMode] = useState(gameModeFromParams);
+    // Set the lobby name to what the search params indicate, with random ones being set to custom
+    const [lobbyName, setLobbyName] = useState(lobbyNameFromParams);
     const [myHash, setMyHash] = useState(undefined);
     // My party member
     const [myPM, setMyPM] = useState(null)
@@ -128,8 +102,6 @@ export default function LobbyScreen() {
     const [showSettings, setShowSettings] = useState(false)
     const [showCustomCategories, setShowCustomCategories] = useState(false)
     const [disableGameRules, setDisableGameRules] = useState(true)
-
-    const [randomLobbyName] = useState(gameModeFromParams === "custom" ? params.mode : generateRandomLobbyName);
 
     const [friends, setFriends] = useState([])
     const [friendRequests, setFriendRequests] = useState([])
@@ -167,7 +139,6 @@ export default function LobbyScreen() {
                 for(let key of Object.keys(lobby)) {
                     if(!MUTATABLE_RULES.includes(key)) delete customSettingsFromLobby[key]
                 }
-                customSettingsFromLobby["name"] = randomLobbyName
                 setCustomSettings(customSettingsFromLobby)
             });
 
@@ -201,7 +172,6 @@ export default function LobbyScreen() {
             })
 
             addEventListener("member_left_party", ({user, members, lobby}) => {
-                console.log(user)
                 // Set my party member now that its changed
                 setMyPM(members.find((m) => m.hash === myHash))
                 // Redisplay the new data
@@ -237,8 +207,8 @@ export default function LobbyScreen() {
                 })
             })
 
-            addEventListener("changed_gamemode", ({lobby}) => {
-                setGameMode(GAMEMODES.map((g) => g.name.toLowerCase()).includes(lobby.name) ? lobby.name : "custom")
+            addEventListener("changed_lobby", ({lobby}) => {
+                setLobbyName(CURATED_LOBBIES.map((g) => g.name.toLowerCase()).includes(lobby.name) ? lobby.name : "custom")
                 setLobbyInfo(lobby)
                 setPlayersOnline(lobby.number_of_online_players)
             })
@@ -261,10 +231,10 @@ export default function LobbyScreen() {
                 // TODO: Maybe at this point put everyone into a loading screen until the enter_lobby event is received
                 if(!myPM?.is_leader) return;
                 // For making a new lobby
-                if(gameMode === "custom" && isCreateCustom) {
+                if(lobbyName === "custom" && isCreateCustom) {
                     console.log({...customSettings, creator_id: myPM.id})
                     send("clients_ready", {settings: {...customSettings, creator_id: myPM.id}})
-                } else if (gameMode === "custom" && !isCreateCustom) {
+                } else if (lobbyName === "custom" && !isCreateCustom) {
                     send("clients_ready", {lobby_alias: customSettings.name})
                 } else {
                     send("clients_ready", {lobby_alias: lobbyInfo.name || "solos"})
@@ -320,7 +290,7 @@ export default function LobbyScreen() {
 
             // Now that the listners are registered, we are ready to join the lobby
             if(!enteredLobby) {
-                send("enter_lobby", { lobbyAlias: params.mode ? params.mode : gameMode });
+                send("enter_lobby", { lobbyAlias: params.mode ? params.mode : lobbyName });
                 setEnteredLobby(true)
             }
         }, []);
@@ -335,11 +305,7 @@ export default function LobbyScreen() {
     // so we dont have to teardown everything all of the time
     // At least reduce the frequently changes ones, like customSettings.
     // Use refs instead
-    }, [gameMode, partySlots, myHash, myPM, customSettings]);
-
-    // When this page is torn down we want to disconnect from the socket
-    // useEffect(() => {
-    //     return ()=> {
+    }, [lobbyName, partySlots, myHash, myPM, customSettings]);
     //         if(socket) disconnect()
     //     }
     // }, [])
@@ -350,13 +316,20 @@ export default function LobbyScreen() {
 
     }, [customSettings, isCreateCustom])
 
-    // Setting game rule editing
+    // Setting game rule editing and custom lobby name
     useEffect(() => {
-        setDisableGameRules(gameMode !== "custom" || !myPM?.is_leader)
-        if(myPM?.is_leader) {
-            setCustomSettings((prev) => {return {...prev, name: randomLobbyName}})
+        setDisableGameRules(lobbyName !== "custom" || !myPM?.is_leader)
+        if(myPM?.is_leader && lobbyName === "custom") {
+            setCustomSettings((prev) => {return {...prev, name: lobbyNameFromParams === "custom" ? params.mode : generateRandomLobbyName()}})
         }
-    }, [gameMode, myPM]);
+    }, [lobbyName, myPM]);
+
+    // Generate new random lobby name when create custom is toggled
+    useEffect(() => {
+        if(lobbyName === "custom" && isCreateCustom && myPM?.is_leader) {
+            setCustomSettings((prev) => {return {...prev, name: generateRandomLobbyName()}})
+        }
+    }, [isCreateCustom, lobbyName]);
 
     const openInviteFriendModal = React.useCallback(() => {
         showAlert(
@@ -381,8 +354,8 @@ export default function LobbyScreen() {
         );
     })
     
-    function handleGameModePress(mode) {
-        send("change_gamemode", {lobby_alias: mode})
+    function handleGameModePress(lobbyName) {
+        send("change_lobby", {lobby_alias: lobbyName})
     }
 
     function handleAcceptInvite(party_hash) {
@@ -462,10 +435,11 @@ export default function LobbyScreen() {
         } else {
             setLobbyInfo(lobby)
             setCustomSettings(lobby)
+            setLobbyName("custom")
             // Update this for everyone else
             send("custom_settings_changed", {settings: lobby})
-            // Set the custom gamemode as this new lobby alias to register it with the party on the backend
-            send("change_gamemode", {lobby_alias: lobby.name})
+            // Notify the backend of the selected custom lobby
+            send("change_lobby", {lobby_alias: lobby.name, is_custom: true})
             showBanner("Lobby selected")
         }
     }
@@ -514,39 +488,44 @@ export default function LobbyScreen() {
             }
         >
             <View style={isMobile ? mstyles.container : styles.container}>
-                {
-                    isMobile &&
-                    <View style={mstyles.topOptions}>
-                        <DropDown
-                            style={mstyles.dd}
-                            options={GAMEMODES.map((g) => {return {title: g.name}})}
-                            onSelect={(param) => handleGameModePress(param.title)}
-                        />
-                        <IconButton
-                            icon={"account"}
-                            style={mstyles.friendsButton}
-                            onPress={() => setMobileFriendsDisplayed(true)}
-                            size={40}
-                        />
+                {isMobile ?
+                <View style={mstyles.topOptions}>
+                    <DropDown
+                        style={mstyles.dd}
+                        options={CURATED_LOBBIES.map((g) => {return {title: g.name}})}
+                        onSelect={(param) => handleGameModePress(param.title)}
+                    />
+                    <IconButton
+                        icon={"account"}
+                        style={mstyles.friendsButton}
+                        onPress={() => setMobileFriendsDisplayed(true)}
+                        size={40}
+                    />
+                </View>
+                :
+                <View style={styles.left}>
+                    <View style={styles.scrollbarContainer}>
+                        <ScrollView
+                            style={styles.curatedLobbiesScroll}
+                            contentContainerStyle={styles.curatedLobbiesScrollContent}
+                        >
+                        {
+                            CURATED_LOBBIES.map((g, i) => (
+                                <GameMode
+                                    gamemode={g}
+                                    icon={g.icon}
+                                    style={styles.gamemode}
+                                    selected={lobbyName == g.name}
+                                    onPress={() => handleGameModePress(g.name)}
+                                    playersOnline={g.name.toLowerCase() === lobbyName ? playersOnline : "hi"}
+                                    minWidth={200}
+                                    maxWidth={225}
+                                    key={i}    
+                                />
+                            ))
+                        }
+                        </ScrollView>
                     </View>
-                }
-                {!isMobile &&
-                <View style={isMobile ? mstyles.top : styles.left}>
-                {
-                    GAMEMODES.map((g, i) => (
-                        <GameMode
-                            gamemode={g}
-                            icon={g.icon}
-                            style={styles.gamemode}
-                            selected={gameMode == g.name}
-                            onPress={() => handleGameModePress(g.name)}
-                            playersOnline={g.name.toLowerCase() === gameMode ? playersOnline : "hi"}
-                            key={i}    
-                        />
-                    ))
-                }
-                {
-                    !isMobile &&
                     <FriendOptions
                         friends={friends}
                         friendRequests={friendRequests}
@@ -554,7 +533,6 @@ export default function LobbyScreen() {
                         addEventListener={addEventListener}
                         removeEventListener={removeEventListener}
                     />
-                }
                 </View>
                 }
                 <View style={isMobile ? mstyles.right : styles.right}>
@@ -590,7 +568,7 @@ export default function LobbyScreen() {
                         />
                     }
                     {
-                        gameMode === "custom" &&
+                        lobbyName === "custom" &&
                         <LabeledToggle
                             onChange={(isFirst) => setIsCreateCustom(!isFirst)}
                             label1="Join Custom"
@@ -603,9 +581,9 @@ export default function LobbyScreen() {
                         {
                             /* Selecting a custom lobby */
                             <JoinCustomLobby
-                                expanded={gameMode === "custom" && !isCreateCustom}
+                                expanded={lobbyName === "custom" && !isCreateCustom}
                                 cooldownMs={200}
-                                defaultValue={ !GAMEMODES.map((g) => g.name.toLowerCase()).includes(params.mode) ? params.mode : null}
+                                defaultValue={ !CURATED_LOBBIES.map((g) => g.name.toLowerCase()).includes(params.mode) ? params.mode : null}
                                 onChangeText={handleCustomLobbySearch}
                                 onSelect={handleSelectCustom}
                                 lobbies={searchedLobbies}
@@ -613,10 +591,10 @@ export default function LobbyScreen() {
                         }
                         {/* Creating a custom lobby */}
                         <GameSettings
-                            title={gameMode === "custom" && isCreateCustom ? "Create Custom Game" : "Game Settings"}
-                            expanded={(gameMode === "custom" && isCreateCustom) || showSettings}
-                            gameMode={gameMode}
-                            disabled={gameMode !== "custom" || !isCreateCustom || !myPM?.is_leader}
+                            title={lobbyName === "custom" && isCreateCustom ? "Create Custom Game" : "Game Settings"}
+                            expanded={(lobbyName === "custom" && isCreateCustom) || showSettings}
+                            gameMode={lobbyName}
+                            disabled={lobbyName !== "custom" || !isCreateCustom || !myPM?.is_leader}
                             defaultInfo={lobbyInfo}
                             columns={ isMobile ? 1 : 2}
                             onGameRuleChange={handleGameRuleChange}
@@ -640,8 +618,25 @@ const styles = StyleSheet.create({
         margin: 10,
     },
     left: {
-        width: 200,
+        width: 225,
         gap: 10
+    },
+    scrollbarContainer: {
+        height: 500,
+        width: 250
+    },
+    curatedLobbiesScroll: {
+        height: 500,
+        overflow: "auto",
+        transform: [{scaleX: -1}],
+        scrollbarWidth: 'thin', // For Firefox
+        scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)', // For Firefox
+    },
+    curatedLobbiesScrollContent: {
+        paddingLeft: 10,
+        height: 200,
+        gap: 10,
+        transform: [{scaleX: -1}],
     },
     right: {
         flexGrow: 1,
@@ -696,7 +691,7 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent"
     },
     gamemode: {
-        width: "100%",
+        // width: 180,
     },
     customsContainer: {
         gap: 10

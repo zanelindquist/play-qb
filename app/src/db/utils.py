@@ -75,7 +75,11 @@ CATEGORY_CODES = [
 ]
 
 # TODO: protect ranked lobbies
-PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5", "custom", "ranked"]
+PROTECTED_LOBBIES = ["solos", "duos", "trios", "squads", "5v5", "custom", "ranked",
+                     "middleschool", "highschool", "college", "open",
+                     "highschool-science", "highschool-history", "highschool-literature", "highschool-philosophy",
+                     "college-science", "college-history", "college-literature", "college-philosophy", 
+                    ]
 
 DEFAULT_SETTINGS = {
     "public": False,
@@ -1418,7 +1422,7 @@ def delete_inactive_lobbies():
 
         # Delete inactive games
         # This will help when there are potentially a lot of games on common servers so that we don't get dead buildup
-        games = session.execute(
+        session.execute(
             delete(Games)
             .where(
                 Games.active_at < cutoff,

@@ -428,9 +428,9 @@ def on_party_member_ready(data):
 
     emit("enter_lobby", {"lobby_alias": result.get("lobby").get("name")}, room=f"party:{party_hash}")
 
-
-@socketio.on("change_gamemode", "/lobby")
-def on_changed_gamemode(data):
+# When the user changes the selected lobby, we want to send them information based on the lobby they are selecting
+@socketio.on("change_lobby", "/lobby")
+def on_changed_lobby(data):
     user_hash = request.environ.get("user_hash")
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
@@ -441,16 +441,16 @@ def on_changed_gamemode(data):
     user = get_user_by_hash(user_hash)
 
     # Make sure the user is the party leader
-
     if user.get("hash") != parties[party_hash]["leader_hash"]:
         return;
 
     # Get lobby info
     new_lobby_alias = data.get("lobby_alias")
+    is_custom = data.get("is_custom", False)
 
     lobby_data = get_lobby_by_alias(new_lobby_alias)
 
-    if not lobby_data:
+    if not lobby_data and not is_custom:
         # If there is no lobby alias found for a central lobby, then we want to create it:
         if new_lobby_alias in PROTECTED_LOBBIES:
             default_settings = DEFAULT_SETTINGS
@@ -460,16 +460,14 @@ def on_changed_gamemode(data):
             default_settings["name"] = new_lobby_alias
 
             create_lobby(default_settings)
+        # Else, tell them that we can't find the lobby they are looking for because it doesn't exist
         else:
             emit("prelobby_not_found", {"message": "Cannot find target lobby", "code": 404})
             return;
 
-    if new_lobby_alias == "custom":
-        lobby_data["name"] = generate_random_lobby_name()
-
     set_party_lobby_alias(party_hash, new_lobby_alias)
 
-    emit("changed_gamemode", {"lobby": lobby_data}, room=f"party:{party_hash}")
+    emit("changed_lobby", {"lobby": lobby_data}, room=f"party:{party_hash}")
 
 @socketio.on("custom_settings_changed", "/lobby")
 def on_custom_settings_changed(data):

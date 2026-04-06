@@ -48,8 +48,6 @@ const ANSWER_MS = 5000;
 
 const SHOW_EVENTS_INCREMENTS = 20
 
-const RESERVED_GAMEMODES = ['solos', 'duos', 'trios', 'squads', '5v5', 'ranked']
-
 const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();

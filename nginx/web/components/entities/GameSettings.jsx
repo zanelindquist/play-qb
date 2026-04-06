@@ -10,33 +10,7 @@ import ExpandableView from "../custom/ExpandableView";
 import CustomCategories from "./CustomCategories";
 import GlassyView from "../custom/GlassyView";
 
-const GAMEMODES = [
-    {
-        name: "solos",
-        description: "Take on opponents in quiz bowl solos. Only tossups.",
-        icon: "account",
-    },
-    {
-        name: "duos",
-        description: "Partner up to take on other teams. Classic mode with bonuses.",
-        icon: "account-multiple",
-    },
-    {
-        name: "5v5",
-        description: "Full quiz bowl game against other players online.",
-        icon: "account-group",
-    },
-    {
-        name: "custom",
-        description: "Create a custom game and play with your friends.",
-        icon: "hammer-wrench",
-    },
-    {
-        name: "ranked",
-        description: "Test your skill against other players and climb up the global leaderboard.",
-        icon: "medal",
-    },
-];
+import { GAMEMODES } from "../../utils/constants";
 
 // TODO: FIX LEVELS CHANGING
 const LEVELS = [

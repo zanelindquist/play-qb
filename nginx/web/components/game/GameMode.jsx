@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import {
     Platform,
     View,
@@ -17,88 +17,44 @@ import ustyles from "../../assets/styles/ustyles"
 import GradientText from "../custom/GradientText";
 import { capitalize } from "../../utils/text";
 
-// TODO: Hover for stat tooltip
-const HOVER_MULTIPLIER = 1.1;
+// Hover animation
 const ANIMATION_DURATION = 150;
 
 export default function GameMode({
     style,
     gamemode,
-    condensed,
     icon = "account-multiple",
     selected = false,
     onPress = () => {},
     playersOnline=false,
+    minWidth = 200,
+    maxWidth = 220,
 }) {
-    const [normalWidth, setNormalWidth] = useState(0);
-    const animatedWidth = useRef(new Animated.Value(0)).current;
+    const animatedWidth = useRef(new Animated.Value(minWidth)).current;
 
     function handleHoverIn() {
-        if (normalWidth > 0) {
-            Animated.timing(animatedWidth, {
-                toValue: normalWidth * HOVER_MULTIPLIER,
-                duration: ANIMATION_DURATION,
-                useNativeDriver: false,
-            }).start();
-        }
+        Animated.timing(animatedWidth, {
+            toValue: maxWidth,
+            duration: ANIMATION_DURATION,
+            useNativeDriver: false,
+        }).start();
     }
 
     function handleHoverOut() {
-        if (normalWidth > 0) {
-            Animated.timing(animatedWidth, {
-                toValue: normalWidth,
-                duration: ANIMATION_DURATION,
-                useNativeDriver: false,
-            }).start();
-        }
+        Animated.timing(animatedWidth, {
+            toValue: minWidth,
+            duration: ANIMATION_DURATION,
+            useNativeDriver: false,
+        }).start();
     }
-
-    if (condensed) return (
-        <Animated.View
-            style={[
-                styles.animated,
-                style,
-                // Apply animated width only if layout width has been measured
-                animatedWidth && animatedWidth._value > 0
-                    ? { width: animatedWidth }
-                    : null,
-            ]}
-        >
-            <GlassyView
-                style={[mstyles.container]}
-                gradient={
-                    selected && {
-                        colors: theme.gradients.selectedMode,
-                        start: { x: 0, y: 0 },
-                        end: { x: 1, y: 1 },
-                    }
-                }
-                onPress={onPress}
-                onHoverIn={handleHoverIn}
-                onHoverOut={handleHoverOut}
-            >
-                <Icon source={icon} size={20} color={theme.tertiary} />
-                <GradientText size={"1rem"} style={styles.name}>
-                    {capitalize(gamemode.name)}
-                </GradientText>
-            </GlassyView>
-        </Animated.View>
-    )
 
     return (
         <Animated.View
             style={[
                 styles.animated,
                 style,
-                // Apply animated width only if layout width has been measured
-                animatedWidth && animatedWidth._value > 0
-                    ? { width: animatedWidth }
-                    : null,
+                { width: animatedWidth },
             ]}
-            onLayout={(e) => {
-                const width = e.nativeEvent.layout.width;
-                setNormalWidth(width);
-            }}
         >
             <GlassyView
                 style={styles.container}
@@ -116,7 +72,7 @@ export default function GameMode({
                 <View style={styles.nameContainer}>
                     <Icon source={icon} size={20} color={theme.tertiary} />
                     <GradientText size={"1rem"} style={styles.name}>
-                        {capitalize(gamemode.name)}
+                        {gamemode.name.split("-").map(g => capitalize(g)).join(" ")}
                     </GradientText>
                 </View>
                 {
