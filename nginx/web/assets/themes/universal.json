@@ -54,6 +54,10 @@
             "questionTint": [
                 "rgba(0,0,0,0.4)",
                 "rgba(0,0,0,0.4)"
+            ],
+            "glassyDarkTint": [
+                "rgba(0,0,0,0.3)",
+                "rgba(0,0,0,0.3)"
             ]
         }
     },
@@ -129,6 +133,10 @@
             "questionTint": [
                 "rgba(0,0,0,0.4)",
                 "rgba(0,0,0,0.4)"
+            ],
+            "glassyDarkTint": [
+                "rgba(0,0,0,0.3)",
+                "rgba(0,0,0,0.3)"
             ]
         }
     }

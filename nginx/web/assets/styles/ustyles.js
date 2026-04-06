@@ -68,6 +68,10 @@ export default {
         },
         center: {
             textAlign: "center"
+        },
+        left: {
+            textAlign: "left",
+            width: "100%"
         }
     }),
     icon: StyleSheet.create({

@@ -91,20 +91,48 @@ let isMobile = width <= 768; // Adjust breakpoint as needed
 
 export default function HomeScreen() {
     const { showBanner } = useBanner();
-    const { isAuthentiated } = useAuth();
+    const auth = useAuth();
 
     return (
         <SidebarLayout>
             <View style={styles.container}>
-                <GlassyView style={styles.about}>
+                <View
+                    style={styles.about}
+                    dark
+                >
                     <GradientText
                         size={50}
-                        colors={[theme.primary, theme.onPrimary, theme.primary]} //GAMEMODES.map((g) => g.color)
+                        colors={[theme.primary, theme.onSecondary, theme.primary]} //GAMEMODES.map((g) => g.color)
                         style={styles.title}
                     >
                         Welcome to MoreQB!
                     </GradientText>
-                    <HelperText
+                    <HelperText style={[ustyles.text.title, ustyles.text.left]}>Features</HelperText>
+                    <View style={[styles.bottomBoxes, styles.bentoRow]}>
+                        <FeatureCard
+                            icon={"account"}
+                            name={"Add Friends"}
+                        />
+                        <FeatureCard
+                            icon={"chart-box"}
+                            name={"Ranked"}
+                            description={"Watch your skill improve over time and complete on global leaderboards"}
+                            bottom={
+                                <Button
+                                    style={[styles.button]}
+                                    mode="contained"
+                                    onPress={() => router.replace("/lobby?mode=ranked")}
+                                >
+                                    Play Ranked
+                                </Button>
+                            }
+                        />
+                        <FeatureCard
+                            icon={"account"}
+                            name={"View Analytics"}
+                        />
+                    </View>
+                    {/* <HelperText
                         style={[
                             ustyles.text.header,
                             ustyles.text.shadowText,
@@ -124,8 +152,8 @@ export default function HomeScreen() {
                         Whether you're grinding solo or competing live,
                         MoreQuizBowl gives you the tools to improve smarter,
                         play harder, and win more.
-                    </HelperText>
-                    {!isAuthentiated && (
+                    </HelperText> */}
+                    {!auth.isAuthenticated && (
                         <View style={styles.ctaButtons}>
                             <GlassyButton
                                 style={styles.button}
@@ -143,12 +171,7 @@ export default function HomeScreen() {
                             </Button>
                         </View>
                     )}
-                    {/* <View style={[styles.bottomBoxes, styles.bentoRow]}>
-                    {
-                        DEMO.map((d) => <GameDemoBox info={d}/>)
-                    }
-                    </View> */}
-                </GlassyView>
+                </View>
                 <View style={ustyles.flex.flexRow}>
                     {GAMEMODES.map((g, i) => (
                         <VerticalHoverOption
@@ -167,6 +190,22 @@ export default function HomeScreen() {
     );
 }
 
+function FeatureCard({icon, name, description, bottom}) {
+
+    return (
+        <VerticalHoverOption
+            icon={icon}
+            title={name}
+            description={description}
+            bottom={bottom}
+            style={{flexDirection: "column", alignItems: "center", gap: 10}}
+            dark
+        >
+
+        </VerticalHoverOption>
+    )
+}
+
 const styles = StyleSheet.create({
     container: {
         flexDirection: "column",
@@ -178,7 +217,7 @@ const styles = StyleSheet.create({
         gap: 20,
         alignItems: "center",
         width: "100%",
-        paddingVertical: 50,
+        paddingVertical: 30,
     },
     ctaButtons: {
         width: "100%",

@@ -410,7 +410,7 @@ def on_party_member_ready(data):
 
     lobby_alias = data.get("lobby_alias")
 
-    # If there are settings, it is creating a lobby, if there is lobby_alias, its joining a custom, otherwise, use the party
+    # If there are settings then the user is going to create a lobby
     if not settings:
         emit("enter_lobby", {"lobby_alias": lobby_alias if lobby_alias else party["lobby_alias"]}, room=f"party:{party_hash}")
         return

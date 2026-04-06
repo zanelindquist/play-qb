@@ -10,12 +10,12 @@ from functools import reduce
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists, update
+from sqlalchemy import select, or_, and_, not_, delete, func, desc, literal, case, exists, update, text
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, class_mapper, subqueryload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.inspection import inspect
 
-from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP
+from .data_structures import SERIALIZATION_CONFIG, RELATIONSHIP_DEPTHS_BY_ROUTE as REL_DEP, RATING_PARAMS
 from .db import *
 from .models.hash import *
 import src.db.ranked as ranked
@@ -915,6 +915,20 @@ def get_rating_params() -> RatingParameters:
         params = session.execute(
             select(RatingParams)
         ).scalars().all()
+
+        # If there are no parameters, insert them
+        if not params:
+            query = text("""
+            INSERT INTO rating_params (id, name, value, description, created_at)
+            VALUES (:id, :name, :value, :description, NOW())
+            """)
+
+            session.execute(query, RATING_PARAMS)
+            session.commit()
+
+            params = session.execute(
+                select(RatingParams)
+            ).scalars().all()
 
         dict_params = {}
 
@@ -1824,14 +1838,6 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
             # updated = ranked.non_answer_update_skill(effective_skill, q, buzz_fraction=buzz_fraction, beta=rating_params.beta, power=rating_params.time_penalty, max_mu_drop=rating_params.max_mu_drop)
         else:
             updated = ranked.update_skill(effective_skill, q, bool(is_correct > 0), buzz_fraction, beta=rating_params.beta)
-
-        print("=" * 50)
-        print(f"Question difficulty: mu={q.mu}, sigma={q.sigma}")
-        print(f"Effective skill BEFORE: mu={effective_skill.mu}, sigma={effective_skill.sigma}")
-        print(f"Updated effective skill: mu={updated.mu}, sigma={updated.sigma}")
-        print(f"Is correct: { bool(is_correct > 0)}, buzz_fraction: {buzz_fraction}")
-        print(f"Beta: {rating_params.beta}")
-
 
         # Throttle for not seeing a ton of questions
         cat_conf = min(1.0, category_skill.questions_seen / 20)

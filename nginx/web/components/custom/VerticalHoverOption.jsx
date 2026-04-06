@@ -20,7 +20,9 @@ export default function VerticalHoverOption ({
     description,
     color,
     icon,
+    bottom,
     href,
+    dark=false,
     style
 }) {
     const [isHovering, setIsHovering] = useState(false);
@@ -36,7 +38,7 @@ export default function VerticalHoverOption ({
     return (
         <GlassyView
             style={[styles.container, style]}
-            onPress={() => router.replace(href)}
+            onPress={href ? () => router.replace(href) : () => {}}
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}
             gradient={
@@ -46,6 +48,7 @@ export default function VerticalHoverOption ({
                     end: { x: 1, y: 1 },
                 }
             }
+            dark={dark}
         >
             <View style={ustyles.flex.flexColumnSpaceBetween}>
                 <View style={ustyles.flex.flexColumnCenterItems}>
@@ -58,9 +61,13 @@ export default function VerticalHoverOption ({
                         style={[ustyles.text.massive, {color: theme.onSurface}]}
                     >{title}</HelperText>
                 </View>
-
-
-                <HelperText style={styles.subtitle}>{description}</HelperText>
+                <HelperText style={[ustyles.text.shadowText, ustyles.text.text]}>{description}</HelperText>
+                {
+                    bottom &&
+                    <View>
+                        {bottom}
+                    </View>
+                }
             </View>
         </GlassyView>
     )
@@ -85,10 +92,4 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
     },
-    subtitle: {
-        color: theme.secondary,
-        textShadowColor: "rgba(0,0,0,0.5)",
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-    }
 })

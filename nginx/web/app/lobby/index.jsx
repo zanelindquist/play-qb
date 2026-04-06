@@ -267,7 +267,7 @@ export default function LobbyScreen() {
                 } else if (gameMode === "custom" && !isCreateCustom) {
                     send("clients_ready", {lobby_alias: customSettings.name})
                 } else {
-                    send("clients_ready", {})
+                    send("clients_ready", {lobby_alias: lobbyInfo.name || "solos"})
                 }
             })
 

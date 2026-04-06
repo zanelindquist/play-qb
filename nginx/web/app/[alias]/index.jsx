@@ -274,9 +274,7 @@ const Play = () => {
             })
 
             addEventListener("rank_changed", (change) => {
-                console.log("CHANGE", change.rank_change.rr_diff.toFixed(2))
-
-                scoreRef.current?.trigger(change.rank_change.rr_diff.toFixed(2))
+                scoreRef.current?.trigger(change?.rank_change.rr_diff.toFixed(2))
 
                 setMyRankInfo(change)
             })

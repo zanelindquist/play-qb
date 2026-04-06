@@ -87,3 +87,18 @@ RELATIONSHIP_DEPTHS_BY_ROUTE = {
     "db:stat": {"player": {"lobby": 0}},
     "db:question": {}
 }
+
+RATING_PARAMS = [
+    {"id": 1, "name": "beta", "value": 50, "description": "Standard deviation noise"},
+    {"id": 2, "name": "alpha", "value": 0.6, "description": "Proportion of mu delta that goes to global skill"},
+    {"id": 3, "name": "min_sigma", "value": 100, "description": "Lowest standard deviation a user can have"},
+    {"id": 4, "name": "initial_mu", "value": 1500, "description": None},
+    {"id": 5, "name": "initial_sigma", "value": 350, "description": None},
+    {"id": 6, "name": "time_penalty", "value": 2.25, "description": "Used in buzz_fraction ** tp to lessen weight of early wrong buzzes"},
+    {"id": 7, "name": "q_min_sigma", "value": 100, "description": None},
+    {"id": 8, "name": "q_initial_sigma", "value": 600, "description": None},
+    {"id": 9, "name": "max_mu_drop", "value": 3, "description": "Maximum skill mu drop from an incorrect question"},
+    {"id": 10, "name": "delta_split_weight", "value": 0.4, "description": None},
+    {"id": 11, "name": "scrape_offset", "value": 1000, "description": "Webscraper variable to track the question query scraping index"},
+    {"id": 13, "name": "scrape_index", "value": 691, "description": None},
+]

@@ -3,17 +3,22 @@ import { Platform, View, StyleSheet, Pressable, Animated } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 
+import theme from "@/assets/themes/theme";
+
 export default function GlassyView({
   children,
   style,
   intensity = 60,
   tint = "light",
   gradient = null, // { colors: [...], start: {x,y}, end: {x,y} }
+  dark=false,
   ...callbacks
 }) {
   const combined = [styles.glass, style];
   let component = null;
   const width = useRef(new Animated.Value(0))
+
+  if(dark && !gradient) gradient = { colors: theme.gradients.glassyDarkTint, start: { x: 1, y: 0 }, end: { x: 1, y: 1 }}
 
   function handleHoverIn() {
 
