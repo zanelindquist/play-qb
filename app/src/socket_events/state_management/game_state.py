@@ -53,7 +53,7 @@ game_template = {
     "question_count": 1,
     "total_rounds": 20,
     "users": {},
-    "question_state": "waiting",
+    "question_state": "dead",
 }
 
 def create_game_memory_instance(game_hash: str, settings: dict = {}) -> dict:
@@ -181,4 +181,9 @@ def pause_game(game_hash: str) -> dict:
 def resume_game(game_hash: str) -> dict:
     game = get_game(game_hash)
     game["question_state"] = "running"
+    return game
+
+def set_question_state(game_hash: str, state: str) -> dict:
+    game = get_game(game_hash)
+    game["question_state"] = state
     return game

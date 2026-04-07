@@ -380,6 +380,7 @@ const Play = () => {
     function handleQuestionDeath() {
         setBuzzer(null)
         setQuestionState("dead")
+        send("question_dead")
     }
 
     function addEvent(event, isQuestion) {

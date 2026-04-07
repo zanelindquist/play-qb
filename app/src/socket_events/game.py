@@ -390,6 +390,7 @@ def on_submit(data): # FinalAnswer
         if lobby == "ranked" and game_m.get("current_question"):
             ranked_on_next_question(game_m, emit)
 
+        game_mem.set_question_state(game_hash, "waiting")
         game_mem.next_question(new_question, game_hash)
 
         # Set this question as the game's DB question
@@ -409,6 +410,7 @@ def on_submit(data): # FinalAnswer
             {"user": user, "answer_content": final_answer, "timestamp": get_timestamp()},
             room=f"lobby:{lobby}"
         )
+        game_mem.set_question_state(game_hash, "running")
         
     elif is_correct == -1:
         increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
@@ -423,6 +425,7 @@ def on_submit(data): # FinalAnswer
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
+        game_mem.set_question_state(game_hash, "running")
 
 # PAUSING AND PLAYING THE GAME
 
@@ -539,6 +542,26 @@ def on_game_pause(data): # Empty
     game_mem.pause_game(game_hash)
 
     emit("game_paused", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
+
+# Occurs when the question waiting time expires
+@socketio.on("question_dead", namespace="/game")
+def on_question_dead(data):
+    lobby = request.environ.get("lobby")
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
+
+    game_mem.set_question_state(game_hash, "dead")
 
 # Occurs only when a player pauses the game
 @socketio.on("save_question", namespace="/game")
