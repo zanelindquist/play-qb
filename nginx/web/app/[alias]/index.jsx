@@ -128,6 +128,32 @@ const Play = () => {
                 // setLobby(lobby)
             })
 
+            addEventListener("game_state", ({lobby, game_state, timestamp}) => {
+                if (lobby && lobby.games?.[0]) {
+                    setLobby({...lobby})
+                }
+
+                if (game_state) {
+                    setQuestionState(game_state.question_state || "waiting")
+                    setSynctimestamp(timestamp || Date.now())
+
+                    if (game_state.current_question) {
+                        addEvent({ ...game_state.current_question, eventType: "question" }, true)
+                    }
+
+                    const activeInterrupt = game_state.question_interrupts?.find((interrupt) => !interrupt.end_timestamp)
+                    if (activeInterrupt) {
+                        setBuzzer({ current: activeInterrupt.user })
+                        addEvent({
+                            eventType: "interrupt",
+                            status: activeInterrupt.is_early ? "early" : "late",
+                            player: activeInterrupt.user,
+                            content: "",
+                        })
+                    }
+                }
+            })
+
             addEventListener("lobby_not_found", () => {
                 showAlert("The lobby you are trying to enter does not exist")
                 router.replace("/lobby?mode=solos")

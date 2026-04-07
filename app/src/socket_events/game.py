@@ -159,8 +159,24 @@ def on_join_lobby(data):
     # Attatch the user's ranked info
     skill = ranked.Skill(user.get("stats").get("skill_mu"), user.get("stats").get("skill_sigma"))
     user["rank"] = ranked.get_rank(skill).to_dict()
-    
+
+    # Send the joiner their own user object and the current game state
     emit("you_joined", {"user": user})
+    emit(
+        "game_state",
+        {
+            "user": user,
+            "lobby": lobby_data,
+            "timestamp": get_timestamp(),
+            "game_state": {
+                "current_question": mem_game.get("current_question"),
+                "question_state": mem_game.get("question_state"),
+                "question_interrupts": mem_game.get("question_interrupts"),
+                "question_count": mem_game.get("question_count"),
+                "total_rounds": mem_game.get("total_rounds"),
+            },
+        }
+    )
     
     emit("player_joined", {"user": user, "lobby": lobby_data}, room=f"lobby:{lobby}")
 
@@ -430,9 +446,11 @@ def on_next_question(data):
     game_m = game_mem.get_game(game_hash)
     lobby_data = get_lobby_by_alias(lobby)
 
-    # TODO: See if player has authority to skip question
-    # if not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
-    #     return;
+    print(game_m.get("question_state"), lobby_data.get("allow_question_skip"), lobby_data.get("creator").get("hash"), user_hash)
+
+    # To skip, the lobby must allow skips, or the user is the owner, or the question state is dead
+    if game_m.get("question_state") != "dead" and not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
+        return;
 
     # Increment buzzes_encountered
     result = increment_score_attribute(game_hash, "questions_encountered")
