@@ -103,7 +103,7 @@ const Play = () => {
 
             switch(e.code) {
                 case "Space":
-                    if(buzzer || questionStateRef.current == "dead") return; 
+                    if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return; 
                     // Buzz logic
                     onBuzz()
                 break;
@@ -229,11 +229,12 @@ const Play = () => {
             })
 
             addEventListener("game_paused", ({user}) => {
-                
+                setQuestionState("paused")
             })
 
             addEventListener("game_resumed", ({user, timestamp}) => {
                 setSynctimestamp(timestamp)
+                setQuestionState("running")
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
@@ -301,7 +302,7 @@ const Play = () => {
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        if(buzzer || questionStateRef.current == "dead") return;
+        if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return;
         send("buzz", {timestamp: Date.now(), after_character: charIndexRef.current})
     }
 
@@ -324,12 +325,11 @@ const Play = () => {
     }
 
     function handleGamePause() {
-        scoreRef.current?.trigger(15);
-
+        send("game_pause")
     }
 
     function onGameResume() {
-        
+        send("game_resume")
     }
 
     function handleInputChange(text) {
@@ -611,7 +611,8 @@ const Play = () => {
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
-                    {/* <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton> */}
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
+                    <GlassyButton style={styles.exitButton} mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend

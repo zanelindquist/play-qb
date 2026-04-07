@@ -466,23 +466,55 @@ def on_game_resume(): # Empty
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     user = get_user_by_hash(user_hash)
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # Check if user can resume (creator or admin)
+    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
+        return
+
+    game_mem.resume_game(game_hash)
 
     emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("game_pause", namespace="/game")
-def on_game_pause(): # Empty
+def on_game_pause(data): # Empty
     lobby = request.environ.get("lobby")
     user_hash = request.environ.get("user_hash")
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     user = get_user_by_hash(user_hash)
+    lobby_data = get_lobby_by_alias(lobby)
 
-    emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
+    # Check if user can pause (creator or admin)
+    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
+        return
+
+    game_mem.pause_game(game_hash)
+
+    emit("game_paused", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("save_question", namespace="/game")
