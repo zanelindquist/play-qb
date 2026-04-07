@@ -79,11 +79,13 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+        width: "100%",
+        maxWidth: 425,
         gap: 10,
         margin: 20
     },
     box: {
-        width: 60,
+        flex: 1,
         height: 80,
         borderWidth: 3,
         borderColor: theme.elevation.level2,

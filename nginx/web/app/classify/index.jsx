@@ -95,9 +95,10 @@ export default function Classify() {
                     <HelperText style={styles.answer}>{question?.answers.main}</HelperText>
                     <View style={styles.categories}>
                     {
-                        CATEGORIES.map((c) => 
+                        CATEGORIES.map((c, i) => 
                             <HelperText
                                 style={styles.category}
+                                key={i}
                                 onPress={() => submitQuestion(question.hash, c)}
                             >
                                 {c}

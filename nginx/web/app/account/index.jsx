@@ -156,6 +156,7 @@ export default function AccountPage() {
                                     <Pressable
                                         style={[styles.lobbyContainer, i === 0 && {borderWidth: 0}, selectedLobby === i && styles.selectedLobby]}
                                         onPress={() => handleSelectPressed(i)}
+                                        key={i}
                                     >
                                         <HelperText style={styles.lobbyAlias}>{lobby.name}</HelperText>
                                         <View style={styles.playersOnlineContainer}>

@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Dimensions,
   Image,
-  Pressable
+  Pressable,
+  useWindowDimensions
 } from 'react-native';
 
 import { DatePickerInput } from 'react-native-paper-dates';
@@ -32,9 +33,6 @@ import ustyles from '../../assets/styles/ustyles.js';
 import VerificationCode from '../../components/custom/VerificationCode.jsx';
 import { detectCurseWords } from '../../utils/text.js';
 
-let { width, height } = Dimensions.get("window");
-let isMobile = width <= 768; // Adjust breakpoint as needed
-
 
 const SignUp = () => {
     const params = useLocalSearchParams()
@@ -43,6 +41,8 @@ const SignUp = () => {
     const {showBanner} = useBanner()
     const {login} = useAuth()
     const {promptAsync, disabled, request} = useGoogleAuth(true, handleAccountCreation)
+    const { width } = useWindowDimensions();
+    const isMobile = width <= 768;
     
     const [createWithGoogle, setCreateWithGoogle] = useState(false)
 
@@ -62,11 +62,14 @@ const SignUp = () => {
     const [username, setUsername] = useState("")
     const [phoneNumber, setPhoneNumber] = useState("");
 
-    const translateX = useRef(new Animated.Value(width/2)).current;
+    const translateX = useRef(new Animated.Value(width)).current;
 
     useEffect(() => {
-        if(params.verify === "true") goToPhase(3)
-    }, [])
+        if(params.verify === "true") {
+            // Set initial position to phase 3
+            translateX.setValue(-width);
+        }
+    }, [width])
 
     // Data entry useEffects
     // Validate password as we type
@@ -182,17 +185,20 @@ const SignUp = () => {
             }
         }
 
+        // Calculate target position based on current screen width
+        const targetX = -width * (phase - 2);
+
         Animated.timing(translateX, {
-            toValue: -width/2 * (phase > 2 ? 3 : 1), // Don't touch it, it works :)
+            toValue: targetX,
             duration: 250,
             useNativeDriver: true,
         }).start();
     };
     function goToPreviousPhase() {
         Animated.timing(translateX, {
-        toValue: width/2, // Slide back to the first phase
-        duration: 500,
-        useNativeDriver: true,
+            toValue: translateX._value + width, // Move right by one screen width
+            duration: 500,
+            useNativeDriver: true,
         }).start();
     };
 
@@ -329,7 +335,7 @@ const SignUp = () => {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { overflowX: 'hidden' }]}>
             <View style={styles.bg} >
                 <Video
                     source={{uri: "/videos/Earth.mp4"}}
@@ -343,12 +349,12 @@ const SignUp = () => {
             <Animated.View
                 style={[
                     styles.animatedContainer,
-                    { transform: [{ translateX }] },
+                    { transform: [{ translateX }], width: width * 3, overflowX: 'hidden' },
                 ]}
             >
                 {/* Phase 1: Login info */}
-                <View style={styles.page}>
-                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                <View style={[styles.page, { width }]}>
+                        <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer, { width: isMobile ? width * 0.95 : Math.min(width * 0.8, 600) }]}>
                         <HelperText style={[styles.header, styles.textShadow]}>Create Account</HelperText>
                         <TextInput
                             style={styles.input}
@@ -426,8 +432,8 @@ const SignUp = () => {
                 </View>
                 
                 {/* Phase 2: Choose username */}
-                <View style={styles.page}>
-                    <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}>
+                <View style={[styles.page, { width }]}>
+                        <GlassyView style={[styles.phaseContainer, isMobile && mstyles.phaseContainer, { width: isMobile ? width * 0.95 : Math.min(width * 0.8, 600) }]}>
                         <HelperText style={[styles.header, styles.textShadow]}>Select A Username</HelperText>
                         <TextInput
                             style={styles.input}
@@ -472,9 +478,9 @@ const SignUp = () => {
                 </View>
 
                 {/* Phase 3: Verify email */}
-                <View style={styles.page}>
+                <View style={[styles.page, { width }]}>
                     <GlassyView
-                        style={[styles.phaseContainer, isMobile && mstyles.phaseContainer]}
+                        style={[styles.phaseContainer, isMobile && mstyles.phaseContainer, { width: isMobile ? width * 0.95 : Math.min(width * 0.8, 600) }]}
                         gradient={
                         {
                             colors: theme.gradients.questionTint,
@@ -544,6 +550,7 @@ const SignUp = () => {
                             rippleColor={theme.primary}
                             onPress={goToPreviousPhase}
                             style={styles.nextButton}
+                            disabled={params.verify !== "true"}
                         >
                             Back
                         </Button>
@@ -561,6 +568,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: theme.background,
+        overflowX: 'hidden',
     },
     bg: {
         ...StyleSheet.absoluteFillObject,
@@ -569,11 +577,8 @@ const styles = StyleSheet.create({
     animatedContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginLeft: width,
-        width: width * 3, // three pages
     },
     page: {
-        width: width,
         alignItems: "center",
         justifyContent: "center",
     },
@@ -581,9 +586,8 @@ const styles = StyleSheet.create({
         flexDirection: "column",
         gap: 10,
         alignItems: "center",
-        width: width / 2,
-        minWidth: 600,
-        maxWidth: 1000,
+        minWidth: 300,
+        maxWidth: 600,
     },
     header: {
         fontSize: 24,
@@ -640,10 +644,14 @@ const styles = StyleSheet.create({
 
 const mstyles = StyleSheet.create({
     phaseContainer: {
-        margin: 10,
+        marginHorizontal: 5,
+        marginVertical: 10,
+        paddingHorizontal: 15,
+        paddingVertical: 15,
+        gap: 8,
     },
     nextButton: {
-        marginTop: 30,
+        marginTop: 20,
     }
 })
 

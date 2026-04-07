@@ -41,8 +41,6 @@ export default function Stat ({
             , ustyle.modals.floatingModal
         )
     }
-
-    console.log(value, typeof(value))
     
     return (
         <Pressable
