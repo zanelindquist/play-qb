@@ -8,13 +8,16 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
-    Image
+    Image,
+    TextInput,
+    Text
 } from 'react-native';
 import Video from "react-native-video";
 import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
 import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAlert } from "../../utils/alerts.jsx";
 import { useSocket } from "../../utils/socket.jsx";
+import { detectCurseWords } from "../../utils/text.js";
 
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx"
@@ -29,6 +32,7 @@ import theme from "../../assets/themes/theme.js";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
+import ChatMessage from "../../components/game/ChatMessage.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
 import ustyles from "../../assets/styles/ustyles.js";
 import GradientFlair from "../../components/custom/GradientFlair.jsx";
@@ -68,6 +72,9 @@ const Play = () => {
     const [synctimestamp, setSynctimestamp] = useState(0)
     const charIndexRef = useRef(0)
     const [lastAnswerStatus, setLastAnswerStatus] = useState(null)
+
+    // Refs
+    const answerInputRef = useRef(null);
 
     // Lobby state
     const [lobby, setLobby] = useState(null)
@@ -109,6 +116,13 @@ const Play = () => {
                 break;
                 case "KeyJ":
                     onNextQuestion();
+                break;
+                case "Enter":
+                    // If not buzzing (in chat mode), focus the input
+                    if (!buzzer?.current?.id) {
+                        e.preventDefault();
+                        answerInputRef.current?.focus();
+                    }
                 break;
             }
         }
@@ -198,6 +212,15 @@ const Play = () => {
             addEventListener("player_typing", ({answer_content, user}) => {
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
                 setInterruptData("content", answer_content)
+            })
+
+            addEventListener("chat_message", ({user, message, timestamp}) => {
+                addEvent({
+                    eventType: "chat",
+                    user,
+                    message,
+                    timestamp
+                }, false)
             })
 
             addEventListener("question_resume", ({user, final_answer, scores, is_correct, timestamp}) => {
@@ -334,17 +357,33 @@ const Play = () => {
     }
 
     function onTyping(text) {
-        send("typing", {content: text})
+        // Only send typing updates when buzzing
+        if (buzzer?.current?.id === myUser?.id) {
+            send("typing", {content: text})
+        }
     }
 
     function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {final_answer: text})
+        // If user is buzzing, submit answer; otherwise submit chat
+        if (buzzer?.current?.id === myUser?.id) {
+            send("submit", {final_answer: text})
+        } else {
+            const message = text.trim()
+            if (!message || message.length > 100) return
+            if (detectCurseWords(message)) {
+                showAlert("Message contains inappropriate content")
+                return
+            }
+            send("send_chat", { message })
+        }
     }
 
     function onNextQuestion() {
         send("next_question")
     }
+
+
 
     // I don't think I actually need this
     function onQuestionResume() {
@@ -394,13 +433,16 @@ const Play = () => {
                 return [event, ...prev]
             })
         }
-        // If it not a question, we want to put it second in the stack
+        // If it not a question, we want to put it second in the stack (or first if no question exists)
         else {
-            setAllEvents((prev) => [
-                prev[0],
-                event,
-                ...prev.slice(1)
-            ])
+            setAllEvents((prev) => {
+                if(prev.length === 0) return [event]
+                return [
+                    prev[0],
+                    event,
+                    ...prev.slice(1)
+                ]
+            })
         }
     }
 
@@ -546,15 +588,14 @@ const Play = () => {
                             rankInfo={myRankInfo || myUser}
                         />   
                     }
-                    {
-                        (buzzer?.current?.id == myUser?.id || !isMobile) &&
-                        <AnswerInput
-                            onChange={handleInputChange}
-                            onSubmit={onSubmit}
-                            disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
-                            lastAnswer={isMobile && lastAnswerStatus}
-                        ></AnswerInput> 
-                    }
+                    <AnswerInput
+                        ref={answerInputRef}
+                        onChange={handleInputChange}
+                        onSubmit={onSubmit}
+                        disabled={false}
+                        lastAnswer={isMobile && lastAnswerStatus}
+                        isChatMode={!buzzer?.current?.id}
+                    ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
@@ -589,6 +630,15 @@ const Play = () => {
                                 case "player_disconnected":
                                     return (
                                         <PlayerDisconnected event={e} key={`pd:${i}`}/>
+                                    )
+                                case "chat":
+                                    return (
+                                        <ChatMessage
+                                            key={`c:${e.timestamp}`}
+                                            user={e.user}
+                                            message={e.message}
+                                            timestamp={e.timestamp}
+                                        />
                                     )
                                 default:
 

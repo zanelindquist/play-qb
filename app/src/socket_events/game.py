@@ -584,7 +584,26 @@ def on_save_question(data): # Question hash
 
     emit("saved_question", {"question": question, "result": result})
 
+@socketio.on("send_chat", namespace="/game")
+def on_send_chat(data):
+    lobby = request.environ.get("lobby")
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
+    if not lobby:
+        emit("reconnect")
+        return
+
+    message = data.get("message", "").strip()
+    if not message or len(message) > 100:
+        return  # Ignore empty or too long messages
+
+    user = get_user_by_hash(user_hash)
+
+    # Broadcast the chat message
+    emit("chat_message", {"user": user, "message": message, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():
