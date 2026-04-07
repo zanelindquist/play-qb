@@ -460,13 +460,15 @@ def on_next_question(data):
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume", namespace="/game")
-def on_game_resume(): # Empty
+def on_game_resume(data): # Empty
     lobby = request.environ.get("lobby")
     user_hash = request.environ.get("user_hash")
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return;
     game_hash = request.environ.get("game_hash")
+
+    print("RECEIVED GAME RESUME", game_hash, lobby)
 
     if not game_hash:
         emit("return_to_lobby")
@@ -479,11 +481,15 @@ def on_game_resume(): # Empty
     user = get_user_by_hash(user_hash)
     lobby_data = get_lobby_by_alias(lobby)
 
+    print("USER, LOBBY", user, lobby_data)
+
     # Check if user can resume (creator or admin)
     if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
         return
 
     game_mem.resume_game(game_hash)
+
+    print("GAME RESUMED")
 
     emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 

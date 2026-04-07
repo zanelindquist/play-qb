@@ -233,6 +233,7 @@ const Play = () => {
             })
 
             addEventListener("game_resumed", ({user, timestamp}) => {
+                console.log("RESUME")
                 setSynctimestamp(timestamp)
                 setQuestionState("running")
             })
@@ -464,6 +465,8 @@ const Play = () => {
                             <HelperText>Lobby or lobby.games undefined</HelperText>
                         </GlassyView>
                     }
+                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
+                    <GlassyButton mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     <GameSettings
                         columns={1}
@@ -611,8 +614,8 @@ const Play = () => {
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
-                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
-                    <GlassyButton style={styles.exitButton} mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
+                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
+                    <GlassyButton style={styles.resumeButton} mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
@@ -702,6 +705,12 @@ const styles = StyleSheet.create({
     },
     buzzButton: {
         // backgroundImage: theme.gradients.buttonWhite
+    },
+    pauseButton: {
+        backgroundImage: theme.gradients.questionTint
+    },
+    resumeButton: {
+        backgroundImage: theme.gradients.backgroundTint
     },
     exitButton: {
         backgroundImage: theme.gradients.buttonRed
