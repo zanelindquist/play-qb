@@ -1,4 +1,5 @@
-# Component: ChatMessage
+# Component: \<ChatMessage/>
+Created in 001-game-text-chat.md
 
 ## Summary
 Component for displaying chat messages in both the /game chat and in lobby chat.

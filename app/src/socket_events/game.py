@@ -13,6 +13,7 @@ from src.db.utils import *
 from .constructor import socketio
 from .lobby import *
 import src.socket_events.state_management.game_state as game_mem
+from src.services.leaderboard import leaderboard_cache
 
 def get_timestamp():
     return int(time.time() * 1000)
@@ -162,6 +163,20 @@ def on_join_lobby(data):
 
     # Send the joiner their own user object and the current game state
     emit("you_joined", {"user": user})
+    
+    # For ranked games, emit leaderboard info
+    if lobby == "ranked":
+        try:
+            leaderboard_data = leaderboard_cache.get_leaderboard(
+                category="global",
+                limit=5,  # Send top 5 for in-game display
+                include_user_rank=True,
+                user_hash=user_hash
+            )
+            emit("leaderboard_snapshot", leaderboard_data)
+        except Exception as e:
+            print(f"Error emitting leaderboard snapshot: {e}")
+    
     emit(
         "game_state",
         {
@@ -352,6 +367,18 @@ def on_submit(data): # FinalAnswer
         # If the user got the question correct, then let's give them a rank changed event
         if is_correct:
             emit("rank_changed", rank_change_information)
+            
+            # Also emit updated leaderboard for this user
+            try:
+                leaderboard_data = leaderboard_cache.get_leaderboard(
+                    category="global",
+                    limit=5,
+                    include_user_rank=True,
+                    user_hash=user_hash
+                )
+                emit("leaderboard_update", leaderboard_data, room=f"user:{user_hash}")
+            except Exception as e:
+                print(f"Error emitting leaderboard update: {e}")
 
     if is_correct == 1:
         increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))

@@ -39,6 +39,7 @@ import GradientFlair from "../../components/custom/GradientFlair.jsx";
 import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
+import LiveLeaderboard from "../../components/leaderboard/LiveLeaderboard.jsx";
 import Beta from "../../components/custom/Beta.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import { useFocusEffect } from "@react-navigation/native";
@@ -80,6 +81,7 @@ const Play = () => {
     const [lobby, setLobby] = useState(null)
     const [showSettings, setShowSettings] = useState(true)
     const [myRankInfo, setMyRankInfo] = useState(null)
+    const [leaderboardData, setLeaderboardData] = useState(null)
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
     
@@ -323,6 +325,14 @@ const Play = () => {
                 scoreRef.current?.trigger(change?.rank_change.rr_diff.toFixed(2))
 
                 setMyRankInfo(change)
+            })
+
+            addEventListener("leaderboard_snapshot", (data) => {
+                setLeaderboardData(data)
+            })
+
+            addEventListener("leaderboard_update", (data) => {
+                setLeaderboardData(data)
             })
 
             // Now that the listners are registered, we are ready to join the lobby
@@ -674,9 +684,11 @@ const Play = () => {
                                 {alias}
                                 <Beta />
                             </HelperText>
-                            {/* <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText> */}
-                            <RankUser user={myUser}/>
-                            {/* <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText> */}
+                            {leaderboardData ? (
+                                <LiveLeaderboard leaderboardData={leaderboardData} />
+                            ) : (
+                                <RankUser user={myUser} />
+                            )}
                         </>
                     }
                     {

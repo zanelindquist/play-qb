@@ -1,4 +1,5 @@
-# Component: <ComponentName>
+# Component: \<ComponentName>
+Created in \<file>.md
 
 ## Summary
 Brief description of what this component does and where it is used.
@@ -61,6 +62,13 @@ Example:
 - Payload:
 - When it is called:
 
+---
+
+## Auxiliary Components
+
+| Name | Implementation | Exists | Description |
+|------|--------|-----|-------------|
+| GlassyView | Container | yes | Provides a clean base for housing content |
 ---
 
 ## Dependencies
