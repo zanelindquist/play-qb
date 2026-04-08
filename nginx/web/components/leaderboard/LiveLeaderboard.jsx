@@ -60,13 +60,30 @@ export default function LiveLeaderboard({ leaderboardData, style }) {
         );
     }
 
-    const topUsers = (displayData.users || []).slice().sort((a, b) => a.rank - b.rank).slice(0, 3);
     const userRank = displayData.user_rank;
     const percentile = displayData.percentile;
+    const totalUsers = displayData.total_users || 0;
+    const allUsers = (displayData.users || []).slice().sort((a, b) => a.rank - b.rank);
 
-    // Determine if we should show user separately or if they're in top 3
-    const userInTopRanks = userRank && userRank.rank <= 3;
-    const otherTopUsers = topUsers.filter(u => !userInTopRanks || u.rank !== userRank.rank);
+    // Determine neighbors based on user rank position
+    let displayedUsers = [];
+    if (userRank && allUsers.length > 0) {
+        const userPos = userRank.rank;
+        const totalRanked = totalUsers || allUsers.length;
+        
+        if (totalRanked <= 3) {
+            displayedUsers = allUsers;
+        } else if (userPos === 1) {
+            displayedUsers = allUsers.filter((u) => u.rank <= 3);
+        } else if (userPos === totalRanked) {
+            displayedUsers = allUsers.filter((u) => u.rank >= totalRanked - 2);
+        } else if (userPos === 2) {
+            displayedUsers = allUsers.filter((u) => u.rank <= 3);
+        } else {
+            displayedUsers = allUsers.filter((u) => u.rank >= userPos - 1 && u.rank <= userPos + 1);
+        }
+    }
+    displayedUsers = displayedUsers.sort((a, b) => a.rank - b.rank);
 
     return (
         <GlassyView style={[styles.container, style]}>
@@ -83,25 +100,14 @@ export default function LiveLeaderboard({ leaderboardData, style }) {
 
             <Divider style={styles.divider} />
 
-            <ScrollView style={styles.leaderboardScroll} showsVerticalScrollIndicator={false}>
-                {/* Top 3 players */}
-                {otherTopUsers.map((user) => renderLeaderboardRow(user))}
-
-                {/* User's rank (if not in top 3) */}
-                {userRank && !userInTopRanks && (
-                    <>
-                        <View style={styles.gapContainer}>
-                            <Text style={[ustyles.text.body, { color: theme.onSurfaceVariant }]}>
-                                ... ({userRank.rank} other)
-                            </Text>
-                        </View>
-                        {renderLeaderboardRow(userRank, true)}
-                    </>
-                )}
-
-                {/* User's rank (if in top 3) */}
-                {userRank && userInTopRanks && renderLeaderboardRow(userRank, true)}
-            </ScrollView>
+            <View style={styles.content}>
+                {/* Leaderboard Column */}
+                <View style={styles.leaderboardColumn}>
+                    {displayedUsers.map((user) => 
+                        renderLeaderboardRow(user, userRank && user.rank === userRank.rank)
+                    )}
+                </View>
+            </View>
         </GlassyView>
     );
 }
@@ -119,8 +125,9 @@ const styles = StyleSheet.create({
     divider: {
         marginVertical: 8,
     },
-    leaderboardScroll: {
+    content: {
         flex: 1,
+        justifyContent: "center",
     },
     leaderboardRow: {
         flexDirection: "row",
@@ -145,11 +152,5 @@ const styles = StyleSheet.create({
         justifyContent: "flex-end",
         alignItems: "flex-end",
         paddingRight: 6,
-    },
-    gapContainer: {
-        justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: 10,
-        opacity: 0.6,
     },
 });

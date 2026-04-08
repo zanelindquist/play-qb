@@ -40,8 +40,6 @@ This component is used in ranked modes to track the user's live rank. It should 
 
 ## Rendering Logic
 
-- What is conditionally rendered?
-    - If the user chooses the dropdown to show more ranked information, show that info. Use an \<ExpandableView/> component as the component's wrapper for this
 - What changes based on props/state?
     - The user's position will change based on the passed leaderboard dict
 
@@ -80,13 +78,16 @@ This component is used in ranked modes to track the user's live rank. It should 
 ## Styling
 
 - Use ustyles.flex templates where possible
-- Render the 5 users around this user
+- Render the 2 users around this user
+    - Normally, sandwich the user, but if the user is #1, render the 2 users below
+    - Similarly, if the user is last, render 2 users above
 - Component should be in a vertical manner:
     - Small "leaderboard" title at the top
     - Leaderboard at the top consisting of ranked rows seperated by thin lines that don't extend all the way across the component
     - Small dropdown at the bottom to render additional ranked information
         - Name, RR, act (in the future), etc
-    
+
+- ***Unimplemented*** On the right of the whole component, include a little vertical line sidebard with dots that indicate percentil milestones maybe and show where a user's position is in the grand scheme of things
 
 ---
 

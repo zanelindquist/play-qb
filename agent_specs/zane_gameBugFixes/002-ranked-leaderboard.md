@@ -46,12 +46,14 @@ More Quiz Bowl needs a global leaderboard based upon ranked skill. RR is defined
 
 ### New Components
 - LiveLeaderboard -> ./LiveLeaderboard.md
+  - This leaderboard data should be of the type relative, and only show the player above and below the employee
 - RankedLeaderboard -> ./RankedLeaderboard.md
 
 ### Modifications
 - Component
   - Modiy props
   - New behavior
+
 ---
 
 ## Data Model
