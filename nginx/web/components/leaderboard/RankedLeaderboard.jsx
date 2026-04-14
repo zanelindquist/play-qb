@@ -6,17 +6,7 @@ import GlassyButton from "../custom/GlassyButton";
 import theme from "../../assets/themes/theme";
 import ustyles from "../../assets/styles/ustyles";
 import { getProtectedRoute } from "../../utils/requests";
-
-const RANK_COLORS = {
-    "Dirt I": "#8A6837", "Dirt II": "#7A5B30", "Dirt III": "#6B4F2A",
-    "Plastic I": "#8EA1B1", "Plastic II": "#7E909F", "Plastic III": "#6E7F8D",
-    "Tin I": "#B3B3B3", "Tin II": "#A0A0A0", "Tin III": "#8E8E8E",
-    "Bronze I": "#BF7A39", "Bronze II": "#A66A32", "Bronze III": "#8C5A2B",
-    "Silver I": "#C9D2DB", "Silver II": "#B4BCC4", "Silver III": "#9FA6AD",
-    "Gold I": "#F5CD30", "Gold II": "#E0B82C", "Gold III": "#C9A227",
-    "Diamond I": "#5FE6F7", "Diamond II": "#4ED0E0", "Diamond III": "#3FB8C6",
-    "Immortal I": "#CB8AFF", "Immortal II": "#B86BFF", "Immortal III": "#A64DFF"
-};
+import { RANK_COLORS } from "../../utils/constants";
 
 export default function RankedLeaderboard({ category = "global", style, onLeaderboardLoaded, showUserRow = true }) {
     const [leaderboard, setLeaderboard] = useState(null);
@@ -149,7 +139,7 @@ export default function RankedLeaderboard({ category = "global", style, onLeader
                 </HelperText>
                 {percentile !== null && percentile !== undefined && (
                     <HelperText style={[ustyles.text.body, { color: theme.onSurfaceVariant }]}>
-                        Top {Math.ceil(100 - percentile)}%
+                        Top {Math.ceil(percentile)}%
                     </HelperText>
                 )}
             </View>
@@ -181,7 +171,7 @@ export default function RankedLeaderboard({ category = "global", style, onLeader
                             <View style={styles.percentileContainer}>
                                 <Icon size={20} source="medal" color={theme.static.correct} />
                                 <HelperText style={[ustyles.text.body, { color: theme.onSurface, marginLeft: 8 }]}>
-                                    You're in the top {Math.ceil(100 - percentile)}% of players
+                                    You're in the top {Math.ceil(percentile)}% of players
                                 </HelperText>
                             </View>
                         )}

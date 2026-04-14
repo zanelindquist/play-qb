@@ -378,19 +378,43 @@ const Play = () => {
         // If user is buzzing, submit answer; otherwise submit chat
         if (buzzer?.current?.id === myUser?.id) {
             send("submit", {final_answer: text})
+            return true
         } else {
             const message = text.trim()
-            if (!message || message.length > 100) return
+            if (!message) return false
+            if (message.length > 100) {
+                showAlert("Message is too long. Please shorten it to 100 characters or fewer.")
+                return false
+            }
             if (detectCurseWords(message)) {
                 showAlert("Message contains inappropriate content")
-                return
+                return false
             }
             send("send_chat", { message })
+            return true
         }
     }
 
     function onNextQuestion() {
         send("next_question")
+    }
+
+    function renderRankedSection() {
+        if (alias !== "ranked") return null
+
+        return (
+            <>
+                <HelperText style={[ustyles.text.header]}>
+                    {alias}
+                    <Beta />
+                </HelperText>
+                {leaderboardData ? (
+                    <LiveLeaderboard leaderboardData={leaderboardData} />
+                ) : (
+                    <RankUser user={myUser} />
+                )}
+            </>
+        )
     }
 
 
@@ -547,6 +571,7 @@ const Play = () => {
                     <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
                     <GlassyButton mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    {renderRankedSection()}
                     <GameSettings
                         columns={1}
                         defaultInfo={lobby}
@@ -676,21 +701,7 @@ const Play = () => {
                 {
                 !isMobile &&
                 <View style={styles.optionsContainer}>
-                    {
-                        // TODO: Tell if its ranked
-                        alias == "ranked" &&
-                        <>
-                            <HelperText style={[ustyles.text.header]}>
-                                {alias}
-                                <Beta />
-                            </HelperText>
-                            {leaderboardData ? (
-                                <LiveLeaderboard leaderboardData={leaderboardData} />
-                            ) : (
-                                <RankUser user={myUser} />
-                            )}
-                        </>
-                    }
+                    {renderRankedSection()}
                     {
                         myUser?.username === "admin" &&
                         <GameRule

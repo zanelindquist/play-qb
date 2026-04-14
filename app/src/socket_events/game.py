@@ -476,8 +476,6 @@ def on_next_question(data):
     game_m = game_mem.get_game(game_hash)
     lobby_data = get_lobby_by_alias(lobby)
 
-    print(game_m.get("question_state"), lobby_data.get("allow_question_skip"), lobby_data.get("creator").get("hash"), user_hash)
-
     # To skip, the lobby must allow skips, or the user is the owner, or the question state is dead
     if game_m.get("question_state") != "dead" and not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
         return;
@@ -516,8 +514,6 @@ def on_game_resume(data): # Empty
         return;
     game_hash = request.environ.get("game_hash")
 
-    print("RECEIVED GAME RESUME", game_hash, lobby)
-
     if not game_hash:
         emit("return_to_lobby")
         return;
@@ -529,15 +525,11 @@ def on_game_resume(data): # Empty
     user = get_user_by_hash(user_hash)
     lobby_data = get_lobby_by_alias(lobby)
 
-    print("USER, LOBBY", user, lobby_data)
-
     # Check if user can resume (creator or admin)
     if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
         return
 
     game_mem.resume_game(game_hash)
-
-    print("GAME RESUMED")
 
     emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
@@ -563,7 +555,7 @@ def on_game_pause(data): # Empty
     lobby_data = get_lobby_by_alias(lobby)
 
     # Check if user can pause (creator or admin)
-    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
+    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id") and not lobby_data.get("allow_question_pause"):
         return
 
     game_mem.pause_game(game_hash)

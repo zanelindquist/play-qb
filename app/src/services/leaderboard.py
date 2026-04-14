@@ -30,6 +30,25 @@ class LeaderboardCache:
     """
     In-memory cache for leaderboards.
     Stores top N users by category, refreshed on rank changes.
+
+    UML diagram:
+
+    ```mermaid
+    classDiagram
+        class LeaderboardCache {
+            +int DEFAULT_LIMIT
+            +int CACHE_SIZE
+            +dict cache
+            +dict last_updated
+            +int cache_ttl
+            +__init__()
+            +get_leaderboard(category, limit, offset, include_user_rank, user_hash)
+            +refresh_cache(category)
+            +invalidate_cache(category)
+            +_is_cache_valid(category)
+            +_get_user_rank(category, user_hash)
+        }
+    ```
     """
     
     # Cache configuration

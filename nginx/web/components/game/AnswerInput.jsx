@@ -30,10 +30,12 @@ export default forwardRef(function AnswerInput ({ style, disabled, visible=true,
         setValue(text)
     }
     
-    const handleSubmit = (e) => {
-        setValue("")
-        onSubmit(e.nativeEvent.text)
-        setHasSubmitted(true)
+    const handleSubmit = async (e) => {
+        const accepted = await onSubmit(e.nativeEvent.text)
+        if (accepted !== false) {
+            setValue("")
+            setHasSubmitted(true)
+        }
     }
 
     useEffect(() => {

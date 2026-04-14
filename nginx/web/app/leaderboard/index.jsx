@@ -16,20 +16,7 @@ import ustyles from "../../assets/styles/ustyles.js";
 import { useBanner } from "../../utils/banners.jsx";
 import { useAlert } from "../../utils/alerts.jsx";
 import { getProtectedRoute } from "../../utils/requests.jsx";
-
-const CATEGORIES = [
-    { id: "global", title: "Global" },
-    { id: "science", title: "Science" },
-    { id: "history", title: "History" },
-    { id: "literature", title: "Literature" },
-    { id: "social science", title: "Social Science" },
-    { id: "philosophy", title: "Philosophy" },
-    { id: "religion", title: "Religion" },
-    { id: "mythology", title: "Mythology" },
-    { id: "geography", title: "Geography" },
-    { id: "current events", title: "Current Events" },
-    { id: "fine arts", title: "Fine Arts" },
-];
+import { CATEGORIES } from "../../utils/constants.js";
 
 
 export default function LeaderboardPage() {

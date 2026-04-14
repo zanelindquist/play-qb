@@ -42,7 +42,7 @@ export default function RankedUser({ data, category = "global" }) {
             {percentile !== null && percentile !== undefined && (
                 <View style={styles.percentileRow}>
                     <Icon source="medal" size={18} color={theme.static.correct} />
-                    <HelperText style={[ustyles.text.body, { color: theme.onSurface, marginLeft: 8 }]}>Top {Math.ceil(100 - percentile)}%</HelperText>
+                    <HelperText style={[ustyles.text.body, { color: theme.onSurface, marginLeft: 8 }]}>Top {Math.ceil(percentile)}%</HelperText>
                 </View>
             )}
         </GlassyView>
