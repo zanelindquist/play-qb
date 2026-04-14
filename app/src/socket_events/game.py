@@ -13,6 +13,7 @@ from src.db.utils import *
 from .constructor import socketio
 from .lobby import *
 import src.socket_events.state_management.game_state as game_mem
+from src.services.leaderboard import leaderboard_cache
 
 def get_timestamp():
     return int(time.time() * 1000)
@@ -159,8 +160,38 @@ def on_join_lobby(data):
     # Attatch the user's ranked info
     skill = ranked.Skill(user.get("stats").get("skill_mu"), user.get("stats").get("skill_sigma"))
     user["rank"] = ranked.get_rank(skill).to_dict()
-    
+
+    # Send the joiner their own user object and the current game state
     emit("you_joined", {"user": user})
+    
+    # For ranked games, emit leaderboard info
+    if lobby == "ranked":
+        try:
+            leaderboard_data = leaderboard_cache.get_leaderboard(
+                category="global",
+                limit=5,  # Send top 5 for in-game display
+                include_user_rank=True,
+                user_hash=user_hash
+            )
+            emit("leaderboard_snapshot", leaderboard_data)
+        except Exception as e:
+            print(f"Error emitting leaderboard snapshot: {e}")
+    
+    emit(
+        "game_state",
+        {
+            "user": user,
+            "lobby": lobby_data,
+            "timestamp": get_timestamp(),
+            "game_state": {
+                "current_question": mem_game.get("current_question"),
+                "question_state": mem_game.get("question_state"),
+                "question_interrupts": mem_game.get("question_interrupts"),
+                "question_count": mem_game.get("question_count"),
+                "total_rounds": mem_game.get("total_rounds"),
+            },
+        }
+    )
     
     emit("player_joined", {"user": user, "lobby": lobby_data}, room=f"lobby:{lobby}")
 
@@ -336,6 +367,18 @@ def on_submit(data): # FinalAnswer
         # If the user got the question correct, then let's give them a rank changed event
         if is_correct:
             emit("rank_changed", rank_change_information)
+            
+            # Also emit updated leaderboard for this user
+            try:
+                leaderboard_data = leaderboard_cache.get_leaderboard(
+                    category="global",
+                    limit=5,
+                    include_user_rank=True,
+                    user_hash=user_hash
+                )
+                emit("leaderboard_update", leaderboard_data, room=f"user:{user_hash}")
+            except Exception as e:
+                print(f"Error emitting leaderboard update: {e}")
 
     if is_correct == 1:
         increment_score_attribute(game_hash, "correct", player_hash=user.get("hash"))
@@ -374,6 +417,7 @@ def on_submit(data): # FinalAnswer
         if lobby == "ranked" and game_m.get("current_question"):
             ranked_on_next_question(game_m, emit)
 
+        game_mem.set_question_state(game_hash, "waiting")
         game_mem.next_question(new_question, game_hash)
 
         # Set this question as the game's DB question
@@ -393,6 +437,7 @@ def on_submit(data): # FinalAnswer
             {"user": user, "answer_content": final_answer, "timestamp": get_timestamp()},
             room=f"lobby:{lobby}"
         )
+        game_mem.set_question_state(game_hash, "running")
         
     elif is_correct == -1:
         increment_score_attribute(game_hash, "incorrect", player_hash=user.get("hash"))
@@ -407,6 +452,7 @@ def on_submit(data): # FinalAnswer
         data["scores"] = attatch_players_to_teams(lobby_data["games"][0]["teams"])
         # If the answer is false
         emit("question_resume", data, room=f"lobby:{lobby}")
+        game_mem.set_question_state(game_hash, "running")
 
 # PAUSING AND PLAYING THE GAME
 
@@ -430,9 +476,9 @@ def on_next_question(data):
     game_m = game_mem.get_game(game_hash)
     lobby_data = get_lobby_by_alias(lobby)
 
-    # TODO: See if player has authority to skip question
-    # if not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
-    #     return;
+    # To skip, the lobby must allow skips, or the user is the owner, or the question state is dead
+    if game_m.get("question_state") != "dead" and not lobby_data.get("allow_question_skip") and lobby_data.get("creator").get("hash") != user_hash:
+        return;
 
     # Increment buzzes_encountered
     result = increment_score_attribute(game_hash, "questions_encountered")
@@ -460,29 +506,81 @@ def on_next_question(data):
 
 # Occurs only when the game in unpaused
 @socketio.on("game_resume", namespace="/game")
-def on_game_resume(): # Empty
+def on_game_resume(data): # Empty
     lobby = request.environ.get("lobby")
     user_hash = request.environ.get("user_hash")
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     user = get_user_by_hash(user_hash)
+    lobby_data = get_lobby_by_alias(lobby)
+
+    # Check if user can resume (creator or admin)
+    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id"):
+        return
+
+    game_mem.resume_game(game_hash)
 
     emit("game_resumed", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 # Occurs only when a player pauses the game
 @socketio.on("game_pause", namespace="/game")
-def on_game_pause(): # Empty
+def on_game_pause(data): # Empty
     lobby = request.environ.get("lobby")
     user_hash = request.environ.get("user_hash")
     if not user_hash:
         emit("failed_connection", {"message": "User does not exist", "code": 404})
         return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
 
     user = get_user_by_hash(user_hash)
+    lobby_data = get_lobby_by_alias(lobby)
 
-    emit("game_pause", {"user": user}, room=f"lobby:{lobby}")
+    # Check if user can pause (creator or admin)
+    if user.get("username") != "admin" and user.get("id") != lobby_data.get("creator_id") and not lobby_data.get("allow_question_pause"):
+        return
+
+    game_mem.pause_game(game_hash)
+
+    emit("game_paused", {"user": user, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
+
+# Occurs when the question waiting time expires
+@socketio.on("question_dead", namespace="/game")
+def on_question_dead(data):
+    lobby = request.environ.get("lobby")
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
+    game_hash = request.environ.get("game_hash")
+
+    if not game_hash:
+        emit("return_to_lobby")
+        return;
+
+    if not lobby:
+        emit("reconnect")
+        return
+
+    game_mem.set_question_state(game_hash, "dead")
 
 # Occurs only when a player pauses the game
 @socketio.on("save_question", namespace="/game")
@@ -505,7 +603,26 @@ def on_save_question(data): # Question hash
 
     emit("saved_question", {"question": question, "result": result})
 
+@socketio.on("send_chat", namespace="/game")
+def on_send_chat(data):
+    lobby = request.environ.get("lobby")
+    user_hash = request.environ.get("user_hash")
+    if not user_hash:
+        emit("failed_connection", {"message": "User does not exist", "code": 404})
+        return;
 
+    if not lobby:
+        emit("reconnect")
+        return
+
+    message = data.get("message", "").strip()
+    if not message or len(message) > 100:
+        return  # Ignore empty or too long messages
+
+    user = get_user_by_hash(user_hash)
+
+    # Broadcast the chat message
+    emit("chat_message", {"user": user, "message": message, "timestamp": get_timestamp()}, room=f"lobby:{lobby}")
 
 @socketio.on("disconnect", namespace="/game")
 def on_disconnect():

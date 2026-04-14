@@ -127,6 +127,15 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
             iconColor={iconColor}
         />
     );
+    const leaderboard = (
+        <TopNavItem
+            inline={isMobile}
+            label="Leaderboard"
+            onPress={() => router.push("/leaderboard")}
+            icon="trophy"
+            iconColor={iconColor}
+        />
+    );
     const stats = (
         <TopNavItem
             inline={isMobile}
@@ -216,6 +225,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                         <Logo text={true} image={false} style={{height: "auto"}}/>
                         {play}
                         {saved}
+                        {leaderboard}
                         {stats}
                         {analytics}
                         {account}
@@ -241,8 +251,7 @@ const SidebarLayout = ({ children, style, isLoading, showMobileIcon=true, slideD
                         </View>
                         <View style={styles.middleNav}>
                             {play}
-                            {saved}
-                            {stats}
+                            {saved}                            {leaderboard}                            {stats}
                             {analytics}
                         </View>
                         <View style={styles.rightNav}>

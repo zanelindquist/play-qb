@@ -22,6 +22,7 @@ import src.db.ranked as ranked
 from src.db.classes import *
 from src.db.cache import *
 import jellyfish
+from src.services.leaderboard import leaderboard_cache
 
 
 # Answer judging constants
@@ -1902,6 +1903,10 @@ def update_rank(user_hash: str, question: dict, is_correct: bool, buzz_fraction:
         session.commit()
 
         user = get_user_by_hash(user_hash, {"stats": 0})
+
+        # Invalidate leaderboard cache on rank update
+        leaderboard_cache.invalidate_cache("global")
+        leaderboard_cache.invalidate_cache(question.get("category"))
 
         return {'message': 'update_rank(): success', "user": {"hash": user.get("hash"), "rank": new_user_rank.to_dict(), "rank_change": rank_change, "category_rank": new_cat_rank.to_dict()}, "code": 200}
     except Exception as e:

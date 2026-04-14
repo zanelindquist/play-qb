@@ -72,7 +72,7 @@ export default function GameMode({
                 <View style={styles.nameContainer}>
                     <Icon source={icon} size={20} color={theme.tertiary} />
                     <GradientText size={"1rem"} style={styles.name}>
-                        {gamemode.name.split("-").map(g => capitalize(g)).join(" ")}
+                        {gamemode.alias}
                     </GradientText>
                 </View>
                 {

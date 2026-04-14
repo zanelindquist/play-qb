@@ -8,13 +8,16 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
-    Image
+    Image,
+    TextInput,
+    Text
 } from 'react-native';
 import Video from "react-native-video";
 import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
 import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAlert } from "../../utils/alerts.jsx";
 import { useSocket } from "../../utils/socket.jsx";
+import { detectCurseWords } from "../../utils/text.js";
 
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
 import GlassyButton from "../../components/custom/GlassyButton.jsx"
@@ -29,12 +32,14 @@ import theme from "../../assets/themes/theme.js";
 import GameSettings from "../../components/entities/GameSettings.jsx";
 import ShowSettings from "../../components/custom/ShowSettings.jsx";
 import PlayerDisconnected from "../../components/game/PlayerDisconnected.jsx";
+import ChatMessage from "../../components/game/ChatMessage.jsx";
 import GlassyView from "../../components/custom/GlassyView.jsx";
 import ustyles from "../../assets/styles/ustyles.js";
 import GradientFlair from "../../components/custom/GradientFlair.jsx";
 import ScoreIndicator from "../../components/game/ScoreIndicator.jsx";
 import RankUser from "../../components/entities/RankUser.jsx";
 import RankedProgressBar from "../../components/game/RankedProgressBar.jsx";
+import LiveLeaderboard from "../../components/leaderboard/LiveLeaderboard.jsx";
 import Beta from "../../components/custom/Beta.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import { useFocusEffect } from "@react-navigation/native";
@@ -69,10 +74,14 @@ const Play = () => {
     const charIndexRef = useRef(0)
     const [lastAnswerStatus, setLastAnswerStatus] = useState(null)
 
+    // Refs
+    const answerInputRef = useRef(null);
+
     // Lobby state
     const [lobby, setLobby] = useState(null)
     const [showSettings, setShowSettings] = useState(true)
     const [myRankInfo, setMyRankInfo] = useState(null)
+    const [leaderboardData, setLeaderboardData] = useState(null)
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
     
@@ -103,12 +112,19 @@ const Play = () => {
 
             switch(e.code) {
                 case "Space":
-                    if(buzzer || questionStateRef.current == "dead") return; 
+                    if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return; 
                     // Buzz logic
                     onBuzz()
                 break;
                 case "KeyJ":
                     onNextQuestion();
+                break;
+                case "Enter":
+                    // If not buzzing (in chat mode), focus the input
+                    if (!buzzer?.current?.id) {
+                        e.preventDefault();
+                        answerInputRef.current?.focus();
+                    }
                 break;
             }
         }
@@ -126,6 +142,32 @@ const Play = () => {
                 myUserRef.current = user
                 // if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 // setLobby(lobby)
+            })
+
+            addEventListener("game_state", ({lobby, game_state, timestamp}) => {
+                if (lobby && lobby.games?.[0]) {
+                    setLobby({...lobby})
+                }
+
+                if (game_state) {
+                    setQuestionState(game_state.question_state || "waiting")
+                    setSynctimestamp(timestamp || Date.now())
+
+                    if (game_state.current_question) {
+                        addEvent({ ...game_state.current_question, eventType: "question" }, true)
+                    }
+
+                    const activeInterrupt = game_state.question_interrupts?.find((interrupt) => !interrupt.end_timestamp)
+                    if (activeInterrupt) {
+                        setBuzzer({ current: activeInterrupt.user })
+                        addEvent({
+                            eventType: "interrupt",
+                            status: activeInterrupt.is_early ? "early" : "late",
+                            player: activeInterrupt.user,
+                            content: "",
+                        })
+                    }
+                }
             })
 
             addEventListener("lobby_not_found", () => {
@@ -172,6 +214,15 @@ const Play = () => {
             addEventListener("player_typing", ({answer_content, user}) => {
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
                 setInterruptData("content", answer_content)
+            })
+
+            addEventListener("chat_message", ({user, message, timestamp}) => {
+                addEvent({
+                    eventType: "chat",
+                    user,
+                    message,
+                    timestamp
+                }, false)
             })
 
             addEventListener("question_resume", ({user, final_answer, scores, is_correct, timestamp}) => {
@@ -229,11 +280,13 @@ const Play = () => {
             })
 
             addEventListener("game_paused", ({user}) => {
-                
+                setQuestionState("paused")
             })
 
             addEventListener("game_resumed", ({user, timestamp}) => {
+                console.log("RESUME")
                 setSynctimestamp(timestamp)
+                setQuestionState("running")
             })
 
             addEventListener("changed_game_settings", ({lobby}) => {
@@ -274,6 +327,14 @@ const Play = () => {
                 setMyRankInfo(change)
             })
 
+            addEventListener("leaderboard_snapshot", (data) => {
+                setLeaderboardData(data)
+            })
+
+            addEventListener("leaderboard_update", (data) => {
+                setLeaderboardData(data)
+            })
+
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
         })
@@ -301,22 +362,62 @@ const Play = () => {
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        if(buzzer || questionStateRef.current == "dead") return;
+        if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return;
         send("buzz", {timestamp: Date.now(), after_character: charIndexRef.current})
     }
 
     function onTyping(text) {
-        send("typing", {content: text})
+        // Only send typing updates when buzzing
+        if (buzzer?.current?.id === myUser?.id) {
+            send("typing", {content: text})
+        }
     }
 
     function onSubmit(text) {
         clearInterval(typingEmitInterval)
-        send("submit", {final_answer: text})
+        // If user is buzzing, submit answer; otherwise submit chat
+        if (buzzer?.current?.id === myUser?.id) {
+            send("submit", {final_answer: text})
+            return true
+        } else {
+            const message = text.trim()
+            if (!message) return false
+            if (message.length > 100) {
+                showAlert("Message is too long. Please shorten it to 100 characters or fewer.")
+                return false
+            }
+            if (detectCurseWords(message)) {
+                showAlert("Message contains inappropriate content")
+                return false
+            }
+            send("send_chat", { message })
+            return true
+        }
     }
 
     function onNextQuestion() {
         send("next_question")
     }
+
+    function renderRankedSection() {
+        if (alias !== "ranked") return null
+
+        return (
+            <>
+                <HelperText style={[ustyles.text.header]}>
+                    {alias}
+                    <Beta />
+                </HelperText>
+                {leaderboardData ? (
+                    <LiveLeaderboard leaderboardData={leaderboardData} />
+                ) : (
+                    <RankUser user={myUser} />
+                )}
+            </>
+        )
+    }
+
+
 
     // I don't think I actually need this
     function onQuestionResume() {
@@ -324,12 +425,11 @@ const Play = () => {
     }
 
     function handleGamePause() {
-        scoreRef.current?.trigger(15);
-
+        send("game_pause")
     }
 
     function onGameResume() {
-        
+        send("game_resume")
     }
 
     function handleInputChange(text) {
@@ -353,6 +453,7 @@ const Play = () => {
     function handleQuestionDeath() {
         setBuzzer(null)
         setQuestionState("dead")
+        send("question_dead")
     }
 
     function addEvent(event, isQuestion) {
@@ -366,13 +467,16 @@ const Play = () => {
                 return [event, ...prev]
             })
         }
-        // If it not a question, we want to put it second in the stack
+        // If it not a question, we want to put it second in the stack (or first if no question exists)
         else {
-            setAllEvents((prev) => [
-                prev[0],
-                event,
-                ...prev.slice(1)
-            ])
+            setAllEvents((prev) => {
+                if(prev.length === 0) return [event]
+                return [
+                    prev[0],
+                    event,
+                    ...prev.slice(1)
+                ]
+            })
         }
     }
 
@@ -464,7 +568,10 @@ const Play = () => {
                             <HelperText>Lobby or lobby.games undefined</HelperText>
                         </GlassyView>
                     }
+                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
+                    <GlassyButton mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
+                    {renderRankedSection()}
                     <GameSettings
                         columns={1}
                         defaultInfo={lobby}
@@ -516,15 +623,14 @@ const Play = () => {
                             rankInfo={myRankInfo || myUser}
                         />   
                     }
-                    {
-                        (buzzer?.current?.id == myUser?.id || !isMobile) &&
-                        <AnswerInput
-                            onChange={handleInputChange}
-                            onSubmit={onSubmit}
-                            disabled={!(buzzer && buzzer?.current?.id == myUser?.id)}
-                            lastAnswer={isMobile && lastAnswerStatus}
-                        ></AnswerInput> 
-                    }
+                    <AnswerInput
+                        ref={answerInputRef}
+                        onChange={handleInputChange}
+                        onSubmit={onSubmit}
+                        disabled={false}
+                        lastAnswer={isMobile && lastAnswerStatus}
+                        isChatMode={!buzzer?.current?.id}
+                    ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
                     {
@@ -560,6 +666,15 @@ const Play = () => {
                                     return (
                                         <PlayerDisconnected event={e} key={`pd:${i}`}/>
                                     )
+                                case "chat":
+                                    return (
+                                        <ChatMessage
+                                            key={`c:${e.timestamp}`}
+                                            user={e.user}
+                                            message={e.message}
+                                            timestamp={e.timestamp}
+                                        />
+                                    )
                                 default:
 
                             }
@@ -586,19 +701,7 @@ const Play = () => {
                 {
                 !isMobile &&
                 <View style={styles.optionsContainer}>
-                    {
-                        // TODO: Tell if its ranked
-                        alias == "ranked" &&
-                        <>
-                            <HelperText style={[ustyles.text.header]}>
-                                {alias}
-                                <Beta />
-                            </HelperText>
-                            {/* <HelperText style={{color: "green"}}>{(myRankInfo?.rank_change?.rr_diff)?.toFixed(2)} {(myRankInfo?.rank_change?.mu_diff)?.toFixed(2)}</HelperText> */}
-                            <RankUser user={myUser}/>
-                            {/* <HelperText style={{color: "red"}}>{Math.round(myRankInfo?.rank.rr)} {myRankInfo?.rank.rank} - {myRankInfo?.rank.skill_mu}, {myRankInfo?.rank.skill_sigma}</HelperText> */}
-                        </>
-                    }
+                    {renderRankedSection()}
                     {
                         myUser?.username === "admin" &&
                         <GameRule
@@ -611,7 +714,8 @@ const Play = () => {
                     }
                     <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
                     <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
-                    {/* <GlassyButton style={styles.exitButton} mode="filled" onPress={handleGamePause}>Pause</GlassyButton> */}
+                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
+                    <GlassyButton style={styles.resumeButton} mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
                     <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
                     {
                         // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
@@ -701,6 +805,12 @@ const styles = StyleSheet.create({
     },
     buzzButton: {
         // backgroundImage: theme.gradients.buttonWhite
+    },
+    pauseButton: {
+        backgroundImage: theme.gradients.questionTint
+    },
+    resumeButton: {
+        backgroundImage: theme.gradients.backgroundTint
     },
     exitButton: {
         backgroundImage: theme.gradients.buttonRed

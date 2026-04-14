@@ -8,6 +8,7 @@ from flask_bcrypt import Bcrypt
 bcrypt = Bcrypt()
 
 from src.db.utils import*
+from src.services.leaderboard import leaderboard_cache
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -104,6 +105,44 @@ def on_unsave_question():
     result = unsave_question(hash, data.get("hash"))
 
     return {"message": "Question unsaved"}, 200
+
+@bp.route("/leaderboard", methods=["GET"])
+@jwt_required()
+def on_leaderboard():
+    """
+    Get ranked leaderboard with optional user rank information.
+    
+    Query Parameters:
+        category: "global" or category name (default: "global")
+        limit: Number of rows to return (default: 20)
+        offset: Pagination offset (default: 0)
+        include_user_rank: Include user's rank info (default: false)
+    """
+    hash = get_jwt_identity()
+    
+    category = request.args.get("category", "global")
+    limit = request.args.get("limit", 20, type=int)
+    offset = request.args.get("offset", 0, type=int)
+    include_user_rank = request.args.get("include_user_rank", "false").lower() == "true"
+    
+    # Validate inputs
+    if limit < 1 or limit > 100:
+        limit = 20
+    if offset < 0:
+        offset = 0
+    
+    try:
+        leaderboard = leaderboard_cache.get_leaderboard(
+            category=category,
+            limit=limit,
+            offset=offset,
+            include_user_rank=include_user_rank,
+            user_hash=hash if include_user_rank else None
+        )
+        return leaderboard, 200
+    except Exception as e:
+        print(f"Error fetching leaderboard: {e}")
+        return {"error": "Failed to fetch leaderboard", "code": 500}, 500
 
 
 

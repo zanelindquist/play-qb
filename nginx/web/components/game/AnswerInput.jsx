@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useState, useRef, forwardRef, useImperativeHandle} from "react";
 import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
 import { IconButton, Text, TextInput  } from "react-native-paper";
@@ -6,10 +6,11 @@ import GlassyButton from "../custom/GlassyButton";
 import GlassyView from "../custom/GlassyView";
 
 import theme from "../../assets/themes/theme";
+import ustyles from "../../assets/styles/ustyles.js";
 
 // TODO: Hover for stat tooltip
 
-export default function AnswerInput ({ style, disabled, visible=true, lastAnswer, onChange = () => {}, onSubmit = () => {} }) {
+export default forwardRef(function AnswerInput ({ style, disabled, visible=true, lastAnswer, onChange = () => {}, onSubmit = () => {}, isChatMode = false }, ref) {
     const inputRef = useRef(null);
     const [isFocused, setIsFocused] = useState(false);
     const [value, setValue] = useState("")
@@ -18,15 +19,23 @@ export default function AnswerInput ({ style, disabled, visible=true, lastAnswer
     const [flashColor, setFlashColor] = useState(null)
     const [showCheck, setShowCheck] = useState(null)
     
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        }
+    }));
+    
     const handleChange = (text) => {
         onChange(text)
         setValue(text)
     }
     
-    const handleSubmit = (e) => {
-        setValue("")
-        onSubmit(e.nativeEvent.text)
-        setHasSubmitted(true)
+    const handleSubmit = async (e) => {
+        const accepted = await onSubmit(e.nativeEvent.text)
+        if (accepted !== false) {
+            setValue("")
+            setHasSubmitted(true)
+        }
     }
 
     useEffect(() => {
@@ -35,13 +44,14 @@ export default function AnswerInput ({ style, disabled, visible=true, lastAnswer
             setHasSubmitted(false)
         }
         // If this becomes disabled, this means the user has submitted or the question is over
-        else {
+        else if (!isChatMode) {
+            // Only auto-submit answers, not chat messages
             // If the user has not submitted, we need to submit it for them
             if(!hasSubmitted) onSubmit(value)
             setHasSubmitted(true)
             setValue("")
         }
-    }, [disabled]);
+    }, [disabled, isChatMode]);
 
     useEffect(() => {
         setFlashColor(lastAnswer == "correct" ? theme.static.correct : (lastAnswer == "incorrect" ? theme.static.wrong : (lastAnswer == "prompt" ? theme.static.prompt : null)))
@@ -68,9 +78,12 @@ export default function AnswerInput ({ style, disabled, visible=true, lastAnswer
             <TextInput
                 ref={inputRef}
                 mode="outlined"
+                placeholder={isChatMode ? "Send a message..." : "Your answer..."}
+                placeholderTextColor={isChatMode ? "rgba(255, 255, 255, 0.7)" : undefined}
                 style={[
                     styles.input,
-                    isFocused && styles.focused
+                    isFocused && styles.focused,
+                    isChatMode && styles.chatMode
                 ]}
                 outlineStyle={{borderWidth: 0}}
                 onChangeText={handleChange}
@@ -92,7 +105,7 @@ export default function AnswerInput ({ style, disabled, visible=true, lastAnswer
             />
         </GlassyView>
     )
-}
+})
 
 const styles = StyleSheet.create({
     container: {
@@ -107,5 +120,9 @@ const styles = StyleSheet.create({
     },
     focused: {
         
+    },
+    chatMode: {
+        ...ustyles.text.textShadow,
+        color: "white"
     }
 })

@@ -53,6 +53,7 @@ game_template = {
     "question_count": 1,
     "total_rounds": 20,
     "users": {},
+    "question_state": "dead",
 }
 
 def create_game_memory_instance(game_hash: str, settings: dict = {}) -> dict:
@@ -105,6 +106,7 @@ def next_question(question_dict: dict, game_hash: str) -> dict:
     game["current_question"] = question_dict
     game["questions"].append(question_dict)
     game["question_interrupts"] = []
+    game["question_state"] = "running"
     
     return game
 
@@ -144,6 +146,7 @@ def start_interrupt(user: str, game_hash: str, after_character: int = 0) -> dict
     }
 
     game["question_interrupts"].append(interrupt)
+    game["question_state"] = "interrupted"
 
     return interrupt
 
@@ -165,4 +168,22 @@ def submit_interrupt(user_hash: str, game_hash: str, is_correct: bool=True) -> d
     if game["question_count"] == game["total_rounds"]:
         return {"game": game, "message": "end of game", "code": 200}
 
+    if is_correct == 1:
+        game["question_state"] = "waiting"
+
     return unfinished_interrupt
+
+def pause_game(game_hash: str) -> dict:
+    game = get_game(game_hash)
+    game["question_state"] = "paused"
+    return game
+
+def resume_game(game_hash: str) -> dict:
+    game = get_game(game_hash)
+    game["question_state"] = "running"
+    return game
+
+def set_question_state(game_hash: str, state: str) -> dict:
+    game = get_game(game_hash)
+    game["question_state"] = state
+    return game
