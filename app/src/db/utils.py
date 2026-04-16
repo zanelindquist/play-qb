@@ -4,7 +4,7 @@ from .models import *
 import html
 from datetime import datetime, timezone, timedelta, date
 import re
-import math
+import os
 import random
 from functools import reduce
 from decimal import Decimal
@@ -1345,6 +1345,27 @@ def verify_email(email, code) -> dict:
     else:
         return {"error": "Invalid verification code", "code": 401}
         
+def set_premium(hash, code) -> dict:
+    session = get_session()
+    user = session.execute(
+        select(Users)
+        .where(Users.hash == hash)
+    ).scalars().first()
+
+    premium_code = os.environ.get("PREMIUM_CODE")
+
+    if not premium_code:
+        return {"error": "Premium code not set", "code": 500}
+
+    if user.premium:
+        return {"message": "User already has premium", "code": 200}
+    
+    if code == premium_code:
+        user.premium = True
+        session.commit()
+        return {"message": "Premium granted", "code": 200}
+    else:
+        return {"error": "Code is incorrect", "code": 401}
 
 
 # DELETING RESOURCES

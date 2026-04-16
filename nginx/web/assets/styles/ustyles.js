@@ -72,6 +72,9 @@ export default {
         left: {
             textAlign: "left",
             width: "100%"
+        },
+        error:{
+            color: theme.error
         }
     }),
     icon: StyleSheet.create({
@@ -92,6 +95,13 @@ export default {
             borderWidth: 0,
             padding: 0,
             margin: 0
+        }
+    }),
+    components: StyleSheet.create({
+        textInputLight: {
+            backgroundColor: "transparent",
+            borderColor: "transparent",
+            borderWidth: 1,
         }
     })
 }

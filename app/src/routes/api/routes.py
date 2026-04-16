@@ -28,6 +28,8 @@ def on_classify_next():
 def on_classify_question():
     data = request.get_json()
 
+    return 404
+
     result = classify_question(data.get("hash"), data.get("category"))
     
     return result, result.get("code")
@@ -154,3 +156,16 @@ def identity():
     hash = get_jwt_identity()
 
     return hash, 200
+
+# Premium
+@bp.route("/get_premium", methods=["POST"])
+@jwt_required()
+def get_premium():
+    hash = get_jwt_identity()
+    data = request.get_json()
+
+    code = data.get("code")
+
+    result = set_premium(hash, code)
+
+    return result, result.get("code")
