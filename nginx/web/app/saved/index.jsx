@@ -197,7 +197,6 @@ export default function StatsPage() {
                             onSave={q.saved_type == "saved" && handleQuestionUnsave}
                             saveIcon={"bookmark-off"}
                             key={`${q.hash}-${i}`}
-                            EXPANDED_HEIGHT={700}
                             rightIcon={
                                 <View style={styles.questionRight}>
                                 {

@@ -14,3 +14,4 @@ google-auth
 google-auth-oauthlib
 gunicorn
 jellyfish
+wikipedia-api

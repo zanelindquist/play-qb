@@ -5,6 +5,7 @@ import html
 from datetime import datetime, timezone, timedelta, date
 import re
 import os
+import math
 import random
 from functools import reduce
 from decimal import Decimal
@@ -23,7 +24,7 @@ from src.db.classes import *
 from src.db.cache import *
 import jellyfish
 from src.services.leaderboard import leaderboard_cache
-
+from src.services.wikipedia import wiki_service
 
 # Answer judging constants
 BRACKETED = re.compile(r"\[.*?\]")
@@ -905,7 +906,7 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
 
             parsed.append(q)
 
-        return {"questions": parsed, "total": total}
+        return {"questions": wiki_service.link_questions(parsed), "total": total}
 
     except Exception as e:
         print(e)
