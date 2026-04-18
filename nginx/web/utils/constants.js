@@ -8,6 +8,7 @@ const BACKEND_URL =
 
 console.log("Running in", ENV, "backend:", BACKEND_URL);
 
+// Lobbies and Gamemodes
 const CURATED_LOBBIES = [
     {
         name: "solos",
@@ -112,7 +113,6 @@ const CURATED_LOBBIES = [
         icon: "brain",
     },
 ];
-
 const GAMEMODES = [
     {
         name: "solos",
@@ -130,7 +130,6 @@ const GAMEMODES = [
         icon: "account-group",
     },
 ];
-
 const CATEGORIES = [
     { id: "global", title: "Global" },
     { id: "science", title: "Science" },
@@ -155,4 +154,9 @@ const RANK_COLORS = {
     "Immortal I": "#CB8AFF", "Immortal II": "#B86BFF", "Immortal III": "#A64DFF"
 };
 
-export { BACKEND_URL, ENV, CURATED_LOBBIES, GAMEMODES, CATEGORIES, RANK_COLORS };
+// Game
+const STANDARD_ANSWER_MS = 7000
+const STANDARD_MS_UNTIL_DEAD = 6000
+
+
+export { BACKEND_URL, ENV, CURATED_LOBBIES, GAMEMODES, CATEGORIES, RANK_COLORS, STANDARD_ANSWER_MS, STANDARD_MS_UNTIL_DEAD };

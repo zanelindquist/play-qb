@@ -10,11 +10,14 @@ import ustyles from "../../assets/styles/ustyles.js";
 
 // TODO: Hover for stat tooltip
 
-export default forwardRef(function AnswerInput ({ style, disabled, visible=true, lastAnswer, onChange = () => {}, onSubmit = () => {}, isChatMode = false }, ref) {
+export default forwardRef(function AnswerInput ({ style, disabled, visible=true, lastAnswer, submitAfterMs, onChange = () => {}, onSubmit = () => {}, isChatMode = false }, ref) {
     const inputRef = useRef(null);
     const [isFocused, setIsFocused] = useState(false);
     const [value, setValue] = useState("")
-    const [hasSubmitted, setHasSubmitted] = useState(false)
+    // Logical live values
+    const valueRef = useRef(value);
+    const hasSubmittedRef = useRef(false);
+    const submissionTimeoutRef = useRef(null)
     // Mostly to tell mobile users if their answer is correct or not
     const [flashColor, setFlashColor] = useState(null)
     const [showCheck, setShowCheck] = useState(null)
@@ -24,6 +27,10 @@ export default forwardRef(function AnswerInput ({ style, disabled, visible=true,
             inputRef.current?.focus();
         }
     }));
+
+    useEffect(() => {
+        valueRef.current = value;
+    }, [value]);
     
     const handleChange = (text) => {
         onChange(text)
@@ -34,22 +41,31 @@ export default forwardRef(function AnswerInput ({ style, disabled, visible=true,
         const accepted = await onSubmit(e.nativeEvent.text)
         if (accepted !== false) {
             setValue("")
-            setHasSubmitted(true)
+            hasSubmittedRef.current = true
+            inputRef.current?.blur();
+            clearTimeout(submissionTimeoutRef.current)
+            submissionTimeoutRef.current = null;
         }
     }
 
     useEffect(() => {
-        if (!disabled) {
-            inputRef.current?.focus();
-            setHasSubmitted(false)
-        }
-        // If this becomes disabled, this means the user has submitted or the question is over
-        else if (!isChatMode) {
-            // Only auto-submit answers, not chat messages
-            // If the user has not submitted, we need to submit it for them
-            if(!hasSubmitted) onSubmit(value)
-            setHasSubmitted(true)
+        if(isChatMode) {
+            hasSubmittedRef.current = false
             setValue("")
+        }
+        else if (!disabled && !isChatMode) {
+            inputRef.current?.focus();
+            hasSubmittedRef.current = false
+            if(!hasSubmittedRef.current) {
+                submissionTimeoutRef.current = setTimeout(() => {
+                    if(!hasSubmittedRef.current) {
+                        onSubmit(valueRef.current)
+                        hasSubmittedRef.current = true
+                        setValue("")
+                        inputRef.current.blur();
+                    }
+                }, submitAfterMs)
+            }
         }
     }, [disabled, isChatMode]);
 

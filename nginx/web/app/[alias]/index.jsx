@@ -44,6 +44,7 @@ import Beta from "../../components/custom/Beta.jsx";
 import GameRule from "../../components/entities/GameRule.jsx";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
+import { STANDARD_ANSWER_MS } from "../../utils/constants.js";
 
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
@@ -374,6 +375,7 @@ const Play = () => {
     }
 
     function onSubmit(text) {
+        console.log("ubmittt", buzzer?.current, text)
         clearInterval(typingEmitInterval)
         // If user is buzzing, submit answer; otherwise submit chat
         if (buzzer?.current?.id === myUser?.id) {
@@ -628,6 +630,7 @@ const Play = () => {
                         onChange={handleInputChange}
                         onSubmit={onSubmit}
                         disabled={false}
+                        submitAfterMs={STANDARD_ANSWER_MS}
                         lastAnswer={isMobile && lastAnswerStatus}
                         isChatMode={!buzzer?.current?.id}
                     ></AnswerInput>

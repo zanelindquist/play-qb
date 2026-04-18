@@ -32,6 +32,7 @@ import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
 import ustyles from "../../assets/styles/ustyles";
+import { STANDARD_ANSWER_MS, STANDARD_MS_UNTIL_DEAD } from "../../utils/constants";
 
 const LEVELS = [
     "Pop Culture",
@@ -61,9 +62,9 @@ const Question = ({
     onSave = null,
     saveIcon,
     showAnswers,
-    MS_UNTIL_DEAD = 6000,
+    MS_UNTIL_DEAD = STANDARD_MS_UNTIL_DEAD,
     // Speed in WPM
-    ANSWER_MS = 7000,
+    ANSWER_MS = STANDARD_ANSWER_MS,
     EXPANDED_HEIGHT=500,
 }) => {
     // Text variables
