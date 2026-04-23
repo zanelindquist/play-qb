@@ -6,6 +6,7 @@ wiki = wikipediaapi.Wikipedia(user_agent='PlayQB (merlin@example.com)', language
 class Wikipedia:
 
     CACHE_LIMIT = 500;
+    PREVIEW_LENGTH = 600;
 
     def __init__(self):
         self.cache = {} # "question_hash: {...}"
@@ -41,7 +42,7 @@ class Wikipedia:
 
                 wiki_data = {
                     "title": page.title,
-                    "summary": page.summary[:300],  # short summary (trim if you want)
+                    "summary": page.summary[:self.PREVIEW_LENGTH],  # short summary (trim if you want)
                     "url": page.fullurl
                 }
 
@@ -51,6 +52,36 @@ class Wikipedia:
                 question["wikipedia"] = None
 
         return questions
+
+    def fetch_single(self, answer: str, category: str, question_hash: str) -> dict:
+        # Answers and categories are unneeded if we are given a hash
+        if question_hash and self.cache.get(question_hash):
+            return self.cache.get(question_hash)
+
+        if not answer or not category: return None
+
+        search = answer + " " + category
+
+        # If its not cached, search
+        results = wiki.search(search, limit=1).pages
+
+        if results:
+            # Get the first page object
+            page = list(results.values())[0]
+
+            wiki_data = {
+                "title": page.title,
+                "summary": page.summary[:self.PREVIEW_LENGTH],  # short summary (trim if you want)
+                "url": page.fullurl
+            }
+
+            # Cache if we were given a hash
+            if question_hash:
+                self.cache_question(question_hash, wiki_data)
+
+            return wiki_data
+        else:
+            return None
 
     def cache_question(self, hash, wiki_dict):
         if len(self.cache) > self.CACHE_LIMIT:

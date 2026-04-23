@@ -17,18 +17,19 @@ import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
 import WikipediaModal from "../modals/WikipediaModal";
 
-
+// With dynamic loading, if wikipedia is not defined, then we will fetch the info from the server when the modal is pressed
 export default function WikipediaLink ({
-    wikipedia,
+    question,
+    dynamicLoading=true,
     style
 }) {
-    if (!wikipedia || wikipedia.url.endsWith("wiki")) return;
+    if ((!question?.wikipedia && !dynamicLoading) || question?.wikipedia?.url.endsWith("wiki")) return;
 
     const {showAlert} = useAlert()
 
     function openModal() {
         showAlert(
-            <WikipediaModal wikipedia={wikipedia}/>,
+            <WikipediaModal question={question} dynamicLoading={dynamicLoading}/>,
             ustyles.modals.floatingModal
         )
     }

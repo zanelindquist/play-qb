@@ -169,3 +169,18 @@ def get_premium():
     result = set_premium(hash, code)
 
     return result, result.get("code")
+
+# Fetch wikipedia info
+@bp.route("/fetch_wiki", methods=["GET"])
+@jwt_required()
+def fetch_wiki():
+    answer = request.args.get("answer")
+    category = request.args.get("category")
+    question_hash = request.args.get("h")
+
+    result = wiki_service.fetch_single(answer, category, question_hash)
+
+    if result:
+        return result, 200
+    else:
+        return None, 404

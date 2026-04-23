@@ -574,7 +574,7 @@ def get_user_by_hash(hash, gentle=True, advanced=False, rel_depths=None, depth=0
     finally:
         session.remove()
 
-def get_random_question(difficulty="all", category="all", tournament="all", type=0):
+def get_random_question(difficulty="all", category="all", tournament="all", type=0, wikipedia=False):
     try:
         ids = get_cached_question_ids(type=type, difficulty=difficulty, category=category, tournament=tournament)
 
@@ -906,7 +906,7 @@ def get_saved_questions(hash, saved_type="all", category="all", offset=0, limit=
 
             parsed.append(q)
 
-        return {"questions": wiki_service.link_questions(parsed), "total": total}
+        return {"questions": parsed, "total": total}
 
     except Exception as e:
         print(e)

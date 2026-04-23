@@ -342,8 +342,7 @@ const Question = ({
                         >
                             {question.answers.main}
                         </HelperText>
-                        <WikipediaLink wikipedia={question?.wikipedia} />
-                        
+                        <WikipediaLink question={question}/>
                         {rightIcon}
                     </View>
                 </GlassyView>
