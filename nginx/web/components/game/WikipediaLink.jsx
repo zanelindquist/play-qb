@@ -15,6 +15,7 @@ import { Link, router } from "expo-router";
 import ExpandableView from "../custom/ExpandableView";
 import GlassyView from "../custom/GlassyView";
 import GlassyButton from "../custom/GlassyButton";
+import WikipediaModal from "../modals/WikipediaModal";
 
 
 export default function WikipediaLink ({
@@ -23,19 +24,22 @@ export default function WikipediaLink ({
 }) {
     if (!wikipedia || wikipedia.url.endsWith("wiki")) return;
 
+    const {showAlert} = useAlert()
+
+    function openModal() {
+        showAlert(
+            <WikipediaModal wikipedia={wikipedia}/>,
+            ustyles.modals.floatingModal
+        )
+    }
+
     return (
-        <Link
-            href={ wikipedia.url}
-            target="_blank" 
-            rel="noopener noreferrer" // Recommended for security/performance
-            style={style}
-        >
-            <IconButton
-                icon={"wikipedia"}
-                style={styles.wikipedia}
-                size={16}
-            />
-        </Link>
+        <IconButton
+            icon={"wikipedia"}
+            style={styles.wikipedia}
+            size={16}
+            onPress={openModal}
+        />
     )
 }
 
