@@ -1,6 +1,10 @@
-import { getProtectedRoute, postProtectedRoute , handleExpiredAccessToken } from "../../utils/requests.jsx"
+import {
+    getProtectedRoute,
+    postProtectedRoute,
+    handleExpiredAccessToken,
+} from "../../utils/requests.jsx";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     TouchableOpacity,
@@ -10,17 +14,32 @@ import {
     ScrollView,
     Image,
     TextInput,
-    Text
-} from 'react-native';
+    Text,
+} from "react-native";
 import Video from "react-native-video";
-import { Button, HelperText, Menu, Title, IconButton, Icon, ActivityIndicator, Avatar, Card } from 'react-native-paper';
-import { useRouter, useGlobalSearchParams, useLocalSearchParams, usePathname } from 'expo-router';
+import {
+    Button,
+    HelperText,
+    Menu,
+    Title,
+    IconButton,
+    Icon,
+    ActivityIndicator,
+    Avatar,
+    Card,
+} from "react-native-paper";
+import {
+    useRouter,
+    useGlobalSearchParams,
+    useLocalSearchParams,
+    usePathname,
+} from "expo-router";
 import { useAlert } from "../../utils/alerts.jsx";
 import { useSocket } from "../../utils/socket.jsx";
 import { detectCurseWords } from "../../utils/text.js";
 
 import SidebarLayout from "../../components/navigation/SidebarLayout.jsx";
-import GlassyButton from "../../components/custom/GlassyButton.jsx"
+import GlassyButton from "../../components/custom/GlassyButton.jsx";
 import PlayerScores from "../../components/game/PlayerScores.jsx";
 import AnswerInput from "../../components/game/AnswerInput.jsx";
 import Question from "../../components/game/Question.jsx";
@@ -49,360 +68,456 @@ import { STANDARD_ANSWER_MS } from "../../utils/constants.js";
 let { width, height } = Dimensions.get("window");
 let isMobile = width <= 768; // Adjust breakpoint as needed
 
-const SHOW_EVENTS_INCREMENTS = 20
+const SHOW_EVENTS_INCREMENTS = 20;
 
 const Play = () => {
     // Get the lobby alias
     const query = useGlobalSearchParams();
     const alias = query.alias || "";
-    const router = useRouter()
+    const router = useRouter();
 
     // Hooks
-    const {showAlert} = useAlert();
-    const {showBanner} = useBanner()
-    const {socket, send, addEventListener, removeEventListener, removeAllEventListeners, onReady, disconnect} = useSocket("game", alias);
+    const { showAlert } = useAlert();
+    const { showBanner } = useBanner();
+    const {
+        socket,
+        send,
+        addEventListener,
+        removeEventListener,
+        removeAllEventListeners,
+        onReady,
+        disconnect,
+    } = useSocket("game", alias);
 
-    const [typingEmitInterval, setTypingEmitInterval] = useState(null)
+    const [typingEmitInterval, setTypingEmitInterval] = useState(null);
     const [myUser, setMyUser] = useState(null);
-    const myUserRef = useRef(0)
+    const myUserRef = useRef(0);
 
     // Question variables
     const [allEvents, setAllEvents] = useState([]);
     const [buzzer, setBuzzer] = useState(null);
     const [questionState, setQuestionState] = useState("running");
-    const questionStateRef = useRef(questionState)
-    const [synctimestamp, setSynctimestamp] = useState(0)
-    const charIndexRef = useRef(0)
-    const [lastAnswerStatus, setLastAnswerStatus] = useState(null)
+    const questionStateRef = useRef(questionState);
+    const [synctimestamp, setSynctimestamp] = useState(0);
+    const charIndexRef = useRef(0);
+    const [lastAnswerStatus, setLastAnswerStatus] = useState(null);
 
     // Refs
     const answerInputRef = useRef(null);
 
     // Lobby state
-    const [lobby, setLobby] = useState(null)
-    const [showSettings, setShowSettings] = useState(true)
-    const [myRankInfo, setMyRankInfo] = useState(null)
-    const [leaderboardData, setLeaderboardData] = useState(null)
+    const [lobby, setLobby] = useState(null);
+    const [showSettings, setShowSettings] = useState(true);
+    const [myRankInfo, setMyRankInfo] = useState(null);
+    const [leaderboardData, setLeaderboardData] = useState(null);
     const scoreRef = useRef(null);
     const rankedPointsRef = useRef(null);
-    
+
     // Memory manamgent
-    const [showNumberOfEvents, setShowNumberOfEvents]= useState(SHOW_EVENTS_INCREMENTS)
-    const rateLimitRef = useRef(null)
+    const [showNumberOfEvents, setShowNumberOfEvents] = useState(
+        SHOW_EVENTS_INCREMENTS,
+    );
+    const rateLimitRef = useRef(null);
 
     // Mobile ui
-    const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false)
+    const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
 
     // Admin
-    const [showAnswers, setShowAnswers] = useState(false)
+    const [showAnswers, setShowAnswers] = useState(false);
 
     // See if we are a user. Otherwise, logout
     useFocusEffect(
         useCallback(() => {
-        // Runs every time this screen comes into focus
-        getProtectedRoute("/my_account");
-        }, [])
+            // Runs every time this screen comes into focus
+            getProtectedRoute("/my_account");
+        }, []),
     );
 
     // Register keybinds
     useEffect(() => {
         // Handle key presses
         function handleKeyDown(e) {
-            if(e.code === "Space") e.preventDefault()
-            if(questionStateRef.current == "interrupted") return;
+            if (e.code === "Space") e.preventDefault();
+            if (questionStateRef.current == "interrupted") return;
 
-            switch(e.code) {
+            switch (e.code) {
                 case "Space":
-                    if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return; 
+                    if (
+                        buzzer ||
+                        questionStateRef.current == "dead" ||
+                        questionStateRef.current == "paused"
+                    )
+                        return;
                     // Buzz logic
-                    onBuzz()
-                break;
+                    onBuzz();
+                    break;
                 case "KeyJ":
                     onNextQuestion();
-                break;
+                    break;
                 case "Enter":
                     // If not buzzing (in chat mode), focus the input
                     if (!buzzer?.current?.id) {
                         e.preventDefault();
                         answerInputRef.current?.focus();
                     }
-                break;
+                    break;
             }
         }
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [buzzer])
+    }, [buzzer]);
 
     // Register socket event listners
     useEffect(() => {
         onReady(() => {
-            addEventListener("you_joined", ({user}) => {
-                console.log("I JOINED", user)
-                setMyUser(user)
-                myUserRef.current = user
+            addEventListener("you_joined", ({ user }) => {
+                console.log("I JOINED", user);
+                setMyUser(user);
+                myUserRef.current = user;
                 // if(!lobby.games[0]) throw Error("Lobby games are not defined")
                 // setLobby(lobby)
-            })
+            });
 
-            addEventListener("game_state", ({lobby, game_state, timestamp}) => {
-                if (lobby && lobby.games?.[0]) {
-                    setLobby({...lobby})
-                }
-
-                if (game_state) {
-                    setQuestionState(game_state.question_state || "waiting")
-                    setSynctimestamp(timestamp || Date.now())
-
-                    if (game_state.current_question) {
-                        addEvent({ ...game_state.current_question, eventType: "question" }, true)
+            addEventListener(
+                "game_state",
+                ({ lobby, game_state, timestamp }) => {
+                    if (lobby && lobby.games?.[0]) {
+                        setLobby({ ...lobby });
                     }
 
-                    const activeInterrupt = game_state.question_interrupts?.find((interrupt) => !interrupt.end_timestamp)
-                    if (activeInterrupt) {
-                        setBuzzer({ current: activeInterrupt.user })
-                        addEvent({
-                            eventType: "interrupt",
-                            status: activeInterrupt.is_early ? "early" : "late",
-                            player: activeInterrupt.user,
-                            content: "",
-                        })
+                    if (game_state) {
+                        setQuestionState(
+                            game_state.question_state || "waiting",
+                        );
+                        setSynctimestamp(timestamp || Date.now());
+
+                        if (game_state.current_question) {
+                            addEvent(
+                                {
+                                    ...game_state.current_question,
+                                    eventType: "question",
+                                },
+                                true,
+                            );
+                        }
+
+                        const activeInterrupt =
+                            game_state.question_interrupts?.find(
+                                (interrupt) => !interrupt.end_timestamp,
+                            );
+                        if (activeInterrupt) {
+                            setBuzzer({ current: activeInterrupt.user });
+                            addEvent({
+                                eventType: "interrupt",
+                                status: activeInterrupt.is_early
+                                    ? "early"
+                                    : "late",
+                                player: activeInterrupt.user,
+                                content: "",
+                            });
+                        }
                     }
-                }
-            })
+                },
+            );
 
             addEventListener("lobby_not_found", () => {
-                showAlert("The lobby you are trying to enter does not exist")
-                router.replace("/lobby?mode=solos")
-            })
+                showAlert("The lobby you are trying to enter does not exist");
+                router.replace("/lobby?mode=solos");
+            });
 
             addEventListener("game_not_found", () => {
-                showAlert("The game you are trying to enter does not exist")
-                router.replace("/lobby?mode=solos")
-            })
+                showAlert("The game you are trying to enter does not exist");
+                router.replace("/lobby?mode=solos");
+            });
 
             addEventListener("return_to_lobby", () => {
-                showAlert("Server restarted: return to lobby")
-                router.replace(`/lobby?mode=${alias}`)
-            })
+                showAlert("Server restarted: return to lobby");
+                router.replace(`/lobby?mode=${alias}`);
+            });
 
-            addEventListener("join_lobby_failed", ({error}) => {
-                showBanner("Failed to join lobby: " + error.message.toLowerCase(), {backgroundColor: theme.error})
-            })
+            addEventListener("join_lobby_failed", ({ error }) => {
+                showBanner(
+                    "Failed to join lobby: " + error.message.toLowerCase(),
+                    { backgroundColor: theme.error },
+                );
+            });
 
-            addEventListener("player_joined", ({user, lobby}) => {
-                user.eventType = "player_joined"
-                addEvent(user)
+            addEventListener("player_joined", ({ user, lobby }) => {
+                user.eventType = "player_joined";
+                addEvent(user);
                 // For updating the scores and stuff
-                if(!lobby.games[0]) throw Error("Lobby games are not defined")
-                setLobby({...lobby})
-            })
+                if (!lobby.games[0]) throw Error("Lobby games are not defined");
+                setLobby({ ...lobby });
+            });
 
-            addEventListener("question_interrupt", ({user, answer_content, timestamp}) => {
-                setSynctimestamp(timestamp)
-                setBuzzer({current: user})
-                setQuestionState("interrupted")
-                // For non-question events, put them second in the list
-                addEvent({
-                    eventType: "interrupt",
-                    // Set the interrupt status for the buzzer color
-                    status: questionStateRef.current == "waiting" ? "late" : "early",
-                    player: user,
-                    content: answer_content
-                })
-            })
+            addEventListener(
+                "question_interrupt",
+                ({ user, answer_content, timestamp }) => {
+                    setSynctimestamp(timestamp);
+                    setBuzzer({ current: user });
+                    setQuestionState("interrupted");
+                    // For non-question events, put them second in the list
+                    addEvent({
+                        eventType: "interrupt",
+                        // Set the interrupt status for the buzzer color
+                        status:
+                            questionStateRef.current == "waiting"
+                                ? "late"
+                                : "early",
+                        player: user,
+                        content: answer_content,
+                    });
+                },
+            );
 
-            addEventListener("player_typing", ({answer_content, user}) => {
+            addEventListener("player_typing", ({ answer_content, user }) => {
                 // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-                setInterruptData("content", answer_content)
-            })
+                setInterruptData("content", answer_content);
+            });
 
-            addEventListener("chat_message", ({user, message, timestamp}) => {
-                addEvent({
-                    eventType: "chat",
+            addEventListener("chat_message", ({ user, message, timestamp }) => {
+                addEvent(
+                    {
+                        eventType: "chat",
+                        user,
+                        message,
+                        timestamp,
+                    },
+                    false,
+                );
+            });
+
+            addEventListener(
+                "question_resume",
+                ({ user, final_answer, scores, is_correct, timestamp }) => {
+                    // On mobile telling the user if they got it correct or not
+                    if (user?.hash === myUserRef.current?.hash) {
+                        setLastAnswerStatus(
+                            is_correct == 1
+                                ? "correct"
+                                : is_correct == 0
+                                  ? "prompt"
+                                  : "incorrect",
+                        );
+                    }
+
+                    setInterruptData(
+                        "answerStatus",
+                        is_correct == 1
+                            ? "Correct"
+                            : is_correct == 0
+                              ? "Prompt"
+                              : "Wrong",
+                    );
+                    if (scores) {
+                        setLobby((prev) => {
+                            let changed = prev;
+                            // TODO: Adjust for multiple games
+                            changed.games[0].teams = scores;
+                            return changed;
+                        });
+                    }
+                    setBuzzer(null);
+                    setQuestionState("running");
+                    setSynctimestamp(timestamp);
+                },
+            );
+
+            addEventListener(
+                "next_question",
+                ({
                     user,
-                    message,
-                    timestamp
-                }, false)
-            })
+                    final_answer,
+                    scores,
+                    is_correct,
+                    question,
+                    timestamp,
+                }) => {
+                    // Make sure the question is not a 404
+                    if (question?.error == "No questions meet this query") {
+                        showBanner(question?.error, {
+                            backgroundColor: theme.error,
+                        });
+                        return;
+                    }
 
-            addEventListener("question_resume", ({user, final_answer, scores, is_correct, timestamp}) => {
-                // On mobile telling the user if they got it correct or not
-                if(user?.hash === myUserRef.current?.hash) {
-                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
-                }
+                    // On mobile telling the user if they got it correct or not
+                    if (user?.hash === myUserRef.current?.hash) {
+                        setLastAnswerStatus(
+                            is_correct == 1
+                                ? "correct"
+                                : is_correct == 0
+                                  ? "prompt"
+                                  : "incorrect",
+                        );
+                    }
 
-                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-                if(scores) {
-                    setLobby((prev) => {
-                        let changed = prev;
-                        // TODO: Adjust for multiple games
-                        changed.games[0].teams = scores
-                        return changed
-                    })
-                }
-                setBuzzer(null)
-                setQuestionState("running")
-                setSynctimestamp(timestamp)
-            })
+                    // Update the typing box with the answer_content by setting the content of the second in list interrupt event
+                    setInterruptData(
+                        "answerStatus",
+                        is_correct == 1
+                            ? "Correct"
+                            : is_correct == 0
+                              ? "Prompt"
+                              : "Wrong",
+                    );
+                    // Minimize the current quetsion
+                    minimizeCurrentQuestion();
+                    setBuzzer(null);
+                    setSynctimestamp(timestamp);
+                    addEvent(question, true);
+                    setQuestionState("running");
+                    if (scores) {
+                        setLobby((prev) => {
+                            let changed = prev;
+                            // TODO: Adjust for multiple games
+                            changed.games[0].teams = scores;
+                            return changed;
+                        });
+                    }
+                },
+            );
 
-            addEventListener("next_question", ({user, final_answer, scores, is_correct, question, timestamp}) => {              
-                // Make sure the question is not a 404
-                if(question?.error == 'No questions meet this query') {
-                    showBanner(question?.error, {backgroundColor: theme.error})
-                    return
-                }
-
-                // On mobile telling the user if they got it correct or not
-                if(user?.hash === myUserRef.current?.hash) {
-                    setLastAnswerStatus(is_correct == 1 ? "correct" : (is_correct == 0 ? "prompt" : "incorrect"))
-                }
-
-                // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-                setInterruptData("answerStatus", is_correct == 1 ? "Correct" : (is_correct == 0 ? "Prompt" : "Wrong"))
-                // Minimize the current quetsion
-                minimizeCurrentQuestion()
-                setBuzzer(null)
-                setSynctimestamp(timestamp)
-                addEvent(question, true)
-                setQuestionState("running")
-                if(scores) {
-                    setLobby((prev) => {
-                        let changed = prev;
-                        // TODO: Adjust for multiple games
-                        changed.games[0].teams = scores
-                        return changed
-                    })
-                }
-            })
-
-            addEventListener("reward_points", ({points}) => {
+            addEventListener("reward_points", ({ points }) => {
                 scoreRef.current?.trigger(points);
-            })
+            });
 
-            addEventListener("game_paused", ({user}) => {
-                setQuestionState("paused")
-            })
+            addEventListener("game_paused", ({ user }) => {
+                setQuestionState("paused");
+            });
 
-            addEventListener("game_resumed", ({user, timestamp}) => {
-                console.log("RESUME")
-                setSynctimestamp(timestamp)
-                setQuestionState("running")
-            })
+            addEventListener("game_resumed", ({ user, timestamp }) => {
+                console.log("RESUME");
+                setSynctimestamp(timestamp);
+                setQuestionState("running");
+            });
 
-            addEventListener("changed_game_settings", ({lobby}) => {
+            addEventListener("changed_game_settings", ({ lobby }) => {
                 // If we are the one who made these chagnes, return
-                if(myUser?.user?.id === lobby?.creator_id) return
-                if(!lobby.games[0]) throw Error("Lobby games are not defined")
-                setLobby({...lobby})
-            })
+                if (myUser?.user?.id === lobby?.creator_id) return;
+                if (!lobby.games[0]) throw Error("Lobby games are not defined");
+                setLobby({ ...lobby });
+            });
 
             addEventListener("changed_game_settings_failure", (error) => {
-                console.error(error)
-            })
+                console.error(error);
+            });
 
             // Mostly test listner
             addEventListener("chat_message", (data) => {
-                console.log("message!")
-            })
+                console.log("message!");
+            });
 
             // I don't think this works lol
-            addEventListener("you_disconnected", ({stats, total_stats}) => {
-                showAlert("View your stats here: " + stats.correct)
-            })
+            addEventListener("you_disconnected", ({ stats, total_stats }) => {
+                showAlert("View your stats here: " + stats.correct);
+            });
 
-            addEventListener("player_disconnected", ({lobby, user}) => {
-                user.eventType = "player_disconnected"
-                addEvent(user)
-                if(!lobby.games[0]) throw Error("Lobby games are not defined")
-                setLobby({...lobby})
-            })
+            addEventListener("player_disconnected", ({ lobby, user }) => {
+                user.eventType = "player_disconnected";
+                addEvent(user);
+                if (!lobby.games[0]) throw Error("Lobby games are not defined");
+                setLobby({ ...lobby });
+            });
 
-            addEventListener("saved_question", ({question}) => {
-                showBanner("Saved question")
-            })
+            addEventListener("saved_question", ({ question }) => {
+                showBanner("Saved question");
+            });
 
             addEventListener("rank_changed", (change) => {
-                scoreRef.current?.trigger(change?.rank_change.rr_diff.toFixed(2))
+                scoreRef.current?.trigger(
+                    change?.rank_change.rr_diff.toFixed(2),
+                );
 
-                setMyRankInfo(change)
-            })
+                setMyRankInfo(change);
+            });
 
             addEventListener("leaderboard_snapshot", (data) => {
-                setLeaderboardData(data)
-            })
+                setLeaderboardData(data);
+            });
 
             addEventListener("leaderboard_update", (data) => {
-                setLeaderboardData(data)
-            })
+                setLeaderboardData(data);
+            });
 
             // Now that the listners are registered, we are ready to join the lobby
             send("join_lobby", { lobbyAlias: alias });
-        })
+        });
 
         return () => {
-            clearInterval(typingEmitInterval)
-            removeAllEventListeners()
-            disconnect()
-        }
-    }, [])
+            clearInterval(typingEmitInterval);
+            removeAllEventListeners();
+            disconnect();
+        };
+    }, []);
 
     // Update the ref for it to be used in the listeners
     useEffect(() => {
-        questionStateRef.current = questionState
-    }, [questionState])
+        questionStateRef.current = questionState;
+    }, [questionState]);
 
     // For question answerbox flashing
-    useEffect(()=> {
-        if(lastAnswerStatus) {
-            const timeout = setTimeout(() => setLastAnswerStatus(null), 1000)
-            return () => clearTimeout(timeout)
+    useEffect(() => {
+        if (lastAnswerStatus) {
+            const timeout = setTimeout(() => setLastAnswerStatus(null), 1000);
+            return () => clearTimeout(timeout);
         }
-    }, [lastAnswerStatus])
+    }, [lastAnswerStatus]);
 
     // Functions
     function onBuzz() {
         // Can't buzz when there is already an interruption
-        if(buzzer || questionStateRef.current == "dead" || questionStateRef.current == "paused") return;
-        send("buzz", {timestamp: Date.now(), after_character: charIndexRef.current})
+        if (
+            buzzer ||
+            questionStateRef.current == "dead" ||
+            questionStateRef.current == "paused"
+        )
+            return;
+        send("buzz", {
+            timestamp: Date.now(),
+            after_character: charIndexRef.current,
+        });
     }
 
     function onTyping(text) {
         // Only send typing updates when buzzing
         if (buzzer?.current?.id === myUser?.id) {
-            send("typing", {content: text})
+            send("typing", { content: text });
         }
     }
 
     function onSubmit(text) {
-        console.log("ubmittt", buzzer?.current, text)
-        clearInterval(typingEmitInterval)
+        console.log("ubmittt", buzzer?.current, text);
+        clearInterval(typingEmitInterval);
         // If user is buzzing, submit answer; otherwise submit chat
         if (buzzer?.current?.id === myUser?.id) {
-            send("submit", {final_answer: text})
-            return true
+            send("submit", { final_answer: text });
+            return true;
         } else {
-            const message = text.trim()
-            if (!message) return false
+            const message = text.trim();
+            if (!message) return false;
             if (message.length > 100) {
-                showAlert("Message is too long. Please shorten it to 100 characters or fewer.")
-                return false
+                showAlert(
+                    "Message is too long. Please shorten it to 100 characters or fewer.",
+                );
+                return false;
             }
             if (detectCurseWords(message)) {
-                showAlert("Message contains inappropriate content")
-                return false
+                showAlert("Message contains inappropriate content");
+                return false;
             }
-            send("send_chat", { message })
-            return true
+            send("send_chat", { message });
+            return true;
         }
     }
 
     function onNextQuestion() {
-        send("next_question")
+        send("next_question");
     }
 
     function renderRankedSection() {
-        if (alias !== "ranked") return null
+        if (alias !== "ranked") return null;
 
         return (
             <>
@@ -416,78 +531,70 @@ const Play = () => {
                     <RankUser user={myUser} />
                 )}
             </>
-        )
+        );
     }
-
-
 
     // I don't think I actually need this
-    function onQuestionResume() {
-        
-    }
+    function onQuestionResume() {}
 
     function handleGamePause() {
-        send("game_pause")
+        send("game_pause");
     }
 
     function onGameResume() {
-        send("game_resume")
+        send("game_resume");
     }
 
     function handleInputChange(text) {
-        onTyping(text)
+        onTyping(text);
     }
 
     function handleInterruptOver(text, questionNotFinished) {
-        setBuzzer(null)
-        if(questionNotFinished) {
+        setBuzzer(null);
+        if (questionNotFinished) {
             // TODO: keep track of waiting time
-            setQuestionState("running")
+            setQuestionState("running");
         } else {
-            setQuestionState("waiting")
+            setQuestionState("waiting");
         }
     }
 
-    function handleQuestionFinish(){
-        setQuestionState("waiting")
+    function handleQuestionFinish() {
+        setQuestionState("waiting");
     }
 
     function handleQuestionDeath() {
-        setBuzzer(null)
-        setQuestionState("dead")
-        send("question_dead")
+        setBuzzer(null);
+        setQuestionState("dead");
+        send("question_dead");
     }
 
     function addEvent(event, isQuestion) {
         // If it is a question, is is the active question so we put it on the top of the stack
-        if(isQuestion) {
+        if (isQuestion) {
             setAllEvents((prev) => {
                 // Prevent duplicates
-                if(prev[0]?.id === event?.id) return prev;
+                if (prev[0]?.id === event?.id) return prev;
                 event.eventType = "question";
                 event.expanded = true;
-                return [event, ...prev]
-            })
+                return [event, ...prev];
+            });
         }
         // If it not a question, we want to put it second in the stack (or first if no question exists)
         else {
             setAllEvents((prev) => {
-                if(prev.length === 0) return [event]
-                return [
-                    prev[0],
-                    event,
-                    ...prev.slice(1)
-                ]
-            })
+                if (prev.length === 0) return [event];
+                return [prev[0], event, ...prev.slice(1)];
+            });
         }
     }
 
     function setInterruptData(field, value) {
         // Update the typing box with the answer_content by setting the content of the second in list interrupt event
-        setAllEvents(prev => {
+        setAllEvents((prev) => {
             return prev.map((event, index) => {
                 if (event?.eventType === "interrupt" && index === 1) {
-                    let data = {...event}
+                    let data = { ...event };
                     data[field] = value;
                     return data;
                 }
@@ -498,132 +605,206 @@ const Play = () => {
 
     function minimizeCurrentQuestion() {
         setAllEvents((prev) => {
-            if(prev[0]?.eventType !== "question") return prev;
+            if (prev[0]?.eventType !== "question") return prev;
 
             return [
                 {
                     ...prev[0],
-                    expanded: false
+                    expanded: false,
                 },
-                ...prev.slice(1)
-            ]
-        })
+                ...prev.slice(1),
+            ];
+        });
     }
 
     function handleExit() {
-        if(socket) socket.disconnect()
-        router.replace(`/lobby?mode=${alias}`)
+        if (socket) socket.disconnect();
+        router.replace(`/lobby?mode=${alias}`);
     }
 
     function handleGameRuleChange(rules) {
-        if (myUser?.id !== lobby?.creator_id && myUser?.username !== "admin") return
+        if (myUser?.id !== lobby?.creator_id && myUser?.username !== "admin")
+            return;
 
         if (rateLimitRef.current) {
-            clearTimeout(rateLimitRef.current)
+            clearTimeout(rateLimitRef.current);
         }
 
         rateLimitRef.current = setTimeout(() => {
-            send("change_game_settings", { settings: rules })
-        }, 100)
+            send("change_game_settings", { settings: rules });
+        }, 100);
 
         return () => {
             if (rateLimitRef.current) {
-                clearTimeout(rateLimitRef.current)
+                clearTimeout(rateLimitRef.current);
             }
-        }
+        };
     }
 
     function handleQuestionSave(hash) {
-        send("save_question", {hash})
+        send("save_question", { hash });
     }
 
-    function openMobileOptions () {
-        setMobileOptionsOpen(true)
+    function openMobileOptions() {
+        setMobileOptionsOpen(true);
     }
-    function closeMobileOptions () {
-        setMobileOptionsOpen(false)
+    function closeMobileOptions() {
+        setMobileOptionsOpen(false);
     }
-
 
     return (
         <SidebarLayout
             style={styles.sidebar}
             showMobileIcon={false}
-            slideDown={mobileOptionsOpen &&
-                <ScrollView contentContainerStyle={[ustyles.flex.flexColumn, {gap: 40}]}>
-                    <IconButton
-                        icon={"close"}
-                        onPress={closeMobileOptions}
-                        size={40}
-                        style={mstyles.closeButton}
-                    />
-                    {
-                        lobby && lobby.games ? 
-                        <View style={styles.playerScoresContainer}>
-                            <View style={styles.scoreIndicator}>
-                                <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+            slideDown={
+                mobileOptionsOpen && (
+                    <ScrollView
+                        contentContainerStyle={[
+                            ustyles.flex.flexColumn,
+                            { gap: 40 },
+                        ]}
+                    >
+                        <IconButton
+                            icon={"close"}
+                            onPress={closeMobileOptions}
+                            size={40}
+                            style={mstyles.closeButton}
+                        />
+                        {lobby && lobby.games ? (
+                            <View style={styles.playerScoresContainer}>
+                                <View style={styles.scoreIndicator}>
+                                    <ScoreIndicator
+                                        ref={scoreRef}
+                                        points={50}
+                                        color={"lime"}
+                                    />
+                                </View>
+                                <PlayerScores
+                                    teams={lobby.games[0].teams}
+                                    gameMode={lobby.gamemode.toLowerCase()}
+                                />
                             </View>
-                            <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
-                        </View>
-                        :
-                        <GlassyView>
-                            <HelperText>Lobby or lobby.games undefined</HelperText>
-                        </GlassyView>
-                    }
-                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
-                    <GlassyButton mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
-                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
-                    {renderRankedSection()}
-                    <GameSettings
-                        columns={1}
-                        defaultInfo={lobby}
-                        expanded={true}
-                        // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}
-                        nameDisabled={true}
-                        title={"Game Settings"}
-                        onGameRuleChange={handleGameRuleChange}
-                    />
-                </ScrollView>
+                        ) : (
+                            <GlassyView>
+                                <HelperText>
+                                    Lobby or lobby.games undefined
+                                </HelperText>
+                            </GlassyView>
+                        )}
+                        <GlassyButton
+                            style={styles.pauseButton}
+                            mode="filled"
+                            onPress={handleGamePause}
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                        >
+                            Pause
+                        </GlassyButton>
+                        <GlassyButton
+                            mode="filled"
+                            onPress={onGameResume}
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                        >
+                            Resume
+                        </GlassyButton>
+                        <GlassyButton
+                            style={styles.exitButton}
+                            mode="filled"
+                            onPress={handleExit}
+                        >
+                            Exit
+                        </GlassyButton>
+                        {renderRankedSection()}
+                        <GameSettings
+                            columns={1}
+                            defaultInfo={lobby}
+                            expanded={true}
+                            // TODO: Determine who can edit lobbies while they are in them
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                            nameDisabled={true}
+                            title={"Game Settings"}
+                            onGameRuleChange={handleGameRuleChange}
+                        />
+                    </ScrollView>
+                )
             }
         >
             {/* <GradientFlair style={styles.lobbyName}>{alias}</GradientFlair> */}
             <View style={isMobile ? mstyles.container : styles.container}>
-                {
-                    isMobile &&
+                {isMobile && (
                     <View style={mstyles.topContainer}>
                         <View style={mstyles.topButtons}>
-                            <GlassyButton style={[styles.buzzButton, mstyles.button]} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
-                            <GlassyButton style={[styles.nextButton, mstyles.button]} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
+                            <GlassyButton
+                                style={[styles.buzzButton, mstyles.button]}
+                                mode="filled"
+                                onPress={onBuzz}
+                            >
+                                Buzz (space)
+                            </GlassyButton>
+                            <GlassyButton
+                                style={[styles.nextButton, mstyles.button]}
+                                mode="filled"
+                                onPress={onNextQuestion}
+                            >
+                                Next (j)
+                            </GlassyButton>
                         </View>
-                        {
-                            (isMobile && lastAnswerStatus) ?
+                        {isMobile && lastAnswerStatus ? (
                             <IconButton
-                                icon={lastAnswerStatus == "correct" ? "check" : (lastAnswerStatus == "incorrect" ? "close" : (lastAnswerStatus == "prompt" ? "sync" : "none"))}
+                                icon={
+                                    lastAnswerStatus == "correct"
+                                        ? "check"
+                                        : lastAnswerStatus == "incorrect"
+                                          ? "close"
+                                          : lastAnswerStatus == "prompt"
+                                            ? "sync"
+                                            : "none"
+                                }
                                 size={50}
                                 style={[
                                     mstyles.moreDisplay,
                                     mstyles.answerStatusIcon,
-                                    {backgroundColor: lastAnswerStatus == "correct" ? theme.static.correct : (lastAnswerStatus == "incorrect" ? theme.static.wrong : (lastAnswerStatus == "prompt" ? theme.static.prompt : null))}
+                                    {
+                                        backgroundColor:
+                                            lastAnswerStatus == "correct"
+                                                ? theme.static.correct
+                                                : lastAnswerStatus ==
+                                                    "incorrect"
+                                                  ? theme.static.wrong
+                                                  : lastAnswerStatus == "prompt"
+                                                    ? theme.static.prompt
+                                                    : null,
+                                    },
                                 ]}
-                            /> :
+                            />
+                        ) : (
                             <IconButton
                                 icon={"dots-horizontal"}
                                 style={mstyles.moreDisplay}
                                 onPress={openMobileOptions}
                                 size={50}
                             />
-                        }
-
+                        )}
                     </View>
-                }
-                <View style={isMobile ? mstyles.gameContent : styles.gameContent}>
+                )}
+                <View
+                    style={isMobile ? mstyles.gameContent : styles.gameContent}
+                >
                     {
                         // TODO: tell if ranked
-                        alias === "ranked" &&
-                        <RankedProgressBar
-                            rankInfo={myRankInfo || myUser}
-                        />   
+                        alias === "ranked" && (
+                            <RankedProgressBar
+                                rankInfo={myRankInfo || myUser}
+                            />
+                        )
                     }
                     <AnswerInput
                         ref={answerInputRef}
@@ -636,39 +817,63 @@ const Play = () => {
                     ></AnswerInput>
 
                     <ScrollView contentContainerStyle={styles.questions}>
-                    {
-                        allEvents.slice(0, showNumberOfEvents).map((e, i) => {
-                            switch(e?.eventType) {
+                        {allEvents.slice(0, showNumberOfEvents).map((e, i) => {
+                            switch (e?.eventType) {
                                 case "question":
                                     return (
                                         <Question
                                             question={e}
                                             timestamp={synctimestamp}
                                             speed={lobby?.speed}
-                                            onInterruptOver={i == 0 ? handleInterruptOver : null}
-                                            onFinish={i == 0 ? handleQuestionFinish : null}
-                                            onDeath={i == 0 ? handleQuestionDeath : null}
-                                            onCharChange={(i) => charIndexRef.current = i}
-                                            state={i == 0 ? questionState : "dead" }
+                                            onInterruptOver={
+                                                i == 0
+                                                    ? handleInterruptOver
+                                                    : null
+                                            }
+                                            onFinish={
+                                                i == 0
+                                                    ? handleQuestionFinish
+                                                    : null
+                                            }
+                                            onDeath={
+                                                i == 0
+                                                    ? handleQuestionDeath
+                                                    : null
+                                            }
+                                            onCharChange={(i) =>
+                                                (charIndexRef.current = i)
+                                            }
+                                            state={
+                                                i == 0 ? questionState : "dead"
+                                            }
                                             setState={setQuestionState}
                                             onSave={handleQuestionSave}
                                             key={`q:${e.id}`}
-                                            EXPANDED_HEIGHT={Math.max(400, 750 - width/4)}
+                                            EXPANDED_HEIGHT={Math.max(
+                                                400,
+                                                750 - width / 4,
+                                            )}
                                             showAnswers={showAnswers}
                                         />
-                                    )
+                                    );
                                 case "interrupt":
                                     return (
-                                        <Interrupt event={e} key={`i:${i}`}/>
-                                    )
+                                        <Interrupt event={e} key={`i:${i}`} />
+                                    );
                                 case "player_joined":
                                     return (
-                                        <PlayerJoined event={e} key={`pj:${i}`}/>
-                                    )
+                                        <PlayerJoined
+                                            event={e}
+                                            key={`pj:${i}`}
+                                        />
+                                    );
                                 case "player_disconnected":
                                     return (
-                                        <PlayerDisconnected event={e} key={`pd:${i}`}/>
-                                    )
+                                        <PlayerDisconnected
+                                            event={e}
+                                            key={`pd:${i}`}
+                                        />
+                                    );
                                 case "chat":
                                     return (
                                         <ChatMessage
@@ -677,84 +882,141 @@ const Play = () => {
                                             message={e.message}
                                             timestamp={e.timestamp}
                                         />
-                                    )
+                                    );
                                 default:
-
                             }
-                        })
-                    }
-                    {
-                        showNumberOfEvents < allEvents.length &&
-                        <View style={styles.showingContainer}>
-                            <GlassyButton
-                                mode="filled"
-                                onPress={() => {
-                                    setShowNumberOfEvents(showNumberOfEvents + SHOW_EVENTS_INCREMENTS)
-                                }}
-                            >Show more ({Math.min(showNumberOfEvents, allEvents.length)} / {allEvents.length} visible)</GlassyButton>
-                            <GlassyButton
-                                onPress={() => {
-                                    setShowNumberOfEvents(SHOW_EVENTS_INCREMENTS)
-                                }}
-                            >Hide all</GlassyButton>
-                        </View>
-                    }
+                        })}
+                        {showNumberOfEvents < allEvents.length && (
+                            <View style={styles.showingContainer}>
+                                <GlassyButton
+                                    mode="filled"
+                                    onPress={() => {
+                                        setShowNumberOfEvents(
+                                            showNumberOfEvents +
+                                                SHOW_EVENTS_INCREMENTS,
+                                        );
+                                    }}
+                                >
+                                    Show more (
+                                    {Math.min(
+                                        showNumberOfEvents,
+                                        allEvents.length,
+                                    )}{" "}
+                                    / {allEvents.length} visible)
+                                </GlassyButton>
+                                <GlassyButton
+                                    onPress={() => {
+                                        setShowNumberOfEvents(
+                                            SHOW_EVENTS_INCREMENTS,
+                                        );
+                                    }}
+                                >
+                                    Hide all
+                                </GlassyButton>
+                            </View>
+                        )}
                     </ScrollView>
                 </View>
-                {
-                !isMobile &&
-                <View style={styles.optionsContainer}>
-                    {renderRankedSection()}
-                    {
-                        myUser?.username === "admin" &&
-                        <GameRule
-                            label="Show question answers"
-                            dataName="qa_visible"
-                            mode="toggle"
-                            defaultValue={false}
-                            onChange={(change) => setShowAnswers(change.value)}
-                        />
-                    }
-                    <GlassyButton style={styles.buzzButton} mode="filled" onPress={onBuzz}>Buzz (space)</GlassyButton>
-                    <GlassyButton style={styles.nextButton} mode="filled" onPress={onNextQuestion}>Next (j)</GlassyButton>
-                    <GlassyButton style={styles.pauseButton} mode="filled" onPress={handleGamePause} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Pause</GlassyButton>
-                    <GlassyButton style={styles.resumeButton} mode="filled" onPress={onGameResume} disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}>Resume</GlassyButton>
-                    <GlassyButton style={styles.exitButton} mode="filled" onPress={handleExit}>Exit</GlassyButton>
-                    {
-                        // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
-                    }
-                    {
-                        lobby && lobby.games ? 
-                        <View style={styles.playerScoresContainer}>
-                            <View style={styles.scoreIndicator}>
-                                <ScoreIndicator ref={scoreRef} points={50} color={"lime"}/>
+                {!isMobile && (
+                    <View style={styles.optionsContainer}>
+                        {renderRankedSection()}
+                        {myUser?.username === "admin" && (
+                            <GameRule
+                                label="Show question answers"
+                                dataName="qa_visible"
+                                mode="toggle"
+                                defaultValue={false}
+                                onChange={(change) =>
+                                    setShowAnswers(change.value)
+                                }
+                            />
+                        )}
+                        <GlassyButton
+                            style={styles.buzzButton}
+                            mode="filled"
+                            onPress={onBuzz}
+                        >
+                            Buzz (space)
+                        </GlassyButton>
+                        <GlassyButton
+                            style={styles.nextButton}
+                            mode="filled"
+                            onPress={onNextQuestion}
+                        >
+                            Next (j)
+                        </GlassyButton>
+                        <GlassyButton
+                            style={styles.pauseButton}
+                            mode="filled"
+                            onPress={handleGamePause}
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                        >
+                            Pause
+                        </GlassyButton>
+                        <GlassyButton
+                            style={styles.resumeButton}
+                            mode="filled"
+                            onPress={onGameResume}
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                        >
+                            Resume
+                        </GlassyButton>
+                        <GlassyButton
+                            style={styles.exitButton}
+                            mode="filled"
+                            onPress={handleExit}
+                        >
+                            Exit
+                        </GlassyButton>
+                        {
+                            // TODO: In the future accomodate lobbies with many games. Probably handle multiple games being passed on the backend
+                        }
+                        {lobby && lobby.games ? (
+                            <View style={styles.playerScoresContainer}>
+                                <View style={styles.scoreIndicator}>
+                                    <ScoreIndicator
+                                        ref={scoreRef}
+                                        points={50}
+                                        color={"lime"}
+                                    />
+                                </View>
+                                <PlayerScores
+                                    teams={lobby.games[0].teams}
+                                    gameMode={lobby.gamemode.toLowerCase()}
+                                />
                             </View>
-                            <PlayerScores teams={lobby.games[0].teams} gameMode={lobby.gamemode.toLowerCase()} />
-                        </View>
-                        :
-                        <ActivityIndicator />
-                    }
-                    <ShowSettings
-                        defaultValue={showSettings}
-                        onChange={setShowSettings}
-                    />
-                    <GameSettings
-                        expanded={showSettings}
-                        columns={1}
-                        defaultInfo={lobby}
-                        // TODO: Determine who can edit lobbies while they are in them
-                        disabled={myUser?.id !== lobby?.creator_id && myUser?.username !== "admin"}
-                        nameDisabled={true}
-                        title={"Game Settings"}
-                        onGameRuleChange={handleGameRuleChange}
-                    />
-                </View>
-                }
+                        ) : (
+                            <ActivityIndicator />
+                        )}
+                        <ShowSettings
+                            defaultValue={showSettings}
+                            onChange={setShowSettings}
+                        />
+                        <GameSettings
+                            expanded={showSettings}
+                            columns={1}
+                            defaultInfo={lobby}
+                            // TODO: Determine who can edit lobbies while they are in them
+                            disabled={
+                                myUser?.id !== lobby?.creator_id &&
+                                myUser?.username !== "admin"
+                            }
+                            nameDisabled={true}
+                            title={"Game Settings"}
+                            onGameRuleChange={handleGameRuleChange}
+                        />
+                    </View>
+                )}
             </View>
-
         </SidebarLayout>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -764,26 +1026,26 @@ const styles = StyleSheet.create({
     },
     lobbyName: {
         alignSelf: "center",
-        width: "50vw"
+        width: "50vw",
     },
     gameContent: {
         margin: 10,
         flexGrow: 1,
         flexShrink: 1,
         flexDirection: "column",
-        width: "100%"
+        width: "100%",
     },
     questions: {
         marginTop: 10,
         gap: 10,
     },
     question: {
-        height: 300
+        height: 300,
     },
     showingContainer: {
         flexDirection: "row",
         justifyContent: "center",
-        gap: 10
+        gap: 10,
     },
     optionsContainer: {
         flexShrink: 1,
@@ -794,14 +1056,14 @@ const styles = StyleSheet.create({
         minWidth: 250,
     },
     playerScoresContainer: {
-        position: "relative"
+        position: "relative",
     },
     scoreIndicator: {
         position: "absolute",
         top: -10,
         left: -10,
         zIndex: 1,
-        transform: [{rotateZ: "-15deg"}]
+        transform: [{ rotateZ: "-15deg" }],
     },
     scorebox: {
         // width: 300
@@ -810,23 +1072,23 @@ const styles = StyleSheet.create({
         // backgroundImage: theme.gradients.buttonWhite
     },
     pauseButton: {
-        backgroundImage: theme.gradients.questionTint
+        backgroundImage: theme.gradients.questionTint,
     },
     resumeButton: {
-        backgroundImage: theme.gradients.backgroundTint
+        backgroundImage: theme.gradients.backgroundTint,
     },
     exitButton: {
-        backgroundImage: theme.gradients.buttonRed
+        backgroundImage: theme.gradients.buttonRed,
     },
     nextButton: {
-        backgroundImage: theme.gradients.buttonBlue
-    }
-})
+        backgroundImage: theme.gradients.buttonBlue,
+    },
+});
 
 const mstyles = StyleSheet.create({
     container: {
         flexDirection: "column",
-        gap: 10
+        gap: 10,
     },
     topContainer: {
         flexDirection: "row",
@@ -846,18 +1108,18 @@ const mstyles = StyleSheet.create({
         borderWidth: 1,
         borderColor: theme.elevation.level4,
         borderRadius: 10,
-        height: "100%"
+        height: "100%",
     },
     closeButton: {
-        alignSelf: "center"
+        alignSelf: "center",
     },
     gameContent: {
         margin: 0,
-        width: "100%"
+        width: "100%",
     },
     answerStatusIcon: {
         // position: "absolute",
-    }
-})
+    },
+});
 
 export default Play;

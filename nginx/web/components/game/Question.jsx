@@ -25,6 +25,7 @@ import {
     useGlobalSearchParams,
     useLocalSearchParams,
     usePathname,
+    Link,
 } from "expo-router";
 import theme from "../../assets/themes/theme";
 import GlassyView from "../custom/GlassyView";
@@ -32,7 +33,11 @@ import ExpandableView from "../custom/ExpandableView";
 import Answers from "./Answers";
 import { capitalize } from "../../utils/text";
 import ustyles from "../../assets/styles/ustyles";
-import { STANDARD_ANSWER_MS, STANDARD_MS_UNTIL_DEAD } from "../../utils/constants";
+import {
+    STANDARD_ANSWER_MS,
+    STANDARD_MS_UNTIL_DEAD,
+} from "../../utils/constants";
+import WikipediaLink from "./WikipediaLink";
 
 const LEVELS = [
     "Pop Culture",
@@ -41,13 +46,13 @@ const LEVELS = [
     "Regular High School",
     "Hard High School",
     "National High School",
-    "● / Easy College", 
-    "●● / Medium College", 
+    "● / Easy College",
+    "●● / Medium College",
     "●●● / Regionals College",
     "●●●● / Nationals College",
     "Open",
-    "All"              
-]
+    "All",
+];
 
 const Question = ({
     question,
@@ -65,7 +70,7 @@ const Question = ({
     MS_UNTIL_DEAD = STANDARD_MS_UNTIL_DEAD,
     // Speed in WPM
     ANSWER_MS = STANDARD_ANSWER_MS,
-    EXPANDED_HEIGHT=500,
+    EXPANDED_HEIGHT = 500,
 }) => {
     // Text variables
     const fullText = question.question || "";
@@ -85,7 +90,7 @@ const Question = ({
     const [isFinished, setIsFinished] = useState(false);
     const [isDead, setIsDead] = useState(false);
     const [msLeft, setMsLeft] = useState(0);
-    const [remainingWaitTime, setRemainingWaitTime] = useState(MS_UNTIL_DEAD)
+    const [remainingWaitTime, setRemainingWaitTime] = useState(MS_UNTIL_DEAD);
 
     // Reading constants
     const charsPerMinute = speed * 5;
@@ -100,7 +105,7 @@ const Question = ({
     useEffect(() => {
         // Set the state ref for some parts of the program to use instantaneously in a useEffect
         stateRef.current = state;
-        
+
         // If the state is set to running, we want to pre-emptively set the ms left for the buzz as ANSWER_MS too.
         if (state === "running" || state === "interupted") {
             setMsLeft(ANSWER_MS);
@@ -108,16 +113,15 @@ const Question = ({
             // Add an interrupt
             setInterruptIndexes((prev) => {
                 // Make sure there are no duplicates
-                if(charIndex === prev[prev.length - 1]) return prev;
-                return [...prev, charIndex]
-            })
+                if (charIndex === prev[prev.length - 1]) return prev;
+                return [...prev, charIndex];
+            });
 
             setMsLeft(ANSWER_MS);
-        }
-        else if (state === "waiting") {
+        } else if (state === "waiting") {
             setMsLeft(remainingWaitTime);
         } else if (state === "dead") {
-            setCharIndex(fullText.length)
+            setCharIndex(fullText.length);
         }
     }, [state]);
 
@@ -143,7 +147,7 @@ const Question = ({
                         onDeath?.();
                     }
                     // Update the remaining wait time because we want to save this amount for multiple buzzes
-                    setRemainingWaitTime(next)
+                    setRemainingWaitTime(next);
                     return next;
                 });
             } else if (currentState === "running") {
@@ -212,13 +216,11 @@ const Question = ({
                 <GlassyView
                     style={[styles.container, { height: expandedHeight }]}
                     onPress={handleDeadPressed}
-                    gradient={
-                        {
-                            colors: theme.gradients.questionTint,
-                            start: { x: 1, y: 0 },
-                            end: { x: 1, y: 1 },
-                        }
-                    }
+                    gradient={{
+                        colors: theme.gradients.questionTint,
+                        start: { x: 1, y: 0 },
+                        end: { x: 1, y: 1 },
+                    }}
                 >
                     <View style={styles.top}>
                         <View style={styles.progressBarContainer}>
@@ -298,19 +300,18 @@ const Question = ({
                     </View>
 
                     <View style={styles.bottom}>
-                        {
-                            state !== "dead" &&
+                        {state !== "dead" && (
                             <HelperText>
                                 {state === "running"
                                     ? (
-                                        ((fullText.length - charIndex) *
-                                            msPerChar) /
-                                        1000
-                                    ).toFixed(1)
+                                          ((fullText.length - charIndex) *
+                                              msPerChar) /
+                                          1000
+                                      ).toFixed(1)
                                     : (msLeft / 1000).toFixed(1)}
                                 s
                             </HelperText>
-                        }
+                        )}
                         {(state == "dead" || showAnswers) && (
                             <Answers
                                 answers={question.answers}
@@ -341,6 +342,8 @@ const Question = ({
                         >
                             {question.answers.main}
                         </HelperText>
+                        <WikipediaLink wikipedia={question?.wikipedia} />
+                        
                         {rightIcon}
                     </View>
                 </GlassyView>
@@ -381,10 +384,10 @@ const styles = StyleSheet.create({
         justifyContent: "flex-end",
         gap: 10,
         flex: 2,
-        minWidth: 0
+        minWidth: 0,
     },
     questionInfo: {
-        flex: 1
+        flex: 1,
     },
     answerComponent: {
         // backgroundColor: "blue"
@@ -392,7 +395,7 @@ const styles = StyleSheet.create({
     answer: {
         fontSize: 17,
         fontWeight: "bold",
-        minWidth: 0
+        minWidth: 0,
     },
 
     // Maximized
