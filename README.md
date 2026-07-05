@@ -17,6 +17,7 @@ MoreQuizBowl is a multiplayer trivia platform built specifically for Quiz Bowl c
 - AI-powered gameplay analytics
 - Correct / missed question tracking
 - Integrated Wikipedia summaries and links for deeper learning
+- Chat in-game with your friends
 
 ---
 
@@ -78,3 +79,4 @@ MoreQuizBowl is a multiplayer trivia platform built specifically for Quiz Bowl c
 - Repeat-question practice arena
 - AI-generated flashcards (exportable to apps like Anki)
 - Bonus question support (coming soon!)
+- Text-to-Speech question reading
