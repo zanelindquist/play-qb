@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 # Load ENV variables for the database connection
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.prod')
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
 # Read variables from environment
 MYSQL_HOST = os.getenv('MYSQL_HOST')
