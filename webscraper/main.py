@@ -3,8 +3,9 @@
 
 
 # from .scraping import *
-from .qbreader_scraper import *
+# from .qbreader_scraper import *
 from .config import *
+from .fetch_backups import fetch_backups
 # from .classifiers.ml.ml import train_and_save_model
 # from .classifiers.bayesian.bayesian import *
 
@@ -61,4 +62,7 @@ He wipes his mouth with Steve Tyler's scarf after catching it at a bar. He is am
 # test_parser(100)
 
 # Scrape from qb reader all tournament set list
-scrape_tournaments(1)
+# scrape_tournaments(1)
+
+# Fetch all of the questions from the database. Does not import duplicates
+fetch_backups()
